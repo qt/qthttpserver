@@ -42,6 +42,7 @@
 #include <QtNetwork/qnetworkreply.h>
 #include <QtNetwork/qnetworkrequest.h>
 #include <QtNetwork/qtcpserver.h>
+#include <QtNetwork/qtcpsocket.h>
 #include <QtHttpServer/qhttpserverrequest.h>
 
 #if defined(Q_OS_UNIX)

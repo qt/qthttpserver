@@ -125,7 +125,7 @@ bool QHttpServerRequestPrivate::parse(QIODevice *socket)
     return true;
 }
 
-uint QHttpServerRequestPrivate::headerHash(const QByteArray &key) const
+size_t QHttpServerRequestPrivate::headerHash(const QByteArray &key) const
 {
     return qHash(key.toLower(), headersSeed);
 }

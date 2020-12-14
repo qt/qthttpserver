@@ -41,6 +41,8 @@
 #include <QtTest/qtest.h>
 #include <QtTest/qsignalspy.h>
 
+#include <QtConcurrent/qtconcurrentrun.h>
+
 #include <QtCore/qurl.h>
 #include <QtCore/qstring.h>
 #include <QtCore/qlist.h>
@@ -608,7 +610,7 @@ void tst_QHttpServer::routeGet()
 void tst_QHttpServer::routeKeepAlive()
 {
     httpserver.route("/keep-alive", [] (const QHttpServerRequest &req) -> QHttpServerResponse {
-        if (req.headers()["Connection"] != "keep-alive")
+        if (!req.headers()["Connection"].toByteArray().contains("keep-alive"))
             return QHttpServerResponse::StatusCode::NotFound;
 
         return QString("header: %1, query: %2, body: %3, method: %4")
@@ -942,7 +944,7 @@ void tst_QHttpServer::afterRequest()
 void tst_QHttpServer::checkReply(QNetworkReply *reply, const QString &response) {
     QTRY_VERIFY(reply->isFinished());
 
-    QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader), "text/plain");
+    QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader).toByteArray(), "text/plain");
     QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 200);
     QCOMPARE(reply->readAll(), response);
 

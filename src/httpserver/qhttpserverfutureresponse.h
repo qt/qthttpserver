@@ -35,7 +35,7 @@
 #include <QtCore/qbytearray.h>
 #include <QtCore/qfuture.h>
 
-#include <QtConcurrent>
+#include <QtConcurrent/qtconcurrentrunbase.h>
 
 #include <mutex>
 
@@ -117,8 +117,8 @@ class RunFunctionTask<QHttpServerResponse> : public RunFunctionTaskBase<QHttpSer
 public:
     void run() override
     {
-        if (this->isCanceled()) {
-            this->reportFinished();
+        if (promise.isCanceled()) {
+            promise.reportFinished();
             return;
         }
 #ifndef QT_NO_EXCEPTIONS
@@ -127,13 +127,13 @@ public:
             this->runFunctor();
 #ifndef QT_NO_EXCEPTIONS
         } catch (QException &e) {
-            QFutureInterface<QHttpServerResponse>::reportException(e);
+            promise.reportException(e);
         } catch (...) {
-            QFutureInterface<QHttpServerResponse>::reportException(QUnhandledException());
+            promise.reportException(QUnhandledException());
         }
 #endif
-        this->reportAndMoveResult(std::move_if_noexcept(result));
-        this->reportFinished();
+        promise.reportAndMoveResult(std::move_if_noexcept(result));
+        promise.reportFinished();
     }
 
     QHttpServerResponse result{QHttpServerResponse::StatusCode::NotFound};

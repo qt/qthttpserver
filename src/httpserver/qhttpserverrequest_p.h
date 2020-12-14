@@ -82,9 +82,9 @@ public:
     bool parse(QIODevice *socket);
 
     QByteArray lastHeader;
-    QMap<uint, QPair<QByteArray, QByteArray>> headers;
-    const uint headersSeed = uint(qGlobalQHashSeed());
-    uint headerHash(const QByteArray &key) const;
+    QMap<size_t, QPair<QByteArray, QByteArray>> headers;
+    const size_t headersSeed = size_t(qGlobalQHashSeed());
+    size_t headerHash(const QByteArray &key) const;
 
     void clear();
     QHostAddress remoteAddress;

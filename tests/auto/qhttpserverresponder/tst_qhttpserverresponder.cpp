@@ -138,7 +138,7 @@ void tst_QHttpServerResponder::writeStatusCode()
     qWaitForFinished(reply);
     QCOMPARE(reply->bytesAvailable(), 0);
     QCOMPARE(reply->error(), networkError);
-    QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader),
+    QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader).toByteArray(),
              QByteArrayLiteral("application/x-empty"));
 }
 
@@ -151,7 +151,7 @@ void tst_QHttpServerResponder::writeStatusCodeExtraHeader()
     qWaitForFinished(reply);
     QCOMPARE(reply->bytesAvailable(), 0);
     QCOMPARE(reply->error(), QNetworkReply::NoError);
-    QCOMPARE(reply->header(QNetworkRequest::ServerHeader), headerServerValue);
+    QCOMPARE(reply->header(QNetworkRequest::ServerHeader).toByteArray(), headerServerValue);
 }
 
 void tst_QHttpServerResponder::writeJson()
@@ -161,7 +161,7 @@ void tst_QHttpServerResponder::writeJson()
     auto reply = networkAccessManager->get(QNetworkRequest(server.url));
     qWaitForFinished(reply);
     QCOMPARE(reply->error(), QNetworkReply::NoError);
-    QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader),
+    QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader).toByteArray(),
              QHttpServerLiterals::contentTypeJson());
     QCOMPARE(QJsonDocument::fromJson(reply->readAll()), json);
 }
@@ -175,9 +175,9 @@ void tst_QHttpServerResponder::writeJsonExtraHeader()
     auto reply = networkAccessManager->get(QNetworkRequest(server.url));
     qWaitForFinished(reply);
     QCOMPARE(reply->error(), QNetworkReply::NoError);
-    QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader),
+    QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader).toByteArray(),
              QHttpServerLiterals::contentTypeJson());
-    QCOMPARE(reply->header(QNetworkRequest::ServerHeader), headerServerValue);
+    QCOMPARE(reply->header(QNetworkRequest::ServerHeader).toByteArray(), headerServerValue);
     QCOMPARE(QJsonDocument::fromJson(reply->readAll()), json);
 }
 
@@ -248,9 +248,9 @@ void tst_QHttpServerResponder::writeFileExtraHeader()
     auto reply = networkAccessManager->get(QNetworkRequest(server.url));
     QTRY_VERIFY(reply->isFinished());
 
-    QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader),
+    QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader).toByteArray(),
                            QHttpServerLiterals::contentTypeTextHtml());
-    QCOMPARE(reply->header(QNetworkRequest::ServerHeader), headerServerValue);
+    QCOMPARE(reply->header(QNetworkRequest::ServerHeader).toByteArray(), headerServerValue);
     QCOMPARE(reply->readAll().trimmed(), "<html></html>");
 
     QCOMPARE(spyDestroyIoDevice.count(), 1);
@@ -272,8 +272,8 @@ void tst_QHttpServerResponder::writeByteArrayExtraHeader()
     auto reply = networkAccessManager->get(QNetworkRequest(server.url));
     QTRY_VERIFY(reply->isFinished());
 
-    QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader), contentType);
-    QCOMPARE(reply->header(QNetworkRequest::ServerHeader), headerServerValue);
+    QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader).toByteArray(), contentType);
+    QCOMPARE(reply->header(QNetworkRequest::ServerHeader).toByteArray(), headerServerValue);
     QCOMPARE(reply->readAll(), data);
 }
 
