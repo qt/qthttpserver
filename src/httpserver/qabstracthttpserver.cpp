@@ -116,9 +116,6 @@ void QAbstractHttpServerPrivate::handleReadyRead(QTcpSocket *socket,
             return;
         }
 #endif
-        qCWarning(lcHttpServer, "Upgrade to %s not supported", upgradeValue.constData());
-        socket->disconnectFromHost();
-        return;
     }
 
     socket->commitTransaction();
