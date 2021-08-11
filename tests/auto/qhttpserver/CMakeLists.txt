@@ -7,7 +7,7 @@
 # Collect test data
 list(APPEND test_data "data/")
 
-qt_add_test(tst_qhttpserver
+qt_internal_add_test(tst_qhttpserver
     SOURCES
         tst_qhttpserver.cpp
     PUBLIC_LIBRARIES

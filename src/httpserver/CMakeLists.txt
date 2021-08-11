@@ -4,7 +4,7 @@
 ## HttpServer Module:
 #####################################################################
 
-qt_add_module(HttpServer
+qt_internal_add_module(HttpServer
     SOURCES
         ../3rdparty/http-parser/http_parser.c ../3rdparty/http-parser/http_parser.h
         qabstracthttpserver.cpp qabstracthttpserver.h qabstracthttpserver_p.h
@@ -34,7 +34,7 @@ qt_add_module(HttpServer
 ## Scopes:
 #####################################################################
 
-qt_extend_target(HttpServer CONDITION TARGET Qt::WebSockets
+qt_internal_extend_target(HttpServer CONDITION TARGET Qt::WebSockets
     LIBRARIES
         Qt::WebSocketsPrivate
     PUBLIC_LIBRARIES
@@ -43,12 +43,12 @@ qt_extend_target(HttpServer CONDITION TARGET Qt::WebSockets
         Qt::WebSocketsPrivate
 )
 
-qt_extend_target(HttpServer CONDITION QT_FEATURE_ssl
+qt_internal_extend_target(HttpServer CONDITION QT_FEATURE_ssl
     PUBLIC_LIBRARIES
         Qt::SslServer
 )
 
-qt_extend_target(HttpServer CONDITION TARGET Qt::Concurrent
+qt_internal_extend_target(HttpServer CONDITION TARGET Qt::Concurrent
     SOURCES
         qhttpserverfutureresponse.cpp qhttpserverfutureresponse.h
     PUBLIC_LIBRARIES

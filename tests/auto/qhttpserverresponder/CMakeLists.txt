@@ -7,7 +7,7 @@
 # Collect test data
 list(APPEND test_data "data/")
 
-qt_add_test(tst_qhttpserverresponder
+qt_internal_add_test(tst_qhttpserverresponder
     SOURCES
         tst_qhttpserverresponder.cpp
     PUBLIC_LIBRARIES

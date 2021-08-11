@@ -13,7 +13,7 @@ set(INSTALL_EXAMPLEDIR "examples/httpserver/afterrequest")
 
 find_package(Qt6 COMPONENTS HttpServer)
 
-add_executable(afterrequest
+qt_add_executable(afterrequest
     main.cpp
 )
 target_link_libraries(afterrequest PUBLIC

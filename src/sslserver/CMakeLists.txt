@@ -4,7 +4,7 @@
 ## SslServer Module:
 #####################################################################
 
-qt_add_module(SslServer
+qt_internal_add_module(SslServer
     SOURCES
         qsslserver.cpp qsslserver.h qsslserver_p.h
         qtsslserverglobal.h

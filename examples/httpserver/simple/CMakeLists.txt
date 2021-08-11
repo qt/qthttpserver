@@ -13,7 +13,7 @@ set(INSTALL_EXAMPLEDIR "examples/httpserver/simple")
 
 find_package(Qt6 COMPONENTS HttpServer)
 
-add_executable(simple
+qt_add_executable(simple
     main.cpp
 )
 target_link_libraries(simple PUBLIC
