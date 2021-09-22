@@ -1,6 +1,6 @@
 # Generated from qthttpserver.pro.
 
-cmake_minimum_required(VERSION 3.15.0)
+cmake_minimum_required(VERSION 3.16)
 
 project(QtHttpServer
     VERSION 6.0.0
