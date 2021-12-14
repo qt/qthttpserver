@@ -1,4 +1,4 @@
 # Generated from httpserver.pro.
 
-add_subdirectory(afterrequest)
-add_subdirectory(simple)
+qt_internal_add_example(afterrequest)
+qt_internal_add_example(simple)
