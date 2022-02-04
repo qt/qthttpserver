@@ -35,43 +35,7 @@
 #include <QtCore/qbytearray.h>
 #include <QtCore/qfuture.h>
 
-#include <QtConcurrent/qtconcurrentrunbase.h>
-
-#include <mutex>
-
 QT_BEGIN_NAMESPACE
-
-namespace QtConcurrent {
-
-template <>
-class RunFunctionTask<QHttpServerResponse> : public RunFunctionTaskBase<QHttpServerResponse>
-{
-public:
-    void run() override
-    {
-        if (promise.isCanceled()) {
-            promise.reportFinished();
-            return;
-        }
-#ifndef QT_NO_EXCEPTIONS
-        try {
-#endif
-            this->runFunctor();
-#ifndef QT_NO_EXCEPTIONS
-        } catch (QException &e) {
-            promise.reportException(e);
-        } catch (...) {
-            promise.reportException(QUnhandledException());
-        }
-#endif
-        promise.reportAndMoveResult(std::move_if_noexcept(result));
-        promise.reportFinished();
-    }
-
-    QHttpServerResponse result{QHttpServerResponse::StatusCode::NotFound};
-};
-
-}
 
 class QHttpServerFutureResponsePrivate;
 class Q_HTTPSERVER_EXPORT QHttpServerFutureResponse : public QHttpServerResponse
