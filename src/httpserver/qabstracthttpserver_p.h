@@ -55,9 +55,9 @@ class QHttpServerRequest;
 
 class Q_HTTPSERVER_EXPORT QAbstractHttpServerPrivate: public QObjectPrivate
 {
+public:
     Q_DECLARE_PUBLIC(QAbstractHttpServer)
 
-public:
     QAbstractHttpServerPrivate();
 
 #if defined(QT_WEBSOCKETS_LIB)
