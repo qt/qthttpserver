@@ -167,7 +167,7 @@ void QHttpServer::sendResponse(QHttpServerResponse &&response,
 {
     Q_D(QHttpServer);
     for (auto afterRequestHandler : d->afterRequestHandlers)
-        response = std::move(afterRequestHandler(std::move(response), request));
+        response = afterRequestHandler(std::move(response), request);
     response.write(makeResponder(request, socket));
 }
 
