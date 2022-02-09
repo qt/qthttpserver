@@ -42,13 +42,9 @@ class QHttpServerResponsePrivate;
 class Q_HTTPSERVER_EXPORT QHttpServerResponse
 {
     Q_DECLARE_PRIVATE(QHttpServerResponse)
-
+    Q_DISABLE_COPY(QHttpServerResponse)
 public:
     using StatusCode = QHttpServerResponder::StatusCode;
-
-    QHttpServerResponse() = delete;
-    QHttpServerResponse(const QHttpServerResponse &other) = delete;
-    QHttpServerResponse& operator=(const QHttpServerResponse &other) = delete;
 
     QHttpServerResponse(QHttpServerResponse &&other) noexcept;
     QHttpServerResponse& operator=(QHttpServerResponse &&other) noexcept;
