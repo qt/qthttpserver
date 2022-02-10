@@ -2,8 +2,9 @@
 
 cmake_minimum_required(VERSION 3.16)
 
+include(.cmake.conf)
 project(QtHttpServer
-    VERSION 6.0.0
+    VERSION "${QT_REPO_MODULE_VERSION}"
     DESCRIPTION "Qt HTTP Server"
     HOMEPAGE_URL "https://qt.io/"
     LANGUAGES CXX C
