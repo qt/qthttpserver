@@ -395,13 +395,8 @@ void tst_QHttpServer::initTestCase()
             [expectedSslErrors](QNetworkReply *reply,
                                 const QList<QSslError> &errors) {
         for (const auto &error: errors) {
-            for (const auto &expectedError: expectedSslErrors) {
-                if (error.error() != expectedError.error() ||
-                    error.certificate() != expectedError.certificate()) {
-                    qCritical() << "Got unexpected ssl error:"
-                                << error << error.certificate();
-                }
-            }
+            if (!expectedSslErrors.contains(error))
+                qCritical() << "Got unexpected ssl error:" << error << error.certificate();
         }
         reply->ignoreSslErrors(expectedSslErrors);
     });
