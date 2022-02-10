@@ -383,20 +383,13 @@ void tst_QHttpServer::initTestCase()
 
     sslUrlBase = QStringLiteral("https://localhost:%1%2").arg(port);
 
-    QList<QSslError> expectedSslErrors;
-
-// Non-OpenSSL backends are not able to report a specific error code
-// for self-signed certificates.
-#ifndef QT_NO_OPENSSL
-# define FLUKE_CERTIFICATE_ERROR QSslError::SelfSignedCertificate
-#else
-# define FLUKE_CERTIFICATE_ERROR QSslError::CertificateUntrusted
-#endif
-
-    expectedSslErrors.append(QSslError(FLUKE_CERTIFICATE_ERROR,
-                                       QSslCertificate(g_certificate)));
-    expectedSslErrors.append(QSslError(QSslError::HostNameMismatch,
-                                       QSslCertificate(g_certificate)));
+    const QList<QSslError> expectedSslErrors = {
+        QSslError(QSslError::SelfSignedCertificate, QSslCertificate(g_certificate)),
+        // Non-OpenSSL backends are not able to report a specific error code
+        // for self-signed certificates.
+        QSslError(QSslError::CertificateUntrusted, QSslCertificate(g_certificate)),
+        QSslError(QSslError::HostNameMismatch, QSslCertificate(g_certificate)),
+    };
 
     connect(&networkAccessManager, &QNetworkAccessManager::sslErrors,
             [expectedSslErrors](QNetworkReply *reply,
