@@ -52,6 +52,11 @@ QSslServer::~QSslServer() = default;
 void QSslServer::incomingConnection(qintptr handle)
 {
     QSslSocket *socket = new QSslSocket(this);
+    connect(socket, &QAbstractSocket::errorOccurred, socket, [socket]() {
+        qCWarning(lcSS, "Socket error: %s", qPrintable(socket->errorString()));
+        socket->close();
+    });
+
     connect(socket, QOverload<const QList<QSslError>&>::of(&QSslSocket::sslErrors),
             [this, socket](const QList<QSslError> &errors) {
         for (auto &err: errors)
