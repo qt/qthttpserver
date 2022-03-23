@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2019 The Qt Company Ltd.
+** Copyright (C) 2022 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtHttpServer module of the Qt Toolkit.
@@ -38,8 +38,6 @@
 #include <QtCore/qmetaobject.h>
 #include <QtNetwork/qtcpserver.h>
 #include <QtNetwork/qtcpsocket.h>
-
-#include "http_parser.h"
 
 #include <algorithm>
 
@@ -84,20 +82,15 @@ void QAbstractHttpServerPrivate::handleReadyRead(QTcpSocket *socket,
     if (!socket->isTransactionStarted())
         socket->startTransaction();
 
-    if (request->d->state == QHttpServerRequestPrivate::State::OnMessageComplete)
-        request->d->clear();
-
     if (!request->d->parse(socket)) {
-        socket->disconnect();
+        socket->disconnectFromHost();
         return;
     }
 
-    if (!request->d->httpParser.upgrade &&
-            request->d->state != QHttpServerRequestPrivate::State::OnMessageComplete)
+    if (request->d->state != QHttpServerRequestPrivate::State::AllDone)
         return; // Partial read
 
-    if (request->d->httpParser.upgrade &&
-        request->d->httpParser.method != HTTP_CONNECT) { // Upgrade
+    if (request->d->upgrade) { // Upgrade
         const auto &upgradeValue = request->value(QByteArrayLiteral("upgrade"));
 #if defined(QT_WEBSOCKETS_LIB)
         if (upgradeValue.compare(QByteArrayLiteral("websocket"), Qt::CaseInsensitive) == 0) {
@@ -119,6 +112,7 @@ void QAbstractHttpServerPrivate::handleReadyRead(QTcpSocket *socket,
     }
 
     socket->commitTransaction();
+    qCDebug(lcHttpServer) << "Request:" << *request;
     request->d->handling = true;
     if (!q->handleRequest(*request, socket))
         Q_EMIT q->missingHandler(*request, socket);

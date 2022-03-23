@@ -1,7 +1,7 @@
 TARGET = QtHttpServer
 INCLUDEPATH += .
 
-QT = network core-private
+QT = network core-private network-private
 
 qtHaveModule(websockets): QT += websockets-private
 qtConfig(ssl): QT += sslserver
@@ -42,7 +42,5 @@ qtHaveModule(concurrent) {
     HEADERS += qhttpserverfutureresponse.h
     SOURCES += qhttpserverfutureresponse.cpp
 }
-
-include(../3rdparty/http-parser.pri)
 
 load(qt_module)

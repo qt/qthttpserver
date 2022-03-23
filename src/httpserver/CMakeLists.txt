@@ -6,7 +6,6 @@
 
 qt_internal_add_module(HttpServer
     SOURCES
-        ../3rdparty/http-parser/http_parser.c ../3rdparty/http-parser/http_parser.h
         qabstracthttpserver.cpp qabstracthttpserver.h qabstracthttpserver_p.h
         qhttpserver.cpp qhttpserver.h qhttpserver_p.h
         qhttpserverliterals.cpp qhttpserverliterals_p.h
@@ -19,16 +18,15 @@ qt_internal_add_module(HttpServer
         qhttpserverviewtraits.h
         qhttpserverviewtraits_impl.h
         qthttpserverglobal.h
-    INCLUDE_DIRECTORIES
-        .
-        ../3rdparty/http-parser
     LIBRARIES
         Qt::CorePrivate
+        Qt::NetworkPrivate
     PUBLIC_LIBRARIES
         Qt::Core
         Qt::Network
     PRIVATE_MODULE_INTERFACE
         Qt::CorePrivate
+        Qt::NetworkPrivate
 )
 
 ## Scopes:

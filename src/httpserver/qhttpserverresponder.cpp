@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2019 The Qt Company Ltd.
+** Copyright (C) 2022 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtHttpServer module of the Qt Toolkit.
@@ -39,8 +39,6 @@
 #include <map>
 #include <memory>
 
-#include "../3rdparty/http-parser/http_parser.h"
-
 QT_BEGIN_NAMESPACE
 
 static const QLoggingCategory &lc()
@@ -50,9 +48,47 @@ static const QLoggingCategory &lc()
 }
 
 // https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
-static const std::map<QHttpServerResponder::StatusCode, QByteArray> statusString {
-#define XX(num, name, string) { static_cast<QHttpServerResponder::StatusCode>(num), QByteArrayLiteral(#string) },
-  HTTP_STATUS_MAP(XX)
+static const std::map<QHttpServerResponder::StatusCode, QByteArray> statusString{
+#define XX(name, string) { QHttpServerResponder::StatusCode::name, QByteArrayLiteral(string) }
+    XX(Continue, "Continue"),
+    XX(SwitchingProtocols, "Switching Protocols"),
+    XX(Ok, "OK"),
+    XX(Created, "Created"),
+    XX(Accepted, "Accepted"),
+    XX(NonAuthoritativeInformation, "Non-Authoritative Information"),
+    XX(NoContent, "No Content"),
+    XX(ResetContent, "Reset Content"),
+    XX(PartialContent, "Partial Content"),
+    XX(MultipleChoices, "Multiple Choices"),
+    XX(MovedPermanently, "Moved Permanently"),
+    XX(Found, "Found"),
+    XX(SeeOther, "See Other"),
+    XX(NotModified, "Not Modified"),
+    XX(UseProxy, "Use Proxy"),
+    XX(TemporaryRedirect, "Temporary Redirect"),
+    XX(BadRequest, "Bad Request"),
+    XX(Unauthorized, "Unauthorized"),
+    XX(Forbidden, "Forbidden"),
+    XX(NotFound, "Not Found"),
+    XX(MethodNotAllowed, "Method Not Allowed"),
+    XX(NotAcceptable, "Not Acceptable"),
+    XX(ProxyAuthenticationRequired, "Proxy Authentication Required"),
+    XX(RequestTimeout, "Request Timeout"),
+    XX(Conflict, "Conflict"),
+    XX(Gone, "Gone"),
+    XX(LengthRequired, "Length Required"),
+    XX(PreconditionFailed, "Precondition Failed"),
+    XX(PayloadTooLarge, "Request Entity Too Large"),
+    XX(UriTooLong, "Request-URI Too Long"),
+    XX(UnsupportedMediaType, "Unsupported Media Type"),
+    XX(RequestRangeNotSatisfiable, "Requested Range Not Satisfiable"),
+    XX(ExpectationFailed, "Expectation Failed"),
+    XX(InternalServerError, "Internal Server Error"),
+    XX(NotImplemented, "Not Implemented"),
+    XX(BadGateway, "Bad Gateway"),
+    XX(ServiceUnavailable, "Service Unavailable"),
+    XX(GatewayTimeout, "Gateway Timeout"),
+    XX(HttpVersionNotSupported, "HTTP Version Not Supported"),
 #undef XX
 };
 

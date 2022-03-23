@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2019 The Qt Company Ltd.
+** Copyright (C) 2022 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtHttpServer module of the Qt Toolkit.
@@ -31,16 +31,8 @@
 #define QHTTPSERVERREQUEST_P_H
 
 #include <QtHttpServer/qhttpserverrequest.h>
-
-#include <QtCore/qbytearray.h>
-#include <QtCore/qpair.h>
-#include <QtCore/qregularexpression.h>
-#include <QtCore/qshareddata.h>
-#include <QtCore/qstring.h>
-#include <QtCore/qurl.h>
-#include <QtNetwork/qhostaddress.h>
-
-#include "../3rdparty/http-parser/http_parser.h"
+#include <QtNetwork/private/qhttpheaderparser_p.h>
+#include <QtCore/private/qbytedata_p.h>
 
 //
 //  W A R N I N G
@@ -60,52 +52,51 @@ public:
     QHttpServerRequestPrivate(const QHostAddress &remoteAddress);
 
     quint16 port = 0;
+
     enum class State {
-        NotStarted,
-        OnMessageBegin,
-        OnUrl,
-        OnStatus,
-        OnHeaders,
-        OnHeadersComplete,
-        OnBody,
-        OnMessageComplete,
-        OnChunkHeader,
-        OnChunkComplete
-    } state = State::NotStarted;
-    QByteArray body;
+        NothingDone,
+        ReadingRequestLine,
+        ReadingHeader,
+        ReadingData,
+        AllDone,
+    } state = State::NothingDone;
 
     QUrl url;
-
-    http_parser httpParser;
+    QHttpServerRequest::Method method;
+    QHttpHeaderParser parser;
 
     QByteArray header(const QByteArray &key) const;
-    bool parse(QIODevice *socket);
 
-    QByteArray lastHeader;
-    QMap<size_t, QPair<QByteArray, QByteArray>> headers;
-    const size_t headersSeed = size_t(QHashSeed::globalSeed());
-    size_t headerHash(const QByteArray &key) const;
+    bool parseRequestLine(QByteArrayView line);
+    qsizetype readRequestLine(QAbstractSocket *socket);
+    qsizetype readHeader(QAbstractSocket *socket);
+    qsizetype readBodyFast(QAbstractSocket *socket);
+    qsizetype readRequestBodyRaw(QAbstractSocket *socket, qsizetype size);
+    qsizetype readRequestBodyChunked(QAbstractSocket *socket);
+    qsizetype getChunkSize(QAbstractSocket *socket, qsizetype *chunkSize);
+
+    bool parse(QAbstractSocket *socket);
 
     void clear();
+
+    qint64 contentLength() const;
+    QByteArray headerField(const QByteArray &name,
+                           const QByteArray &defaultValue = QByteArray()) const;
+    QList<QByteArray> headerFieldValues(const QByteArray &name) const;
+
     QHostAddress remoteAddress;
     bool handling{false};
+    qsizetype bodyLength;
+    qsizetype contentRead;
+    bool chunkedTransferEncoding;
+    bool lastChunkRead;
+    qsizetype currentChunkRead;
+    qsizetype currentChunkSize;
+    bool upgrade;
 
-private:
-    static http_parser_settings httpParserSettings;
-    static bool parseUrl(const char *at, size_t length, bool connect, QUrl *url);
-
-    static QHttpServerRequestPrivate *instance(http_parser *httpParser);
-
-    static int onMessageBegin(http_parser *httpParser);
-    static int onUrl(http_parser *httpParser, const char *at, size_t length);
-    static int onStatus(http_parser *httpParser, const char *at, size_t length);
-    static int onHeaderField(http_parser *httpParser, const char *at, size_t length);
-    static int onHeaderValue(http_parser *httpParser, const char *at, size_t length);
-    static int onHeadersComplete(http_parser *httpParser);
-    static int onBody(http_parser *httpParser, const char *at, size_t length);
-    static int onMessageComplete(http_parser *httpParser);
-    static int onChunkHeader(http_parser *httpParser);
-    static int onChunkComplete(http_parser *httpParser);
+    QByteArray fragment;
+    QByteDataBuffer bodyBuffer;
+    QByteArray body;
 };
 
 QT_END_NAMESPACE
