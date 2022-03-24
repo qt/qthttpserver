@@ -52,7 +52,7 @@ QHttpServerResponsePrivate::QHttpServerResponsePrivate(const QHttpServerResponse
 { }
 
 QHttpServerResponse::QHttpServerResponse(QHttpServerResponse &&other) noexcept
-    : d_ptr(other.d_ptr.take())
+    : d_ptr(std::move(other.d_ptr))
 {
 }
 

@@ -152,8 +152,8 @@ QHttpServerResponder::QHttpServerResponder(const QHttpServerRequest &request,
     Move-constructs a QHttpServerResponder instance, making it point
     at the same object that \a other was pointing to.
 */
-QHttpServerResponder::QHttpServerResponder(QHttpServerResponder &&other) :
-    d_ptr(other.d_ptr.take())
+QHttpServerResponder::QHttpServerResponder(QHttpServerResponder &&other)
+    : d_ptr(std::move(other.d_ptr))
 {}
 
 /*!
@@ -178,7 +178,7 @@ void QHttpServerResponder::write(QIODevice *data,
 {
     Q_D(QHttpServerResponder);
     Q_ASSERT(d->socket);
-    QScopedPointer<QIODevice, QScopedPointerDeleteLater> input(data);
+    std::unique_ptr<QIODevice, QScopedPointerDeleteLater> input(data);
 
     input->setParent(nullptr);
     if (!input->isOpen()) {
@@ -218,7 +218,7 @@ void QHttpServerResponder::write(QIODevice *data,
     }
 
     // input takes ownership of the IOChunkedTransfer pointer inside his constructor
-    new IOChunkedTransfer<>(input.take(), d->socket);
+    new IOChunkedTransfer<>(input.release(), d->socket);
 }
 
 /*!

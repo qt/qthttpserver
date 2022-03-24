@@ -32,7 +32,7 @@
 
 #include <QtHttpServer/qhttpserverresponder.h>
 
-#include <QtCore/qscopedpointer.h>
+#include <memory>
 
 QT_BEGIN_NAMESPACE
 
@@ -117,7 +117,7 @@ public:
 protected:
     QHttpServerResponse(QHttpServerResponsePrivate *d);
 
-    QScopedPointer<QHttpServerResponsePrivate> d_ptr;
+    std::unique_ptr<QHttpServerResponsePrivate> d_ptr;
 };
 
 QT_END_NAMESPACE
