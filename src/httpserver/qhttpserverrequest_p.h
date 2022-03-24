@@ -83,7 +83,7 @@ public:
 
     QByteArray lastHeader;
     QMap<size_t, QPair<QByteArray, QByteArray>> headers;
-    const size_t headersSeed = size_t(qGlobalQHashSeed());
+    const size_t headersSeed = size_t(QHashSeed::globalSeed());
     size_t headerHash(const QByteArray &key) const;
 
     void clear();
