@@ -112,6 +112,28 @@ int main(int argc, char *argv[])
         return request.remoteAddress().toString();
     });
 
+    // Basic authentication example (RFC 7617)
+    httpServer.route("/auth", [](const QHttpServerRequest &request) {
+        auto auth = request.value("authorization").simplified();
+
+        if (auth.size() > 6 && auth.first(6).toLower() == "basic ") {
+            auto token = auth.sliced(6);
+            auto userPass = QByteArray::fromBase64(token);
+
+            if (auto colon = userPass.indexOf(':'); colon > 0) {
+                auto userId = userPass.first(colon);
+                auto password = userPass.sliced(colon + 1);
+
+                if (userId == "Aladdin" && password == "open sesame")
+                    return QHttpServerResponse("text/plain", "Success\n");
+            }
+        }
+        QHttpServerResponse response("text/plain", "Authentication required\n",
+                                     QHttpServerResponse::StatusCode::Unauthorized);
+        response.setHeader("WWW-Authenticate", R"(Basic realm="Simple example", charset="UTF-8")");
+        return response;
+    });
+
     const auto port = httpServer.listen(QHostAddress::Any);
     if (!port) {
         qDebug() << QCoreApplication::translate(
