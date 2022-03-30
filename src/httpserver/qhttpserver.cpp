@@ -46,6 +46,7 @@ Q_LOGGING_CATEGORY(lcHS, "qt.httpserver");
 
 /*!
     \class QHttpServer
+    \inmodule QtHttpServer
     \brief QHttpServer is a simplified API for QAbstractHttpServer and QHttpServerRouter.
 
     \code
@@ -60,6 +61,9 @@ Q_LOGGING_CATEGORY(lcHS, "qt.httpserver");
     \endcode
 */
 
+/*!
+    Creates an instance of QHttpServer with parent \a parent.
+*/
 QHttpServer::QHttpServer(QObject *parent)
     : QAbstractHttpServer(*new QHttpServerPrivate, parent)
 {
@@ -70,16 +74,21 @@ QHttpServer::QHttpServer(QObject *parent)
     });
 }
 
-/*! \fn template<typename Rule = QHttpServerRouterRule, typename ... Args> bool route(Args && ... args)
+/*! \fn template<typename Rule = QHttpServerRouterRule, typename ... Args> bool QHttpServer::route(Args && ... args)
+
     This function is just a wrapper to simplify the router API.
 
-    This function takes variadic arguments. The last argument is \c a callback (ViewHandler).
-    The remaining arguments are used to create a new \a Rule (the default is QHttpServerRouterRule).
-    This is in turn added to the QHttpServerRouter.
+    This function takes variadic arguments \a args. The last argument is a
+    callback (\c{ViewHandler}). The remaining arguments are used to create a
+    new \c Rule (the default is QHttpServerRouterRule). This is in turn added
+    to the QHttpServerRouter. It returns \c true if a new rule is created,
+    otherwise it returns \c false.
 
-    \c ViewHandler can only be a lambda. The lambda definition can take two optional special
-    arguments: \c {const QHttpServerRequest&} and \c {QHttpServerResponder&&}.
-    These special arguments must be the last in the parameter list.
+    \c ViewHandler can only be a lambda. The lambda definition can take two
+    optional special arguments: \c {const QHttpServerRequest&} and
+    \c {QHttpServerResponder&&}. These special arguments must be the last in
+    the parameter list, but in any order, and there can be none, one, or both
+    of them present.
 
     Examples:
 
@@ -102,11 +111,13 @@ QHttpServer::QHttpServer(QObject *parent)
     \sa QHttpServerRouter::addRule
 */
 
-/*! \fn template<typename ViewHandler> void afterRequest(ViewHandler &&viewHandler)
+/*! \fn template<typename ViewHandler> void QHttpServer::afterRequest(ViewHandler &&viewHandler)
     Register a function to be run after each request.
 
-    \c ViewHandler can only be a lambda. The lambda definition can take two
-    arguments: \c {QHttpServerResponse &&} and \c {const QHttpServerRequest&} (optional).
+    The \a viewHandler argument can only be a lambda. The lambda definition
+    can take one or two optional arguments: \c {QHttpServerResponse &&} and
+    \c {const QHttpServerRequest &}. If both are given, they can be in either
+    order.
 
     Examples:
 
@@ -152,6 +163,9 @@ QHttpServerRouter *QHttpServer::router()
     return &d->router;
 }
 
+/*!
+    \internal
+*/
 void QHttpServer::afterRequestImpl(AfterRequestHandler &&afterRequestHandler)
 {
     Q_D(QHttpServer);

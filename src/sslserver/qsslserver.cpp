@@ -35,11 +35,30 @@ QT_BEGIN_NAMESPACE
 
 Q_LOGGING_CATEGORY(lcSS, "qt.sslserver");
 
+/*!
+    \class QSslServer
+    \inmodule QtHttpServer
+    \brief Subclass of QTcpServer to accept secure connections.
+
+    API for running a server with Transport Layer Security. Calling \c bind
+    on a QAbstractHttpServer with an instance of QSslServer turns it into an
+    HTTPS server.
+*/
+
+/*!
+    Creates a QSslServer object with \a parent as the parent object.
+*/
 QSslServer::QSslServer(QObject *parent):
     QTcpServer (parent), d(new QSslServerPrivate)
 {
 }
 
+/*!
+    Creates a QSslServer object.
+
+    Its parent object shall be \a parent and it shall use \a sslConfiguration as its
+    TLS configuration.
+*/
 QSslServer::QSslServer(const QSslConfiguration &sslConfiguration,
                        QObject *parent):
     QTcpServer (parent), d(new QSslServerPrivate)
@@ -47,8 +66,14 @@ QSslServer::QSslServer(const QSslConfiguration &sslConfiguration,
     d->sslConfiguration = sslConfiguration;
 }
 
+/*!
+    Destroys a QsslServer object.
+*/
 QSslServer::~QSslServer() = default;
 
+/*!
+    Handle incoming connection with socket handle \a handle.
+*/
 void QSslServer::incomingConnection(qintptr handle)
 {
     QSslSocket *socket = new QSslSocket(this);
@@ -70,6 +95,9 @@ void QSslServer::incomingConnection(qintptr handle)
     addPendingConnection(socket);
 }
 
+/*!
+    Sets the SSL configuration to \a sslConfiguration.
+*/
 void QSslServer::setSslConfiguration(const QSslConfiguration &sslConfiguration)
 {
     d->sslConfiguration = sslConfiguration;

@@ -44,6 +44,9 @@ Q_LOGGING_CATEGORY(lcRouterRule, "qt.httpserver.router.rule")
 
 static const auto methodEnum = QMetaEnum::fromType<QHttpServerRequest::Method>();
 
+/*!
+    \internal
+*/
 static QHttpServerRequest::Methods strToMethods(const char *strMethods)
 {
     QHttpServerRequest::Methods methods;
@@ -61,6 +64,7 @@ static QHttpServerRequest::Methods strToMethods(const char *strMethods)
 /*!
     \class QHttpServerRouterRule
     \brief The QHttpServerRouterRule is the base class for QHttpServerRouter rules.
+    \inmodule QtHttpServer
 
     Use QHttpServerRouterRule to specify expected request parameters:
 
@@ -115,7 +119,7 @@ static QHttpServerRequest::Methods strToMethods(const char *strMethods)
 
     The rule accepts all HTTP methods by default.
 
-    \sq QHttpServerRequest::Method
+    \sa QHttpServerRequest::Methods
 */
 QHttpServerRouterRule::QHttpServerRouterRule(const QString &pathPattern,
                                              RouterHandler &&routerHandler)
@@ -131,7 +135,7 @@ QHttpServerRouterRule::QHttpServerRouterRule(const QString &pathPattern,
 
     The rule accepts any combinations of available HTTP methods.
 
-    \sa QHttpServerRequest::Method
+    \sa QHttpServerRequest::Methods
 */
 QHttpServerRouterRule::QHttpServerRouterRule(const QString &pathPattern,
                                              const QHttpServerRequest::Methods methods,
@@ -149,8 +153,6 @@ QHttpServerRouterRule::QHttpServerRouterRule(const QString &pathPattern,
 
     \note \a methods shall be joined with | as separator (not spaces or commas)
     and that either the upper-case or the capitalised form may be used.
-
-    \sa QMetaEnum::keysToValue
 */
 QHttpServerRouterRule::QHttpServerRouterRule(const QString &pathPattern,
                                              const char *methods,
@@ -177,7 +179,7 @@ QHttpServerRouterRule::~QHttpServerRouterRule()
 }
 
 /*!
-    Returns true if the methods is valid
+    Returns \c true if the methods is valid
 */
 bool QHttpServerRouterRule::hasValidMethods() const
 {
@@ -186,7 +188,12 @@ bool QHttpServerRouterRule::hasValidMethods() const
 }
 
 /*!
-    This function is called by QHttpServerRouter when a new request is received.
+    Executes this rule for the given \a request, if it matches.
+
+    This function is called by QHttpServerRouter when it receives a new
+    request. If the given \a request matches this rule, this function handles
+    the request by delivering a response to the given \a socket, then returns
+    \c true. Otherwise, it returns \c false.
 */
 bool QHttpServerRouterRule::exec(const QHttpServerRequest &request,
                                  QTcpSocket *socket) const
@@ -202,7 +209,12 @@ bool QHttpServerRouterRule::exec(const QHttpServerRequest &request,
 }
 
 /*!
-    This virtual function is called by exec() to check if request matches the rule.
+    Determines whether a given \a request matches this rule.
+
+    This virtual function is called by exec() to check if \a request matches
+    this rule. If a match is found, it is stored in the object pointed to by
+    \a match (which \e{must not} be \nullptr) and this function returns
+    \c true. Otherwise, it returns \c false.
 */
 bool QHttpServerRouterRule::matches(const QHttpServerRequest &request,
                                     QRegularExpressionMatch *match) const

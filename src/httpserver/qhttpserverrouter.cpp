@@ -42,6 +42,9 @@ QT_BEGIN_NAMESPACE
 
 Q_LOGGING_CATEGORY(lcRouter, "qt.httpserver.router")
 
+/*!
+    \internal
+*/
 static const QMap<int, QLatin1String> defaultConverters = {
     { QMetaType::Int, QLatin1String("[+-]?\\d+") },
     { QMetaType::Long, QLatin1String("[+-]?\\d+") },
@@ -67,6 +70,7 @@ static const QMap<int, QLatin1String> defaultConverters = {
 /*!
     \class QHttpServerRouter
     \brief Provides functions to bind a URL to a \c ViewHandler.
+    \inmodule QtHttpServer
 
     You can register \c ViewHandler as a callback for requests to a specific URL.
     Variable parts in the route can be specified by the arguments in ViewHandler.
@@ -99,7 +103,8 @@ static const QMap<int, QLatin1String> defaultConverters = {
 
 /*! \fn template <typename Type> bool QHttpServerRouter::addConverter(const QLatin1String &regexp)
 
-    Adds a new converter for type \e Type matching regular expression \a regexp.
+    Adds a new converter for type \e Type matching regular expression \a regexp,
+    and returns \c true if this was successful, otherwise returns \c false.
 
     Automatically try to register an implicit converter from QString to \e Type.
     If there is already a converter of type \e Type, that converter's regexp
@@ -137,7 +142,7 @@ static const QMap<int, QLatin1String> defaultConverters = {
 
 /*! \fn template <typename ViewHandler, typename ViewTraits = QHttpServerRouterViewTraits<ViewHandler>> bool QHttpServerRouter::addRule(QHttpServerRouterRule *rule)
 
-    Adds a new \a rule.
+    Adds a new \a rule and returns \c true if this was successful.
 
     Inside addRule, we determine ViewHandler arguments and generate a list of
     their QMetaType::Type ids. Then we parse the URL and replace each \c <arg>
@@ -161,13 +166,14 @@ static const QMap<int, QLatin1String> defaultConverters = {
     \note This function takes over ownership of \a rule.
 */
 
-/*! \fn template<typename ViewHandler, typename ViewTraits = QHttpServerRouterViewTraits<ViewHandler>> auto bindCaptured(ViewHandler &&handler, QRegularExpressionMatch &match) const -> typename ViewTraits::BindableType
+/*! \fn template<typename ViewHandler, typename ViewTraits = QHttpServerRouterViewTraits<ViewHandler>> typename ViewTraits::BindableType QHttpServerRouter::bindCaptured(ViewHandler &&handler, const QRegularExpressionMatch &match) const
 
     Supplies the \a handler with arguments derived from a URL.
     Returns the bound function that accepts whatever remaining arguments the handler may take,
     supplying them to the handler after the URL-derived values.
-    Each match of the regex applied to the URL (as a string) is converted to the type
-    of the handler's parameter at its position, so that passing it works.
+    Each match of the regex applied to the URL (as a string) is converted to
+    the type of the handler's parameter at its position, so that it can be
+    passed as \a match.
 
     \code
     QHttpServerRouter router;
@@ -291,7 +297,7 @@ bool QHttpServerRouter::addRuleImpl(QHttpServerRouterRule *rule,
 }
 
 /*!
-    Handles each new request for the HTTP server.
+    Handles each new \a request for the HTTP server using \a socket.
 
     Iterates through the list of rules to find the first that matches,
     then executes this rule, returning \c true. Returns \c false if no rule

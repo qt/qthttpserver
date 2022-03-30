@@ -43,6 +43,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QHttpServerFutureResponse
+    \inmodule QtHttpServer
     \brief QHttpServerFutureResponse is a simplified API for asynchronous responses.
 
     \code
@@ -61,6 +62,9 @@ QT_BEGIN_NAMESPACE
     \endcode
 */
 
+/*!
+    \internal
+*/
 struct QResponseWatcher : public QFutureWatcher<QHttpServerResponse>
 {
     Q_OBJECT
@@ -74,6 +78,9 @@ public:
     QHttpServerResponder responder;
 };
 
+/*!
+    \internal
+*/
 class QHttpServerFutureResponsePrivate : public QHttpServerResponsePrivate
 {
 public:
@@ -87,7 +94,7 @@ public:
 };
 
 /*!
-    Constructs a new QHttpServerFutureResponse with the \a future response.
+    Constructs a new QHttpServerFutureResponse with the \a futureResp response.
 */
 QHttpServerFutureResponse::QHttpServerFutureResponse(const QFuture<QHttpServerResponse> &futureResp)
     : QHttpServerFutureResponse(new QHttpServerFutureResponsePrivate{futureResp})

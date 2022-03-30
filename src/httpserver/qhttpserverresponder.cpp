@@ -41,6 +41,20 @@
 
 QT_BEGIN_NAMESPACE
 
+/*!
+    \class QHttpServerResponder
+    \inmodule QtHttpServer
+    \brief API for sending replies from an HTTP server.
+
+    Provides functions for writing back to an HTTP client with overloads for
+    serializing JSON objects. It also has support for writing HTTP headers and
+    status code. This class can be constructed by calling the \c protected
+    \c static function \c makeResponder() in the QAbstractHttpServer class.
+*/
+
+/*!
+    \internal
+*/
 static const QLoggingCategory &lc()
 {
     static const QLoggingCategory category("qt.httpserver.response");
@@ -92,6 +106,9 @@ static const std::map<QHttpServerResponder::StatusCode, QByteArray> statusString
 #undef XX
 };
 
+/*!
+    \internal
+*/
 template <qint64 BUFFERSIZE = 512>
 struct IOChunkedTransfer
 {
@@ -174,8 +191,7 @@ struct IOChunkedTransfer
 };
 
 /*!
-    Constructs a QHttpServerResponder using the request \a request
-    and the socket \a socket.
+    \internal
 */
 QHttpServerResponder::QHttpServerResponder(const QHttpServerRequest &request,
                                            QTcpSocket *socket) :

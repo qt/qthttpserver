@@ -56,6 +56,9 @@ Q_HTTPSERVER_EXPORT QDebug operator<<(QDebug debug, const QHttpServerRequest &re
 
 #endif
 
+/*!
+    \internal
+*/
 bool QHttpServerRequestPrivate::parseRequestLine(QByteArrayView line)
 {
     // Request-Line   = Method SP Request-URI SP HTTP-Version CRLF
@@ -113,6 +116,9 @@ bool QHttpServerRequestPrivate::parseRequestLine(QByteArrayView line)
     return true;
 }
 
+/*!
+    \internal
+*/
 qsizetype QHttpServerRequestPrivate::readRequestLine(QAbstractSocket *socket)
 {
     if (fragment.isEmpty()) {
@@ -159,6 +165,9 @@ qsizetype QHttpServerRequestPrivate::readRequestLine(QAbstractSocket *socket)
     return bytes;
 }
 
+/*!
+    \internal
+*/
 qint64 QHttpServerRequestPrivate::contentLength() const
 {
     bool ok = false;
@@ -169,6 +178,9 @@ qint64 QHttpServerRequestPrivate::contentLength() const
     return -1; // the header field is not set
 }
 
+/*!
+    \internal
+*/
 QByteArray QHttpServerRequestPrivate::headerField(const QByteArray &name,
                                                   const QByteArray &defaultValue) const
 {
@@ -179,11 +191,17 @@ QByteArray QHttpServerRequestPrivate::headerField(const QByteArray &name,
         return allValues.join(", ");
 }
 
+/*!
+    \internal
+*/
 QList<QByteArray> QHttpServerRequestPrivate::headerFieldValues(const QByteArray &name) const
 {
     return parser.headerFieldValues(name);
 }
 
+/*!
+    \internal
+*/
 qsizetype QHttpServerRequestPrivate::readHeader(QAbstractSocket *socket)
 {
     if (fragment.isEmpty()) {
@@ -265,12 +283,18 @@ qsizetype QHttpServerRequestPrivate::readHeader(QAbstractSocket *socket)
     return bytes;
 }
 
+/*!
+    \internal
+*/
 QHttpServerRequestPrivate::QHttpServerRequestPrivate(const QHostAddress &remoteAddress)
     : remoteAddress(remoteAddress)
 {
     clear();
 }
 
+/*!
+    \internal
+*/
 bool QHttpServerRequestPrivate::parse(QAbstractSocket *socket)
 {
     qsizetype read;
@@ -307,6 +331,9 @@ bool QHttpServerRequestPrivate::parse(QAbstractSocket *socket)
     return read != -1;
 }
 
+/*!
+    \internal
+*/
 void QHttpServerRequestPrivate::clear()
 {
     parser.clear();
@@ -325,6 +352,9 @@ void QHttpServerRequestPrivate::clear()
 
 // The body reading functions were mostly copied from QHttpNetworkReplyPrivate
 
+/*!
+    \internal
+*/
 // note this function can only be used for non-chunked, non-compressed with
 // known content length
 qsizetype QHttpServerRequestPrivate::readBodyFast(QAbstractSocket *socket)
@@ -353,6 +383,9 @@ qsizetype QHttpServerRequestPrivate::readBodyFast(QAbstractSocket *socket)
     return haveRead;
 }
 
+/*!
+    \internal
+*/
 qsizetype QHttpServerRequestPrivate::readRequestBodyRaw(QAbstractSocket *socket, qsizetype size)
 {
     // FIXME get rid of this function and just use readBodyFast and give it socket->bytesAvailable()
@@ -381,6 +414,9 @@ qsizetype QHttpServerRequestPrivate::readRequestBodyRaw(QAbstractSocket *socket,
     return bytes;
 }
 
+/*!
+    \internal
+*/
 qsizetype QHttpServerRequestPrivate::readRequestBodyChunked(QAbstractSocket *socket)
 {
     qsizetype bytes = 0;
@@ -440,6 +476,9 @@ qsizetype QHttpServerRequestPrivate::readRequestBodyChunked(QAbstractSocket *soc
     return bytes;
 }
 
+/*!
+    \internal
+*/
 qsizetype QHttpServerRequestPrivate::getChunkSize(QAbstractSocket *socket, qsizetype *chunkSize)
 {
     qsizetype bytes = 0;
@@ -479,33 +518,62 @@ qsizetype QHttpServerRequestPrivate::getChunkSize(QAbstractSocket *socket, qsize
     return bytes;
 }
 
+/*!
+    \class QHttpServerRequest
+    \inmodule QtHttpServer
+    \brief Encapsulates an HTTP request.
+
+    API for accessing the different parameters of an incoming request.
+*/
+
+/*!
+    \internal
+*/
 QHttpServerRequest::QHttpServerRequest(const QHostAddress &remoteAddress) :
     d(new QHttpServerRequestPrivate(remoteAddress))
 {}
 
+/*!
+    Destroys a QHttpServerRequest
+*/
 QHttpServerRequest::~QHttpServerRequest()
 {}
 
+/*!
+    Returns the combined value of all headers with the named \a key.
+*/
 QByteArray QHttpServerRequest::value(const QByteArray &key) const
 {
     return d->parser.combinedHeaderValue(key);
 }
 
+/*!
+    Returns the URL the request asked for.
+*/
 QUrl QHttpServerRequest::url() const
 {
     return d->url;
 }
 
+/*!
+    Returns the query in the request.
+*/
 QUrlQuery QHttpServerRequest::query() const
 {
     return QUrlQuery(d->url.query());
 }
 
+/*!
+    Returns the method of the request.
+*/
 QHttpServerRequest::Method QHttpServerRequest::method() const
 {
     return d->method;
 }
 
+/*!
+    Returns all the request headers.
+*/
 QVariantMap QHttpServerRequest::headers() const
 {
     QVariantMap ret;
@@ -514,11 +582,17 @@ QVariantMap QHttpServerRequest::headers() const
     return ret;
 }
 
+/*!
+    Returns the body of the request.
+*/
 QByteArray QHttpServerRequest::body() const
 {
     return d->body;
 }
 
+/*!
+    Returns the address of the origin host of the request.
+*/
 QHostAddress QHttpServerRequest::remoteAddress() const
 {
     return d->remoteAddress;

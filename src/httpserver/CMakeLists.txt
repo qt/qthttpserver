@@ -52,3 +52,7 @@ qt_internal_extend_target(HttpServer CONDITION TARGET Qt::Concurrent
     PUBLIC_LIBRARIES
         Qt::Concurrent
 )
+
+qt_internal_add_docs(HttpServer
+                     ../../doc/config/qthttpserver.qdocconf
+)

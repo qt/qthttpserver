@@ -41,21 +41,46 @@
 
 QT_BEGIN_NAMESPACE
 
+/*!
+    \class QHttpServerResponse
+    \inmodule QtHttpServer
+    \brief Encapsulates an HTTP response.
+
+    API for creating, reading and modifying a response from an HTTP server,
+    and for writing its contents to a QHttpServerResponder.
+    It has numerous constructors, and \c static function \c fromFile for
+    constructing it from the contents of a file. There are functions for
+    setting, getting, and removing headers, and for getting the data, status
+    code and mime type.
+*/
+
+/*!
+    \internal
+*/
 QHttpServerResponsePrivate::QHttpServerResponsePrivate(
         QByteArray &&d, const QHttpServerResponse::StatusCode sc)
     : data(std::move(d)),
       statusCode(sc)
 { }
 
+/*!
+    \internal
+*/
 QHttpServerResponsePrivate::QHttpServerResponsePrivate(const QHttpServerResponse::StatusCode sc)
     : statusCode(sc)
 { }
 
+/*!
+    Move-constructs an instance of a QHttpServerResponse object from \a other.
+*/
 QHttpServerResponse::QHttpServerResponse(QHttpServerResponse &&other) noexcept
     : d_ptr(std::move(other.d_ptr))
 {
 }
 
+/*!
+    Move-assigns the values of \a other to this object.
+*/
 QHttpServerResponse& QHttpServerResponse::operator=(QHttpServerResponse &&other) noexcept
 {
     if (this == &other)
@@ -65,6 +90,9 @@ QHttpServerResponse& QHttpServerResponse::operator=(QHttpServerResponse &&other)
     return *this;
 }
 
+/*!
+    Creates a QHttpServerResponse object with the status code \a statusCode.
+*/
 QHttpServerResponse::QHttpServerResponse(
         const QHttpServerResponse::StatusCode statusCode)
     : QHttpServerResponse(QHttpServerLiterals::contentTypeXEmpty(),
@@ -73,21 +101,34 @@ QHttpServerResponse::QHttpServerResponse(
 {
 }
 
+/*!
+    Creates a QHttpServerResponse object from \a data.
+*/
 QHttpServerResponse::QHttpServerResponse(const char *data)
     : QHttpServerResponse(QByteArray::fromRawData(data, qstrlen(data)))
 {
 }
 
+/*!
+    Creates a QHttpServerResponse object from \a data.
+*/
 QHttpServerResponse::QHttpServerResponse(const QString &data)
     : QHttpServerResponse(data.toUtf8())
 {
 }
 
+/*!
+    Creates a QHttpServerResponse object from \a data.
+*/
 QHttpServerResponse::QHttpServerResponse(const QByteArray &data)
     : QHttpServerResponse(QMimeDatabase().mimeTypeForData(data).name().toLocal8Bit(), data)
 {
 }
 
+/*!
+    Move-constructs a QHttpServerResponse whose body will contain the given
+    \a data.
+*/
 QHttpServerResponse::QHttpServerResponse(QByteArray &&data)
     : QHttpServerResponse(
             QMimeDatabase().mimeTypeForData(data).name().toLocal8Bit(),
@@ -95,18 +136,44 @@ QHttpServerResponse::QHttpServerResponse(QByteArray &&data)
 {
 }
 
+/*!
+    Creates a QHttpServerResponse object from \a data.
+*/
 QHttpServerResponse::QHttpServerResponse(const QJsonObject &data)
     : QHttpServerResponse(QHttpServerLiterals::contentTypeJson(),
                           QJsonDocument(data).toJson(QJsonDocument::Compact))
 {
 }
 
+/*!
+    Creates a QHttpServerResponse object from \a data.
+*/
 QHttpServerResponse::QHttpServerResponse(const QJsonArray &data)
     : QHttpServerResponse(QHttpServerLiterals::contentTypeJson(),
                           QJsonDocument(data).toJson(QJsonDocument::Compact))
 {
 }
 
+/*!
+    \fn QHttpServerResponse::QHttpServerResponse(const QByteArray &mimeType,
+                                                 const QByteArray &data,
+                                                 const StatusCode status)
+    \fn QHttpServerResponse::QHttpServerResponse(QByteArray &&mimeType,
+                                                 const QByteArray &data,
+                                                 const StatusCode status)
+    \fn QHttpServerResponse::QHttpServerResponse(const QByteArray &mimeType,
+                                                 QByteArray &&data,
+                                                 const StatusCode status)
+    \fn QHttpServerResponse::QHttpServerResponse(QByteArray &&mimeType,
+                                                 QByteArray &&data,
+                                                 const StatusCode status)
+
+    Creates a QHttpServer response.
+
+    The response will use the given \a status code and deliver the \a data as
+    its body, with a \c ContentType header describing it as being of MIME type
+    \a mimeType.
+*/
 QHttpServerResponse::QHttpServerResponse(const QByteArray &mimeType,
                                          const QByteArray &data,
                                          const StatusCode status)
@@ -139,10 +206,19 @@ QHttpServerResponse::QHttpServerResponse(QByteArray &&mimeType,
     setHeader(QHttpServerLiterals::contentTypeHeader(), std::move(mimeType));
 }
 
+/*!
+    Destroys a QHttpServerResponse object.
+*/
 QHttpServerResponse::~QHttpServerResponse()
 {
 }
 
+/*!
+    Returns a QHttpServerResponse from the content of the file \a fileName.
+
+    It is the caller's responsibility to sanity-check the filename, and to have
+    a well-defined policy for which files the server will request.
+*/
 QHttpServerResponse QHttpServerResponse::fromFile(const QString &fileName)
 {
     QFile file(fileName);
@@ -154,6 +230,9 @@ QHttpServerResponse QHttpServerResponse::fromFile(const QString &fileName)
     return QHttpServerResponse(mimeType, data);
 }
 
+/*!
+    \internal
+*/
 QHttpServerResponse::QHttpServerResponse(QHttpServerResponsePrivate *d)
     : d_ptr(d)
 {
@@ -161,7 +240,7 @@ QHttpServerResponse::QHttpServerResponse(QHttpServerResponsePrivate *d)
 }
 
 /*!
-    Returns response body.
+    Returns the response body.
 */
 QByteArray QHttpServerResponse::data() const
 {
@@ -169,6 +248,9 @@ QByteArray QHttpServerResponse::data() const
     return d->data;
 }
 
+/*!
+    Returns the status code.
+*/
 QHttpServerResponse::StatusCode QHttpServerResponse::statusCode() const
 {
     Q_D(const QHttpServerResponse);
@@ -176,7 +258,7 @@ QHttpServerResponse::StatusCode QHttpServerResponse::statusCode() const
 }
 
 /*!
-    Returns HTTP "Content-Type" header.
+    Returns the value of the HTTP "Content-Type" header.
 
     \note Default value is "text/html"
 */
@@ -231,6 +313,10 @@ void QHttpServerResponse::addHeader(const QByteArray &name, const QByteArray &va
     d->headers.emplace(name, value);
 }
 
+/*!
+    Adds the HTTP headers in \a headers,
+    does not override any previously set headers.
+*/
 void QHttpServerResponse::addHeaders(QHttpServerResponder::HeaderList headers)
 {
     for (auto &&header : headers)
@@ -305,7 +391,7 @@ void QHttpServerResponse::setHeaders(QHttpServerResponder::HeaderList headers)
 }
 
 /*!
-    Returns true if the response contains an HTTP header with name \a name,
+    Returns true if the response contains an HTTP header with name \a header,
     otherwise returns false.
 */
 bool QHttpServerResponse::hasHeader(const QByteArray &header) const
@@ -332,7 +418,7 @@ bool QHttpServerResponse::hasHeader(const QByteArray &name,
 }
 
 /*!
-    Returns values of the HTTP header with name \a name
+    Returns values of the HTTP header with name \a name.
 */
 QVector<QByteArray> QHttpServerResponse::headers(const QByteArray &name) const
 {

@@ -45,10 +45,16 @@ QT_BEGIN_NAMESPACE
 
 Q_LOGGING_CATEGORY(lcHttpServer, "qt.httpserver")
 
+/*!
+    \internal
+*/
 QAbstractHttpServerPrivate::QAbstractHttpServerPrivate()
 {
 }
 
+/*!
+    \internal
+*/
 void QAbstractHttpServerPrivate::handleNewConnections()
 {
     Q_Q(QAbstractHttpServer);
@@ -72,6 +78,9 @@ void QAbstractHttpServerPrivate::handleNewConnections()
     }
 }
 
+/*!
+    \internal
+*/
 void QAbstractHttpServerPrivate::handleReadyRead(QTcpSocket *socket,
                                                  QHttpServerRequest *request)
 {
@@ -121,10 +130,26 @@ void QAbstractHttpServerPrivate::handleReadyRead(QTcpSocket *socket,
         socket->deleteLater();
 }
 
+/*!
+    \class QAbstractHttpServer
+    \inmodule QtHttpServer
+    \brief API to subclass to implement an HTTP server.
+
+    Subclass this class and override \c handleRequest() to create an HTTP
+    server. Use \c listen() or \c bind() to start listening to incoming
+    connections.
+*/
+
+/*!
+    Creates an instance of QAbstractHttpServer with the parent \a parent.
+*/
 QAbstractHttpServer::QAbstractHttpServer(QObject *parent)
     : QAbstractHttpServer(*new QAbstractHttpServerPrivate, parent)
 {}
 
+/*!
+    \internal
+*/
 QAbstractHttpServer::QAbstractHttpServer(QAbstractHttpServerPrivate &dd, QObject *parent)
     : QObject(dd, parent)
 {
@@ -233,7 +258,7 @@ QVector<QTcpServer *> QAbstractHttpServer::servers() const
 
 #if defined(QT_WEBSOCKETS_LIB)
 /*!
-    \fn QAbstractHttpServer::newConnection
+    \fn QAbstractHttpServer::newWebSocketConnection()
     This signal is emitted every time a new WebSocket connection is
     available.
 
@@ -272,11 +297,32 @@ QWebSocket *QAbstractHttpServer::nextPendingWebSocketConnection()
 }
 #endif
 
+/*!
+    \internal
+*/
 QHttpServerResponder QAbstractHttpServer::makeResponder(const QHttpServerRequest &request,
                                                         QTcpSocket *socket)
 {
     return QHttpServerResponder(request, socket);
 }
+
+/*!
+    \fn QAbstractHttpServer::handleRequest(const QHttpServerRequest &request,
+                                           QTcpSocket *socket)
+    Overload this function to handle each incoming \a request from \a socket,
+    by examining the \a request and sending the appropriate response back to
+    \a socket. Returns \c true if the \a request was handled. Otherwise,
+    returns \c false. If returning \c false, the \c missingHandler() signal
+    will be emitted.
+*/
+
+/*!
+    \fn QAbstractHttpServer::missingHandler(const QHttpServerRequest &request, QTcpSocket *socket)
+
+    This signal is emitted whenever \c handleRequest() returns \c false.
+    The \a request and \a socket parameters are the same as \c handleRequest()
+    was called with.
+*/
 
 #if QT_CONFIG(ssl)
 void QAbstractHttpServer::sslSetup(const QSslCertificate &certificate,
