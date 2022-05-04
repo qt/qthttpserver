@@ -42,11 +42,6 @@ qt_internal_extend_target(HttpServer CONDITION TARGET Qt::WebSockets
         Qt::WebSocketsPrivate
 )
 
-qt_internal_extend_target(HttpServer CONDITION QT_FEATURE_ssl
-    PUBLIC_LIBRARIES
-        Qt::SslServer
-)
-
 qt_internal_extend_target(HttpServer CONDITION TARGET Qt::Concurrent
     SOURCES
         qhttpserverfutureresponse.cpp qhttpserverfutureresponse.h

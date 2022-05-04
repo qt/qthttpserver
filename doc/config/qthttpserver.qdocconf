@@ -8,13 +8,10 @@ version                 = $QT_VERSION
 
 depends += qtcore qtnetwork qtdoc qmake qtwebsockets
 
-headerdirs  += \
-    ../../src/httpserver \
-    ../../src/sslserver
+headerdirs  += ../../src/httpserver
 
 sourcedirs  += .. \
-    ../../src/httpserver \
-    ../../src/sslserver
+    ../../src/httpserver
 
 exampledirs += \
     ../../examples/httpserver/
