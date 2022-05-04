@@ -59,6 +59,8 @@ and an afterRequest function to process the response further.
 When security is needed and you have Qt compiled with support for TLS,
 you can bind QAbstractHttpServer and its subclasses to a QSslServer object,
 providing Transport Layer Security handling, turning it into an HTTPS server.
+This can also be achieved by calling the QAbstractHttpServer::sslSetup()
+function before calling listen().
 
 \section2 Related Information
 \list

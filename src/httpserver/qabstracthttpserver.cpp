@@ -169,8 +169,14 @@ quint16 QAbstractHttpServer::listen(const QHostAddress &address, quint16 port)
 {
 #if QT_CONFIG(ssl)
     Q_D(QAbstractHttpServer);
-    QTcpServer *tcpServer = d->sslEnabled ? new QSslServer(d->sslConfiguration, this)
-                                          : new QTcpServer(this);
+    QTcpServer *tcpServer;
+    if (d->sslEnabled) {
+        auto sslServer = new QSslServer(this);
+        sslServer->setSslConfiguration(d->sslConfiguration);
+        tcpServer = sslServer;
+    } else {
+        tcpServer = new QTcpServer(this);
+    }
 #else
     auto tcpServer = new QTcpServer(this);
 #endif
@@ -241,8 +247,8 @@ void QAbstractHttpServer::bind(QTcpServer *server)
             qCWarning(lcHttpServer) << "The TCP server" << server << "is not listening.";
         server->setParent(this);
     }
-    QObjectPrivate::connect(server, &QTcpServer::newConnection,
-                            d, &QAbstractHttpServerPrivate::handleNewConnections,
+    QObjectPrivate::connect(server, &QTcpServer::pendingConnectionAvailable, d,
+                            &QAbstractHttpServerPrivate::handleNewConnections,
                             Qt::UniqueConnection);
 }
 
@@ -325,6 +331,12 @@ QHttpServerResponder QAbstractHttpServer::makeResponder(const QHttpServerRequest
 */
 
 #if QT_CONFIG(ssl)
+/*!
+    Turns the server into an HTTPS server.
+
+    The next listen() call will use the given \a certificate, \a privateKey,
+    and \a protocol.
+*/
 void QAbstractHttpServer::sslSetup(const QSslCertificate &certificate,
                                    const QSslKey &privateKey,
                                    QSsl::SslProtocol protocol)
@@ -336,6 +348,11 @@ void QAbstractHttpServer::sslSetup(const QSslCertificate &certificate,
     sslSetup(conf);
 }
 
+/*!
+    Turns the server into an HTTPS server.
+
+    The next listen() call will use the given \a sslConfiguration.
+*/
 void QAbstractHttpServer::sslSetup(const QSslConfiguration &sslConfiguration)
 {
     Q_D(QAbstractHttpServer);
