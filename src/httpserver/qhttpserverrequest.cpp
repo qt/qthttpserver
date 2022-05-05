@@ -42,6 +42,8 @@ Q_LOGGING_CATEGORY(lc, "qt.httpserver.request")
 
 QT_BEGIN_NAMESPACE
 
+using namespace Qt::StringLiterals;
+
 #if !defined(QT_NO_DEBUG_STREAM)
 Q_HTTPSERVER_EXPORT QDebug operator<<(QDebug debug, const QHttpServerRequest &request)
 {
@@ -256,14 +258,14 @@ qsizetype QHttpServerRequestPrivate::readHeader(QAbstractSocket *socket)
         if (url.scheme().isEmpty()) {
 #if QT_CONFIG(ssl)
             auto sslSocket = qobject_cast<QSslSocket *>(socket);
-            url.setScheme(sslSocket && sslSocket->isEncrypted() ? u"https"_qs : u"http"_qs);
+            url.setScheme(sslSocket && sslSocket->isEncrypted() ? u"https"_s : u"http"_s);
 #else
-            url.setScheme(u"http"_qs);
+            url.setScheme(u"http"_s);
 #endif
         }
 
         if (url.host().isEmpty())
-            url.setHost(u"127.0.0.1"_qs);
+            url.setHost(u"127.0.0.1"_s);
 
         if (url.port() == -1)
             url.setPort(port);
