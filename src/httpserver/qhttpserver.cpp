@@ -195,3 +195,5 @@ bool QHttpServer::handleRequest(const QHttpServerRequest &request, QTcpSocket *s
 }
 
 QT_END_NAMESPACE
+
+#include "moc_qhttpserver.cpp"

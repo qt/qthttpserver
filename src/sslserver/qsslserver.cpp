@@ -103,3 +103,5 @@ void QSslServer::setSslConfiguration(const QSslConfiguration &sslConfiguration)
     d->sslConfiguration = sslConfiguration;
 }
 QT_END_NAMESPACE
+
+#include "moc_qsslserver.cpp"

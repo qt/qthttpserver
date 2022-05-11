@@ -601,3 +601,5 @@ QHostAddress QHttpServerRequest::remoteAddress() const
 }
 
 QT_END_NAMESPACE
+
+#include "moc_qhttpserverrequest.cpp"

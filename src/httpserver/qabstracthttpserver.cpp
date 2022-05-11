@@ -345,3 +345,5 @@ void QAbstractHttpServer::sslSetup(const QSslConfiguration &sslConfiguration)
 #endif
 
 QT_END_NAMESPACE
+
+#include "moc_qabstracthttpserver.cpp"
