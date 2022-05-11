@@ -102,13 +102,11 @@ struct RouterViewTraitsHelper : ViewTraits<ViewHandler, DisableStaticAssert> {
 
             static constexpr std::size_t Count = FunctionTraits::ArgumentCount;
             static constexpr std::size_t CapturableCount =
-                StaticMath::Sum::eval(
-                    static_cast<std::size_t>(FunctionTraits::template Arg<I>::Defined)...);
+                    (0 + ... + static_cast<std::size_t>(FunctionTraits::template Arg<I>::Defined));
             static constexpr std::size_t PlaceholdersCount = Count - CapturableCount;
 
-            static constexpr bool Valid = StaticMath::And::eval(Arg<I>::Valid...);
-            static constexpr bool StaticAssert =
-                StaticMath::And::eval(Arg<I>::StaticAssert...);
+            static constexpr bool Valid = (Arg<I>::Valid && ...);
+            static constexpr bool StaticAssert = (Arg<I>::StaticAssert && ...);
 
             using Indexes = typename QtPrivate::IndexesList<I...>;
 

@@ -80,9 +80,8 @@ struct AfterRequestViewTraitsHelper : ViewTraits<ViewHandler, DisableStaticAsser
         struct ArgumentsReturn {
             template<int Idx>
             using Arg = ArgumentChecker<Idx>;
-            static constexpr bool Valid = QtPrivate::StaticMath::And::eval(Arg<I>::Valid...);
-            static constexpr bool StaticAssert = QtPrivate::StaticMath::And::eval(
-                    Arg<I>::StaticAssert...);
+            static constexpr bool Valid = (Arg<I>::Valid && ...);
+            static constexpr bool StaticAssert = (Arg<I>::StaticAssert && ...);
             using Last = Arg<FunctionTraits::ArgumentIndexMax>;
             static constexpr std::size_t Count = FunctionTraits::ArgumentCount;
         };

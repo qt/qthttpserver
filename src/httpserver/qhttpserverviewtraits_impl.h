@@ -104,45 +104,11 @@ struct FunctionTraits<ReturnT (ClassT::*)(Args...) const>
     using classType = ClassT;
 };
 
-struct StaticMath {
-    template <template<typename> class Predicate, bool defaultValue>
-    struct Loop {
-        static constexpr bool eval() noexcept {
-            return defaultValue;
-        }
-
-        template<typename T, typename ... N>
-        static constexpr T eval(const T it, N ...n) noexcept {
-            return Predicate<T>::eval(it, eval(n...));
-        }
-    };
-
-    template<typename T>
-    struct SumPredicate {
-        static constexpr T eval(const T rs, const T ls) noexcept
-        {
-            return rs + ls;
-        }
-    };
-
-    template<typename T>
-    struct AndPredicate {
-        static constexpr T eval(const T rs, const T ls) noexcept
-        {
-            return rs && ls;
-        }
-    };
-
-    using Sum = Loop<SumPredicate, false>;
-    using And = Loop<AndPredicate, true>;
-    using Or = Sum;
-};
-
 template<typename ... T>
 struct CheckAny {
-    static constexpr bool Value = StaticMath::Or::eval(T::Value...);
-    static constexpr bool Valid = StaticMath::Or::eval(T::Valid...);
-    static constexpr bool StaticAssert = StaticMath::Or::eval(T::StaticAssert...);
+    static constexpr bool Value = (T::Value || ...);
+    static constexpr bool Valid = (T::Valid || ...);
+    static constexpr bool StaticAssert = (T::StaticAssert || ...);
 };
 
 template<typename ViewHandler, bool DisableStaticAssert>
