@@ -56,6 +56,8 @@ The QHttpServer class is a subclass of QAbstractHttpServer, and defines an
 overloaded route function to bind lambdas to different incoming URLs,
 and an afterRequest function to process the response further.
 
+The logging can be configured as described \l{qthttpserver-logging.html}{here}.
+
 When security is needed and you have Qt compiled with support for TLS,
 you can bind QAbstractHttpServer and its subclasses to a QSslServer object,
 providing Transport Layer Security handling, turning it into an HTTPS server.
