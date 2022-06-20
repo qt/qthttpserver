@@ -37,9 +37,9 @@
 #include <QtNetwork/qhostaddress.h>
 
 #if QT_CONFIG(ssl)
-#include <QtNetwork/QSslServer>
-#include <QSslCertificate>
-#include <QSslKey>
+#include <QtNetwork/qsslserver.h>
+#include <QtNetwork/qsslcertificate.h>
+#include <QtNetwork/qsslkey.h>
 #endif
 
 QT_BEGIN_NAMESPACE
