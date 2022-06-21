@@ -420,11 +420,11 @@ bool QHttpServerResponse::hasHeader(const QByteArray &name,
 /*!
     Returns values of the HTTP header with name \a name.
 */
-QVector<QByteArray> QHttpServerResponse::headers(const QByteArray &name) const
+QList<QByteArray> QHttpServerResponse::headers(const QByteArray &name) const
 {
     Q_D(const QHttpServerResponse);
 
-    QVector<QByteArray> results;
+    QList<QByteArray> results;
     auto range = d->headers.equal_range(name);
 
     for (auto it = range.first; it != range.second; ++it)

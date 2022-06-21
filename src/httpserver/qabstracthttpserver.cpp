@@ -202,9 +202,9 @@ quint16 QAbstractHttpServer::listen(const QHostAddress &address, quint16 port)
 
     \sa servers()
 */
-QVector<quint16> QAbstractHttpServer::serverPorts()
+QList<quint16> QAbstractHttpServer::serverPorts()
 {
-    QVector<quint16> ports;
+    QList<quint16> ports;
     auto children = findChildren<QTcpServer *>();
     ports.reserve(children.count());
     std::transform(children.cbegin(), children.cend(), std::back_inserter(ports),
@@ -257,7 +257,7 @@ void QAbstractHttpServer::bind(QTcpServer *server)
 
     \sa serverPorts()
  */
-QVector<QTcpServer *> QAbstractHttpServer::servers() const
+QList<QTcpServer *> QAbstractHttpServer::servers() const
 {
     return findChildren<QTcpServer *>().toVector();
 }

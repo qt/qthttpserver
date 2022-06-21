@@ -59,10 +59,10 @@ public:
     QAbstractHttpServer(QObject *parent = nullptr);
 
     quint16 listen(const QHostAddress &address = QHostAddress::Any, quint16 port = 0);
-    QVector<quint16> serverPorts();
+    QList<quint16> serverPorts();
 
     void bind(QTcpServer *server = nullptr);
-    QVector<QTcpServer *> servers() const;
+    QList<QTcpServer *> servers() const;
 
 #if QT_CONFIG(ssl)
     void sslSetup(const QSslCertificate &certificate, const QSslKey &privateKey,
