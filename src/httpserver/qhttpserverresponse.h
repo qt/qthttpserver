@@ -110,7 +110,7 @@ public:
     bool hasHeader(const QByteArray &name) const;
     bool hasHeader(const QByteArray &name, const QByteArray &value) const;
 
-    QVector<QByteArray> headers(const QByteArray &name) const;
+    QList<QByteArray> headers(const QByteArray &name) const;
 
     virtual void write(QHttpServerResponder &&responder) const;
 
