@@ -45,7 +45,7 @@ protected:
     bool hasValidMethods() const;
 
     bool createPathRegexp(std::initializer_list<int> metaTypes,
-                          const QMap<int, QLatin1String> &converters);
+                          const QMap<int, QLatin1StringView> &converters);
 
     virtual bool matches(const QHttpServerRequest &request,
                          QRegularExpressionMatch *match) const;

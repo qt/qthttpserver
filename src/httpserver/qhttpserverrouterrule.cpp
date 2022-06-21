@@ -206,12 +206,12 @@ bool QHttpServerRouterRule::matches(const QHttpServerRequest &request,
     \internal
 */
 bool QHttpServerRouterRule::createPathRegexp(std::initializer_list<int> metaTypes,
-                                             const QMap<int, QLatin1String> &converters)
+                                             const QMap<int, QLatin1StringView> &converters)
 {
     Q_D(QHttpServerRouterRule);
 
     QString pathRegexp = d->pathPattern;
-    const QLatin1String arg("<arg>");
+    const QLatin1StringView arg("<arg>");
     for (auto type : metaTypes) {
         if (type >= QMetaType::User
             && !QMetaType::hasRegisteredConverterFunction(QMetaType::fromType<QString>(), QMetaType(type))) {
@@ -250,7 +250,7 @@ bool QHttpServerRouterRule::createPathRegexp(std::initializer_list<int> metaType
     if (!pathRegexp.startsWith(QLatin1Char('^')))
         pathRegexp = QLatin1Char('^') % pathRegexp;
     if (!pathRegexp.endsWith(QLatin1Char('$')))
-        pathRegexp += QLatin1String("$");
+        pathRegexp += u'$';
 
     qCDebug(lcRouterRule) << "url pathRegexp:" << pathRegexp;
 

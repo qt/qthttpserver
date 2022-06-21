@@ -30,7 +30,7 @@ class QHttpServerRouterPrivate
 public:
     QHttpServerRouterPrivate();
 
-    QMap<int, QLatin1String> converters;
+    QMap<int, QLatin1StringView> converters;
     std::list<std::unique_ptr<QHttpServerRouterRule>> rules;
 };
 
