@@ -124,7 +124,7 @@ private:
     template<typename Rule, typename ViewHandler, typename ViewTraits, typename ... Args>
     bool routeImpl(Args &&...args, ViewHandler &&viewHandler)
     {
-        auto routerHandler = [this, viewHandler] (
+        auto routerHandler = [this, viewHandler = std::forward<ViewHandler>(viewHandler)] (
                     const QRegularExpressionMatch &match,
                     const QHttpServerRequest &request,
                     QTcpSocket *socket) mutable {

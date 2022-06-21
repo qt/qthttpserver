@@ -55,11 +55,12 @@ static QHttpServerRequest::Methods strToMethods(const char *strMethods)
     void route(const char *path, const QHttpServerRequest::Methods methods, ViewHandler &&viewHandler)
     {
         auto rule = new QHttpServerRouterRule(
-                path, methods, [this, &viewHandler] (QRegularExpressionMatch &match,
+                path, methods, [this, viewHandler = std::forward<ViewHandler>(viewHandler)]
+                                                   (QRegularExpressionMatch &match,
                                                     const QHttpServerRequest &request,
-                                                    QTcpSocket *const socket) {
+                                                    QTcpSocket *const socket) mutable {
             auto boundViewHandler = router.bindCaptured<ViewHandler>(
-                    std::forward<ViewHandler>(viewHandler), match);
+                    std::move(viewHandler), match);
             // call viewHandler
             boundViewHandler();
         });
