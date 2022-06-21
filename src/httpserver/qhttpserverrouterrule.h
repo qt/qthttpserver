@@ -46,6 +46,7 @@ class QHttpServerRouterRulePrivate;
 class Q_HTTPSERVER_EXPORT QHttpServerRouterRule
 {
     Q_DECLARE_PRIVATE(QHttpServerRouterRule)
+    Q_DISABLE_COPY_MOVE(QHttpServerRouterRule)
 
 public:
     using RouterHandler = std::function<void(const QRegularExpressionMatch &,
@@ -59,10 +60,6 @@ public:
     explicit QHttpServerRouterRule(const QString &pathPattern,
                                    const char * methods,
                                    RouterHandler &&routerHandler);
-
-    QHttpServerRouterRule(QHttpServerRouterRule &&other) = delete;
-    QHttpServerRouterRule &operator=(QHttpServerRouterRule &&other) = delete;
-
     virtual ~QHttpServerRouterRule();
 
 protected:
@@ -79,7 +76,6 @@ protected:
     QHttpServerRouterRule(QHttpServerRouterRulePrivate *d);
 
 private:
-    Q_DISABLE_COPY(QHttpServerRouterRule)
     QScopedPointer<QHttpServerRouterRulePrivate> d_ptr;
 
     friend class QHttpServerRouter;
