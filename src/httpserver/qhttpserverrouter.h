@@ -119,13 +119,11 @@ private:
     bool addRuleHelper(QHttpServerRouterRule *rule,
                        QtPrivate::IndexesList<Idx...>)
     {
-        const std::initializer_list<int> types = {
-            ViewTraits::Arguments::template metaTypeId<Idx>()...};
-        return addRuleImpl(rule, types);
+        return addRuleImpl(rule, {ViewTraits::Arguments::template metaTypeId<Idx>()...});
     }
 
     bool addRuleImpl(QHttpServerRouterRule *rule,
-                     const std::initializer_list<int> &metaTypes);
+                     std::initializer_list<int> metaTypes);
 
     template<typename ViewHandler, typename ViewTraits, int ... Cx, int ... Px>
     typename std::enable_if<ViewTraits::Arguments::CapturableCount != 0, typename ViewTraits::BindableType>::type
