@@ -47,7 +47,7 @@
 
 QT_BEGIN_NAMESPACE
 
-class Q_HTTPSERVER_EXPORT QHttpServerRouterRulePrivate
+class QHttpServerRouterRulePrivate
 {
 public:
     QString pathPattern;
