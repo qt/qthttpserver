@@ -62,7 +62,7 @@ public:
 
 #if defined(QT_WEBSOCKETS_LIB)
     QWebSocketServer websocketServer {
-        QLatin1String("QtHttpServer"),
+        QLatin1StringView("QtHttpServer"),
         QWebSocketServer::NonSecureMode
     };
 #endif // defined(QT_WEBSOCKETS_LIB)

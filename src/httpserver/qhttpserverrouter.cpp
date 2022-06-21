@@ -45,26 +45,26 @@ Q_LOGGING_CATEGORY(lcRouter, "qt.httpserver.router")
 /*!
     \internal
 */
-static const QMap<int, QLatin1String> defaultConverters = {
-    { QMetaType::Int, QLatin1String("[+-]?\\d+") },
-    { QMetaType::Long, QLatin1String("[+-]?\\d+") },
-    { QMetaType::LongLong, QLatin1String("[+-]?\\d+") },
-    { QMetaType::Short, QLatin1String("[+-]?\\d+") },
+static const QMap<int, QLatin1StringView> defaultConverters = {
+    { QMetaType::Int, QLatin1StringView("[+-]?\\d+") },
+    { QMetaType::Long, QLatin1StringView("[+-]?\\d+") },
+    { QMetaType::LongLong, QLatin1StringView("[+-]?\\d+") },
+    { QMetaType::Short, QLatin1StringView("[+-]?\\d+") },
 
-    { QMetaType::UInt, QLatin1String("[+]?\\d+") },
-    { QMetaType::ULong, QLatin1String("[+]?\\d+") },
-    { QMetaType::ULongLong, QLatin1String("[+]?\\d+") },
-    { QMetaType::UShort, QLatin1String("[+]?\\d+") },
+    { QMetaType::UInt, QLatin1StringView("[+]?\\d+") },
+    { QMetaType::ULong, QLatin1StringView("[+]?\\d+") },
+    { QMetaType::ULongLong, QLatin1StringView("[+]?\\d+") },
+    { QMetaType::UShort, QLatin1StringView("[+]?\\d+") },
 
-    { QMetaType::Double, QLatin1String("[+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+)") },
-    { QMetaType::Float, QLatin1String("[+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+)") },
+    { QMetaType::Double, QLatin1StringView("[+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+)") },
+    { QMetaType::Float, QLatin1StringView("[+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+)") },
 
-    { QMetaType::QString, QLatin1String("[^/]+") },
-    { QMetaType::QByteArray, QLatin1String("[^/]+") },
+    { QMetaType::QString, QLatin1StringView("[^/]+") },
+    { QMetaType::QByteArray, QLatin1StringView("[^/]+") },
 
-    { QMetaType::QUrl, QLatin1String(".*") },
+    { QMetaType::QUrl, QLatin1StringView(".*") },
 
-    { QMetaType::Void, QLatin1String("") },
+    { QMetaType::Void, QLatin1StringView("") },
 };
 
 /*!
@@ -101,7 +101,7 @@ static const QMap<int, QLatin1String> defaultConverters = {
     \endcode
 */
 
-/*! \fn template <typename Type> bool QHttpServerRouter::addConverter(const QLatin1String &regexp)
+/*! \fn template <typename Type> bool QHttpServerRouter::addConverter(QLatin1StringView regexp)
 
     Adds a new converter for type \e Type matching regular expression \a regexp,
     and returns \c true if this was successful, otherwise returns \c false.
@@ -120,7 +120,7 @@ static const QMap<int, QLatin1String> defaultConverters = {
     Q_DECLARE_METATYPE(CustomArg);
 
     QHttpServerRouter router;
-    router.addConverter<CustomArg>(QLatin1String("[+-]?\\d+"));
+    router.addConverter<CustomArg>(QLatin1StringView("[+-]?\\d+"));
 
     auto pageView = [] (const CustomArg &customArg) {
         qDebug("data: %d", customArg.data);
@@ -221,7 +221,7 @@ QHttpServerRouter::~QHttpServerRouter()
     If there is already a converter of type \a type, that converter's regexp
     is replaced with \a regexp.
 */
-void QHttpServerRouter::addConverter(const int type, const QLatin1String &regexp)
+void QHttpServerRouter::addConverter(const int type, QLatin1StringView regexp)
 {
     Q_D(QHttpServerRouter);
     d->converters[type] = regexp;
@@ -252,7 +252,7 @@ void QHttpServerRouter::clearConverters()
 /*!
     Returns a map of converter type and regexp.
 */
-const QMap<int, QLatin1String> &QHttpServerRouter::converters() const
+const QMap<int, QLatin1StringView> &QHttpServerRouter::converters() const
 {
     Q_D(const QHttpServerRouter);
     return d->converters;
@@ -277,7 +277,7 @@ const QMap<int, QLatin1String> &QHttpServerRouter::converters() const
     \value QMetaType::QUrl
     \value QMetaType::Void       An empty converter.
 */
-const QMap<int, QLatin1String> &QHttpServerRouter::defaultConverters()
+const QMap<int, QLatin1StringView> &QHttpServerRouter::defaultConverters()
 {
     return ::defaultConverters;
 }

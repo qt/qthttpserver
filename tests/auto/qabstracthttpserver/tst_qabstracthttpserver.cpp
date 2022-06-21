@@ -52,6 +52,8 @@
 
 QT_BEGIN_NAMESPACE
 
+using namespace Qt::StringLiterals;
+
 class tst_QAbstractHttpServer : public QObject
 {
     Q_OBJECT
@@ -89,7 +91,7 @@ void tst_QAbstractHttpServer::request()
     QFETCH(QString, query);
 
 #if defined(Q_OS_WIN)
-    if (host == QLatin1String("0.0.0.0"))
+    if (host == "0.0.0.0"_L1)
         QSKIP("Windows has problems with 0.0.0.0");
 #endif
 

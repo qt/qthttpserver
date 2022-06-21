@@ -146,6 +146,8 @@ NQZlAZc2w1Ha9lqisaWWpt42QVhQM64=
 
 QT_BEGIN_NAMESPACE
 
+using namespace Qt::StringLiterals;
+
 class QueryRequireRouterRule : public QHttpServerRouterRule
 {
 public:
@@ -295,7 +297,7 @@ void tst_QHttpServer::initTestCase()
                     .arg(request.query().queryItemValue("key"));
     });
 
-    httpserver.router()->addConverter<CustomArg>(QLatin1String("[+-]?\\d+"));
+    httpserver.router()->addConverter<CustomArg>("[+-]?\\d+"_L1);
     httpserver.route("/check-custom-type/", [] (const CustomArg &customArg) {
         return QString("data = %1").arg(customArg.data);
     });
@@ -305,7 +307,7 @@ void tst_QHttpServer::initTestCase()
     });
 
     httpserver.route("/file/", [] (const QString &file) {
-        return QHttpServerResponse::fromFile(QFINDTESTDATA(QLatin1String("data/") + file));
+        return QHttpServerResponse::fromFile(QFINDTESTDATA("data/"_L1 + file));
     });
 
     httpserver.route("/json-object/", [] () {
