@@ -36,20 +36,13 @@
 #include <QtCore/qnamespace.h>
 #include <QtCore/qobjectdefs.h>
 
-#include <functional>
+#include <QtCore/q20functional.h>
 #include <tuple>
 #include <type_traits>
 
 QT_BEGIN_NAMESPACE
 
 namespace QtPrivate {
-
-template<typename T>
-struct RemoveCVRef
-{
-    using Type = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
-};
-
 
 template<bool classMember, typename ReturnT, typename ... Args>
 struct FunctionTraitsHelper
@@ -63,7 +56,7 @@ struct FunctionTraitsHelper
     struct Arg {
         using Type = typename std::tuple_element<I, std::tuple<Args...>>::type;
 
-        using CleanType = typename QtPrivate::RemoveCVRef<Type>::Type;
+        using CleanType = q20::remove_cvref_t<Type>;
 
         static constexpr bool Defined = QMetaTypeId2<CleanType>::Defined;
     };
@@ -119,7 +112,7 @@ struct ViewTraits {
     template<int I, typename Special>
     struct SpecialHelper {
         using Arg = typename FTraits::template Arg<I>;
-        using CleanSpecialT = typename RemoveCVRef<Special>::Type;
+        using CleanSpecialT = q20::remove_cvref_t<Special>;
 
         static constexpr bool TypeMatched = std::is_same<typename Arg::CleanType, CleanSpecialT>::value;
         static constexpr bool TypeCVRefMatched = std::is_same<typename Arg::Type, Special>::value;
