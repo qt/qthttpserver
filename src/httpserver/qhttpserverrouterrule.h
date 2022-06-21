@@ -34,6 +34,8 @@
 
 #include <QtCore/qmap.h>
 
+#include <functional> // for std::function
+
 QT_BEGIN_NAMESPACE
 
 class QString;
@@ -53,13 +55,13 @@ public:
                                              const QHttpServerRequest &,
                                              QTcpSocket *)>;
 
-    explicit QHttpServerRouterRule(const QString &pathPattern, RouterHandler &&routerHandler);
+    explicit QHttpServerRouterRule(const QString &pathPattern, RouterHandler routerHandler);
     explicit QHttpServerRouterRule(const QString &pathPattern,
                                    const QHttpServerRequest::Methods methods,
-                                   RouterHandler &&routerHandler);
+                                   RouterHandler routerHandler);
     explicit QHttpServerRouterRule(const QString &pathPattern,
                                    const char * methods,
-                                   RouterHandler &&routerHandler);
+                                   RouterHandler routerHandler);
     virtual ~QHttpServerRouterRule();
 
 protected:
