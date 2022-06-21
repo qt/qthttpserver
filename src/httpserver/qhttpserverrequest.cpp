@@ -47,13 +47,12 @@ using namespace Qt::StringLiterals;
 #if !defined(QT_NO_DEBUG_STREAM)
 Q_HTTPSERVER_EXPORT QDebug operator<<(QDebug debug, const QHttpServerRequest &request)
 {
-    const auto oldSetting = debug.autoInsertSpaces();
+    QDebugStateSaver saver(debug);
     debug.nospace() << "QHttpServerRequest(";
     debug << "(Url: " << request.url() << ")";
     debug << "(Headers: " << request.headers() << ")";
     debug << ')';
-    debug.setAutoInsertSpaces(oldSetting);
-    return debug.maybeSpace();
+    return debug;
 }
 
 #endif
