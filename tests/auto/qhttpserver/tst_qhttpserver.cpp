@@ -153,8 +153,8 @@ class QueryRequireRouterRule : public QHttpServerRouterRule
 public:
     QueryRequireRouterRule(const QString &pathPattern,
                            const char *queryKey,
-                           RouterHandler &&routerHandler)
-        : QHttpServerRouterRule(pathPattern, std::forward<RouterHandler>(routerHandler)),
+                           RouterHandler routerHandler)
+        : QHttpServerRouterRule(pathPattern, std::move(routerHandler)),
           m_queryKey(queryKey)
     {
     }

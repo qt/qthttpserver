@@ -57,9 +57,10 @@ struct HttpServer : QAbstractHttpServer {
     void route(const char *path, const QHttpServerRequest::Methods methods, ViewHandler &&viewHandler)
     {
         auto rule = new QHttpServerRouterRule(
-                path, methods, [this, &viewHandler] (const QRegularExpressionMatch &match,
+                path, methods, [this, viewHandler = std::forward<ViewHandler>(viewHandler)]
+                                                    (const QRegularExpressionMatch &match,
                                                      const QHttpServerRequest &request,
-                                                     QTcpSocket *socket) {
+                                                     QTcpSocket *socket) mutable {
             auto boundViewHandler = router.bindCaptured<ViewHandler>(
                     std::forward<ViewHandler>(viewHandler), match);
             boundViewHandler(makeResponder(request, socket));
