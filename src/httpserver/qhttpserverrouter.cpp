@@ -300,7 +300,7 @@ bool QHttpServerRouter::handleRequest(const QHttpServerRequest &request,
                                       QTcpSocket *socket) const
 {
     Q_D(const QHttpServerRouter);
-    for (const auto &rule : qAsConst(d->rules)) {
+    for (const auto &rule : d->rules) {
         if (rule->exec(request, socket))
             return true;
     }
