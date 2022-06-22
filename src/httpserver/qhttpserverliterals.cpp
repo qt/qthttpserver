@@ -3,6 +3,8 @@
 
 #include "qhttpserverliterals_p.h"
 
+#include <QtCore/qbytearray.h>
+
 QT_BEGIN_NAMESPACE
 
 QByteArray QHttpServerLiterals::contentTypeHeader()

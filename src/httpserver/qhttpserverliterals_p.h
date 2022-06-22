@@ -16,20 +16,19 @@
 
 #include <QtHttpServer/qthttpserverglobal.h>
 
-#include <QtCore/qbytearray.h>
+#include <QtCore/qstringfwd.h>
 
 QT_BEGIN_NAMESPACE
 
-class Q_HTTPSERVER_EXPORT QHttpServerLiterals
-{
+namespace QHttpServerLiterals {
 
-public:
-    static QByteArray contentTypeHeader();
-    static QByteArray contentTypeXEmpty();
-    static QByteArray contentTypeTextHtml();
-    static QByteArray contentTypeJson();
-    static QByteArray contentLengthHeader();
-};
+Q_HTTPSERVER_EXPORT QByteArray contentTypeHeader();
+Q_HTTPSERVER_EXPORT QByteArray contentTypeXEmpty();
+Q_HTTPSERVER_EXPORT QByteArray contentTypeTextHtml();
+Q_HTTPSERVER_EXPORT QByteArray contentTypeJson();
+Q_HTTPSERVER_EXPORT QByteArray contentLengthHeader();
+
+}
 
 QT_END_NAMESPACE
 
