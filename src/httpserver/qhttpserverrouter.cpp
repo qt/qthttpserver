@@ -127,7 +127,7 @@ static const QMap<int, QLatin1StringView> defaultConverters = {
     };
     using ViewHandler = decltype(pageView);
 
-    auto rule = new QHttpServerRouterRule(
+    auto rule = std::make_unique<QHttpServerRouterRule>(
         "/<arg>/<arg>/log",
         [&router, &pageView] (QRegularExpressionMatch &match,
                               const QHttpServerRequest &request,
@@ -136,11 +136,11 @@ static const QMap<int, QLatin1StringView> defaultConverters = {
         router.bindCaptured(pageView, match)();
     });
 
-    router.addRule<ViewHandler>(rule);
+    router.addRule<ViewHandler>(std::move(rule));
     \endcode
 */
 
-/*! \fn template <typename ViewHandler, typename ViewTraits = QHttpServerRouterViewTraits<ViewHandler>> bool QHttpServerRouter::addRule(QHttpServerRouterRule *rule)
+/*! \fn template <typename ViewHandler, typename ViewTraits = QHttpServerRouterViewTraits<ViewHandler>> bool QHttpServerRouter::addRule(std::unique_ptr<QHttpServerRouterRule> rule)
 
     Adds a new \a rule and returns \c true if this was successful.
 
@@ -153,17 +153,15 @@ static const QMap<int, QLatin1StringView> defaultConverters = {
 
     using ViewHandler = decltype([] (const QString &page, const quint32 num) { });
 
-    auto rule = new QHttpServerRouterRule(
+    auto rule = std::make_unique<QHttpServerRouterRule>(
         "/<arg>/<arg>/log",
         [] (QRegularExpressionMatch &match,
             const QHttpServerRequest &request,
             QTcpSocket *socket) {
     });
 
-    router.addRule<ViewHandler>(rule);
+    router.addRule<ViewHandler>(std::move(rule));
     \endcode
-
-    \note This function takes over ownership of \a rule.
 */
 
 /*! \fn template<typename ViewHandler, typename ViewTraits = QHttpServerRouterViewTraits<ViewHandler>> typename ViewTraits::BindableType QHttpServerRouter::bindCaptured(ViewHandler &&handler, const QRegularExpressionMatch &match) const
@@ -183,7 +181,7 @@ static const QMap<int, QLatin1StringView> defaultConverters = {
     };
     using ViewHandler = decltype(pageView);
 
-    auto rule = new QHttpServerRouterRule(
+    auto rule = std::make_unique<QHttpServerRouterRule>(
         "/<arg>/<arg>/log",
         [&router, &pageView] (QRegularExpressionMatch &match,
                               const QHttpServerRequest &request,
@@ -192,7 +190,7 @@ static const QMap<int, QLatin1StringView> defaultConverters = {
         router.bindCaptured(pageView, match)();
     });
 
-    router.addRule<ViewHandler>(rule);
+    router.addRule<ViewHandler>(std::move(rule));
     \endcode
 */
 
@@ -275,17 +273,16 @@ const QMap<int, QLatin1StringView> &QHttpServerRouter::converters() const
     return d->converters;
 }
 
-bool QHttpServerRouter::addRuleImpl(QHttpServerRouterRule *rule,
+bool QHttpServerRouter::addRuleImpl(std::unique_ptr<QHttpServerRouterRule> rule,
                                     std::initializer_list<int> types)
 {
     Q_D(QHttpServerRouter);
 
     if (!rule->hasValidMethods() || !rule->createPathRegexp(types, d->converters)) {
-        delete rule;
         return false;
     }
 
-    d->rules.emplace_back(rule);
+    d->rules.push_back(std::move(rule));
     return true;
 }
 

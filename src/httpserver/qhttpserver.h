@@ -159,8 +159,9 @@ private:
             responseImpl<ViewTraits>(boundViewHandler, request, socket);
         };
 
-        return router()->addRule<ViewHandler, ViewTraits>(
-                new Rule(std::forward<Args>(args)..., std::move(routerHandler)));
+        auto rule = std::make_unique<Rule>(std::forward<Args>(args)..., std::move(routerHandler));
+
+        return router()->addRule<ViewHandler, ViewTraits>(std::move(rule));
     }
 
     template<typename ViewTraits, typename T>

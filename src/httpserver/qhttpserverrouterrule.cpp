@@ -80,7 +80,7 @@ static QHttpServerRequest::Methods strToMethods(const char *strMethods)
     template<typename ViewHandler>
     void route(const char *path, const QHttpServerRequest::Methods methods, ViewHandler &&viewHandler)
     {
-        auto rule = new QHttpServerRouterRule(
+        auto rule = std::make_unique<QHttpServerRouterRule>(
                 path, methods, [this, viewHandler = std::forward<ViewHandler>(viewHandler)]
                                                    (QRegularExpressionMatch &match,
                                                     const QHttpServerRequest &request,
@@ -92,7 +92,7 @@ static QHttpServerRequest::Methods strToMethods(const char *strMethods)
         });
 
         // QHttpServerRouter
-        router.addRule<ViewHandler>(rule);
+        router.addRule<ViewHandler>(std::move(rule));
     }
 
     // Valid:
