@@ -54,8 +54,8 @@ public:
     void clear();
 
     qint64 contentLength() const;
-    QByteArray headerField(const QByteArray &name,
-                           const QByteArray &defaultValue = QByteArray()) const;
+    QByteArray headerField(const QByteArray &name) const
+    { return parser.combinedHeaderValue(name); }
 
     QHostAddress remoteAddress;
     bool handling{false};

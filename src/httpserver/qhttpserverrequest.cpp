@@ -156,19 +156,6 @@ qint64 QHttpServerRequestPrivate::contentLength() const
 /*!
     \internal
 */
-QByteArray QHttpServerRequestPrivate::headerField(const QByteArray &name,
-                                                  const QByteArray &defaultValue) const
-{
-    QList<QByteArray> allValues = parser.headerFieldValues(name);
-    if (allValues.isEmpty())
-        return defaultValue;
-    else
-        return allValues.join(", ");
-}
-
-/*!
-    \internal
-*/
 qsizetype QHttpServerRequestPrivate::readHeader(QAbstractSocket *socket)
 {
     if (fragment.isEmpty()) {
