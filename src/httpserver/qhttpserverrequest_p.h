@@ -39,8 +39,6 @@ public:
     QHttpServerRequest::Method method;
     QHttpHeaderParser parser;
 
-    QByteArray header(const QByteArray &key) const;
-
     bool parseRequestLine(QByteArrayView line);
     qsizetype readRequestLine(QAbstractSocket *socket);
     qsizetype readHeader(QAbstractSocket *socket);
