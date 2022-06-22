@@ -18,15 +18,15 @@ class QString;
 class QTcpSocket;
 
 class QHttpServerRequestPrivate;
-class Q_HTTPSERVER_EXPORT QHttpServerRequest
+class QHttpServerRequest final
 {
     friend class QAbstractHttpServerPrivate;
     friend class QHttpServerResponse;
 
-    Q_GADGET
+    Q_GADGET_EXPORT(Q_HTTPSERVER_EXPORT)
 
 public:
-    ~QHttpServerRequest();
+    Q_HTTPSERVER_EXPORT ~QHttpServerRequest();
 
     enum class Method
     {
@@ -56,13 +56,13 @@ public:
     Q_DECLARE_FLAGS(Methods, Method)
     Q_FLAG(Methods)
 
-    QByteArray value(const QByteArray &key) const;
-    QUrl url() const;
-    QUrlQuery query() const;
-    Method method() const;
-    QVariantMap headers() const;
-    QByteArray body() const;
-    QHostAddress remoteAddress() const;
+    Q_HTTPSERVER_EXPORT QByteArray value(const QByteArray &key) const;
+    Q_HTTPSERVER_EXPORT QUrl url() const;
+    Q_HTTPSERVER_EXPORT QUrlQuery query() const;
+    Q_HTTPSERVER_EXPORT Method method() const;
+    Q_HTTPSERVER_EXPORT QVariantMap headers() const;
+    Q_HTTPSERVER_EXPORT QByteArray body() const;
+    Q_HTTPSERVER_EXPORT QHostAddress remoteAddress() const;
 
 private:
     Q_DISABLE_COPY(QHttpServerRequest)
@@ -71,7 +71,7 @@ private:
     friend Q_HTTPSERVER_EXPORT QDebug operator<<(QDebug debug, const QHttpServerRequest &request);
 #endif
 
-    explicit QHttpServerRequest(const QHostAddress &remoteAddress);
+    Q_HTTPSERVER_EXPORT explicit QHttpServerRequest(const QHostAddress &remoteAddress);
 
     QScopedPointer<QHttpServerRequestPrivate> d;
 };
