@@ -94,10 +94,7 @@ struct RouterViewTraitsHelper : ViewTraits<ViewHandler, DisableStaticAssert> {
         };
 
         template<int ... I>
-        static constexpr ArgumentsReturn<I...> eval(QtPrivate::IndexesList<I...>) noexcept
-        {
-            return ArgumentsReturn<I...>{};
-        }
+        static constexpr ArgumentsReturn<I...> eval(QtPrivate::IndexesList<I...>) noexcept;
     };
 
     template<int CaptureOffset>
