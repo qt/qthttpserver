@@ -171,19 +171,11 @@ qint64 QHttpServerRequestPrivate::contentLength() const
 QByteArray QHttpServerRequestPrivate::headerField(const QByteArray &name,
                                                   const QByteArray &defaultValue) const
 {
-    QList<QByteArray> allValues = headerFieldValues(name);
+    QList<QByteArray> allValues = parser.headerFieldValues(name);
     if (allValues.isEmpty())
         return defaultValue;
     else
         return allValues.join(", ");
-}
-
-/*!
-    \internal
-*/
-QList<QByteArray> QHttpServerRequestPrivate::headerFieldValues(const QByteArray &name) const
-{
-    return parser.headerFieldValues(name);
 }
 
 /*!
