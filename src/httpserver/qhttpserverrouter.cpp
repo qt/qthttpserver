@@ -201,9 +201,9 @@ QHttpServerRouterPrivate::QHttpServerRouterPrivate()
 {}
 
 /*!
-    Creates a QHttpServerRouter object with \c defaultConverters.
+    Creates a QHttpServerRouter object with default converters.
 
-    \sa defaultConverters()
+    \sa converters()
 */
 QHttpServerRouter::QHttpServerRouter()
     : d_ptr(new QHttpServerRouterPrivate)
@@ -239,9 +239,9 @@ void QHttpServerRouter::removeConverter(const int type)
 /*!
     Removes all converters.
 
-    \note clearConverters() does not set up \c defaultConverters.
+    \note clearConverters() does not set up default converters.
 
-    \sa defaultConverters()
+    \sa converters()
 */
 void QHttpServerRouter::clearConverters()
 {
@@ -251,15 +251,7 @@ void QHttpServerRouter::clearConverters()
 
 /*!
     Returns a map of converter type and regexp.
-*/
-const QMap<int, QLatin1StringView> &QHttpServerRouter::converters() const
-{
-    Q_D(const QHttpServerRouter);
-    return d->converters;
-}
 
-/*!
-    Returns a map of default converter type and regexp.
     The following converters are available by default:
 
     \value QMetaType::Int
@@ -277,9 +269,10 @@ const QMap<int, QLatin1StringView> &QHttpServerRouter::converters() const
     \value QMetaType::QUrl
     \value QMetaType::Void       An empty converter.
 */
-const QMap<int, QLatin1StringView> &QHttpServerRouter::defaultConverters()
+const QMap<int, QLatin1StringView> &QHttpServerRouter::converters() const
 {
-    return ::defaultConverters;
+    Q_D(const QHttpServerRouter);
+    return d->converters;
 }
 
 bool QHttpServerRouter::addRuleImpl(QHttpServerRouterRule *rule,
