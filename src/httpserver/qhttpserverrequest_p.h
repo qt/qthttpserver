@@ -56,7 +56,6 @@ public:
     qint64 contentLength() const;
     QByteArray headerField(const QByteArray &name,
                            const QByteArray &defaultValue = QByteArray()) const;
-    QList<QByteArray> headerFieldValues(const QByteArray &name) const;
 
     QHostAddress remoteAddress;
     bool handling{false};
