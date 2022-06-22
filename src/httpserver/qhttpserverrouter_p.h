@@ -8,10 +8,10 @@
 #include <QtHttpServer/qhttpserverrouterrule.h>
 
 #include <QtCore/qmap.h>
-#include <QtCore/qlist.h>
 #include <QtCore/qstring.h>
 
 #include <memory>
+#include <vector>
 
 //
 //  W A R N I N G
@@ -31,7 +31,7 @@ public:
     QHttpServerRouterPrivate();
 
     QMap<int, QLatin1StringView> converters;
-    std::list<std::unique_ptr<QHttpServerRouterRule>> rules;
+    std::vector<std::unique_ptr<QHttpServerRouterRule>> rules;
 };
 
 QT_END_NAMESPACE
