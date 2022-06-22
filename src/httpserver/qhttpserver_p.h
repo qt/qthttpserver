@@ -23,7 +23,7 @@
 
 #include <QtCore/qglobal.h>
 
-#include <list>
+#include <vector>
 
 QT_BEGIN_NAMESPACE
 
@@ -35,7 +35,7 @@ public:
     QHttpServerPrivate() = default;
 
     QHttpServerRouter router;
-    std::list<QHttpServer::AfterRequestHandler> afterRequestHandlers;
+    std::vector<QHttpServer::AfterRequestHandler> afterRequestHandlers;
 };
 
 QT_END_NAMESPACE
