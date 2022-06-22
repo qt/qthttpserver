@@ -26,7 +26,7 @@ class Q_HTTPSERVER_EXPORT QHttpServerRequest
     Q_GADGET
 
 public:
-    virtual ~QHttpServerRequest();
+    ~QHttpServerRequest();
 
     enum class Method
     {
