@@ -31,6 +31,7 @@ class Q_HTTPSERVER_EXPORT QAbstractHttpServer : public QObject
 
 public:
     QAbstractHttpServer(QObject *parent = nullptr);
+    ~QAbstractHttpServer() override;
 
     quint16 listen(const QHostAddress &address = QHostAddress::Any, quint16 port = 0);
     QList<quint16> serverPorts();
