@@ -41,6 +41,8 @@
 
 QT_BEGIN_NAMESPACE
 
+QT_IMPL_METATYPE_EXTERN_TAGGED(QHttpServerResponder::StatusCode, QHttpServerResponder__StatusCode)
+
 /*!
     \class QHttpServerResponder
     \inmodule QtHttpServer
