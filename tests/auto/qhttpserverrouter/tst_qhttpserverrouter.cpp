@@ -30,7 +30,7 @@ struct HttpServer : QAbstractHttpServer {
     template<typename ViewHandler>
     void route(const char *path, const QHttpServerRequest::Methods methods, ViewHandler &&viewHandler)
     {
-        auto rule = new QHttpServerRouterRule(
+        auto rule = std::make_unique<QHttpServerRouterRule>(
                 path, methods, [this, viewHandler = std::forward<ViewHandler>(viewHandler)]
                                                     (const QRegularExpressionMatch &match,
                                                      const QHttpServerRequest &request,
@@ -40,7 +40,7 @@ struct HttpServer : QAbstractHttpServer {
             boundViewHandler(makeResponder(request, socket));
         });
 
-        router.addRule<ViewHandler>(rule);
+        router.addRule<ViewHandler>(std::move(rule));
     }
 
     template<typename ViewHandler>

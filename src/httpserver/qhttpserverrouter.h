@@ -65,10 +65,10 @@ public:
     const QMap<int, QLatin1StringView> &converters() const;
 
     template<typename ViewHandler, typename ViewTraits = QHttpServerRouterViewTraits<ViewHandler>>
-    bool addRule(QHttpServerRouterRule *rule)
+    bool addRule(std::unique_ptr<QHttpServerRouterRule> rule)
     {
         return addRuleHelper<ViewTraits>(
-                rule,
+                std::move(rule),
                 typename ViewTraits::Arguments::Indexes{});
     }
 
@@ -88,13 +88,13 @@ public:
 
 private:
     template<typename ViewTraits, int ... Idx>
-    bool addRuleHelper(QHttpServerRouterRule *rule,
+    bool addRuleHelper(std::unique_ptr<QHttpServerRouterRule> rule,
                        QtPrivate::IndexesList<Idx...>)
     {
-        return addRuleImpl(rule, {ViewTraits::Arguments::template metaTypeId<Idx>()...});
+        return addRuleImpl(std::move(rule), {ViewTraits::Arguments::template metaTypeId<Idx>()...});
     }
 
-    bool addRuleImpl(QHttpServerRouterRule *rule,
+    bool addRuleImpl(std::unique_ptr<QHttpServerRouterRule> rule,
                      std::initializer_list<int> metaTypes);
 
     template<typename ViewHandler, typename ViewTraits, int ... Cx, int ... Px>
