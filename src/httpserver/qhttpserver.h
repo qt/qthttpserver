@@ -33,6 +33,8 @@ class Q_HTTPSERVER_EXPORT QHttpServer final : public QAbstractHttpServer
         using Type = typename VariadicTypeAt<sizeof ... (Ts) - 1, Ts...>::Type;
     };
 
+    template <typename...>
+    static constexpr bool dependent_false_v = false;
 
     template<typename T>
     using ResponseType =
@@ -74,36 +76,24 @@ public:
                       const QHttpServerRequest &request)>;
 private:
     template<typename ViewTraits, typename ViewHandler>
-    typename std::enable_if<ViewTraits::Arguments::Last::IsRequest::Value &&
-                            ViewTraits::Arguments::Count == 2, void>::type
-            afterRequestHelper(ViewHandler &&viewHandler) {
+    void afterRequestHelper(ViewHandler &&viewHandler) {
         auto handler = [viewHandler](QHttpServerResponse &&resp,
                                      const QHttpServerRequest &request) {
-            return std::move(viewHandler(std::move(resp), request));
-        };
-
-        afterRequestImpl(std::move(handler));
-    }
-
-    template<typename ViewTraits, typename ViewHandler>
-    typename std::enable_if<ViewTraits::Arguments::Last::IsResponse::Value &&
-                            ViewTraits::Arguments::Count == 1, void>::type
-            afterRequestHelper(ViewHandler &&viewHandler) {
-        auto handler = [viewHandler](QHttpServerResponse &&resp,
-                                     const QHttpServerRequest &) {
-            return std::move(viewHandler(std::move(resp)));
-        };
-
-        afterRequestImpl(std::move(handler));
-    }
-
-    template<typename ViewTraits, typename ViewHandler>
-    typename std::enable_if<ViewTraits::Arguments::Last::IsResponse::Value &&
-                            ViewTraits::Arguments::Count == 2, void>::type
-            afterRequestHelper(ViewHandler &&viewHandler) {
-        auto handler = [viewHandler](QHttpServerResponse &&resp,
-                                     const QHttpServerRequest &request) {
-            return std::move(viewHandler(request, std::move(resp)));
+            if constexpr (ViewTraits::Arguments::Last::IsRequest::Value) {
+                if constexpr (ViewTraits::Arguments::Count == 2)
+                    return std::move(viewHandler(std::move(resp), request));
+                else
+                    static_assert(dependent_false_v<ViewTraits>);
+            } else if constexpr (ViewTraits::Arguments::Last::IsResponse::Value) {
+                if constexpr (ViewTraits::Arguments::Count == 1)
+                    return std::move(viewHandler(std::move(resp)));
+                else if constexpr (ViewTraits::Arguments::Count == 2)
+                    return std::move(viewHandler(request, std::move(resp)));
+                else
+                    static_assert(dependent_false_v<ViewTraits>);
+            } else {
+                static_assert(dependent_false_v<ViewTraits>);
+            }
         };
 
         afterRequestImpl(std::move(handler));
