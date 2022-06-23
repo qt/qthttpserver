@@ -165,8 +165,8 @@ quint16 QAbstractHttpServer::listen(const QHostAddress &address, quint16 port)
         bind(tcpServer);
         return tcpServer->serverPort();
     } else {
-        qCCritical(lcHttpServer, "listen failed: %s",
-                   tcpServer->errorString().toStdString().c_str());
+        qCCritical(lcHttpServer, "listen failed: %ls",
+                   qUtf16Printable(tcpServer->errorString()));
     }
 
     delete tcpServer;
@@ -219,8 +219,8 @@ void QAbstractHttpServer::bind(QTcpServer *server)
     if (!server) {
         server = new QTcpServer(this);
         if (!server->listen()) {
-            qCCritical(lcHttpServer, "QTcpServer listen failed (%s)",
-                       qPrintable(server->errorString()));
+            qCCritical(lcHttpServer, "QTcpServer listen failed (%ls)",
+                       qUtf16Printable(server->errorString()));
         }
     } else {
         if (!server->isListening())

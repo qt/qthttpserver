@@ -345,7 +345,7 @@ void tst_QHttpServer::initTestCase()
 
     quint16 port = httpserver.listen();
     if (!port)
-        qCritical() << "Http server listen failed";
+        qCritical("Http server listen failed");
 
     urlBase = QStringLiteral("http://localhost:%1%2").arg(port);
 
@@ -355,7 +355,7 @@ void tst_QHttpServer::initTestCase()
 
     port = httpserver.listen();
     if (!port)
-        qCritical() << "Http server listen failed";
+        qCritical("Http server listen failed");
 
     sslUrlBase = QStringLiteral("https://localhost:%1%2").arg(port);
 

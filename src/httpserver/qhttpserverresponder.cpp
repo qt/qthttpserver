@@ -139,7 +139,7 @@ struct IOChunkedTransfer
         endIndex = source->read(buffer, bufferSize);
         if (endIndex < 0) {
             endIndex = beginIndex; // Mark the buffer as empty
-            qCWarning(lc, "Error reading chunk: %s", qPrintable(source->errorString()));
+            qCWarning(lc, "Error reading chunk: %ls", qUtf16Printable(source->errorString()));
         } else if (endIndex) {
             memset(buffer + endIndex, 0, sizeof(buffer) - std::size_t(endIndex));
             writeToOutput();
@@ -153,7 +153,7 @@ struct IOChunkedTransfer
 
         const auto writtenBytes = sink->write(buffer + beginIndex, endIndex);
         if (writtenBytes < 0) {
-            qCWarning(lc, "Error writing chunk: %s", qPrintable(sink->errorString()));
+            qCWarning(lc, "Error writing chunk: %ls", qUtf16Printable(sink->errorString()));
             return;
         }
         beginIndex += writtenBytes;
@@ -212,7 +212,7 @@ void QHttpServerResponder::write(QIODevice *data,
     if (!input->isOpen()) {
         if (!input->open(QIODevice::ReadOnly)) {
             // TODO Add developer error handling
-            qCDebug(lc, "500: Could not open device %s", qPrintable(input->errorString()));
+            qCDebug(lc, "500: Could not open device %ls", qUtf16Printable(input->errorString()));
             write(StatusCode::InternalServerError);
             return;
         }
