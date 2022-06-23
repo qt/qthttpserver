@@ -263,10 +263,10 @@ bool QHttpServerRequestPrivate::parse(QAbstractSocket *socket)
             [[fallthrough]];
         case State::ReadingRequestLine:
             read = readRequestLine(socket);
-            break;
+            continue;
         case State::ReadingHeader:
             read = readHeader(socket);
-            break;
+            continue;
         case State::ReadingData:
             if (chunkedTransferEncoding)
                 read = readRequestBodyChunked(socket);
@@ -278,8 +278,9 @@ bool QHttpServerRequestPrivate::parse(QAbstractSocket *socket)
                 bodyBuffer.clear();
             }
 
-            break;
+            continue;
         }
+        Q_UNREACHABLE(); // fixes GCC -Wmaybe-uninitialized warning on `read`
     } while (state != State::AllDone && read > 0);
 
     return read != -1;
