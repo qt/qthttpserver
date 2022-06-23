@@ -7,29 +7,38 @@
 
 QT_BEGIN_NAMESPACE
 
+// Don't use QByteArrayLiteral, as this library may be unloaded before all
+// references to the data are destroyed - by allocating on the heap, the last
+// user will free the data instead of referencing unloaded data
+
 QByteArray QHttpServerLiterals::contentTypeHeader()
 {
-    return QByteArrayLiteral("Content-Type");
+    static QByteArray ba("Content-Type");
+    return ba;
 }
 
 QByteArray QHttpServerLiterals::contentTypeXEmpty()
 {
-    return QByteArrayLiteral("application/x-empty");
+    static QByteArray ba("application/x-empty");
+    return ba;
 }
 
 QByteArray QHttpServerLiterals::contentTypeTextHtml()
 {
-    return QByteArrayLiteral("text/html");
+    static QByteArray ba("text/html");
+    return ba;
 }
 
 QByteArray QHttpServerLiterals::contentTypeJson()
 {
-    return QByteArrayLiteral("application/json");
+    static QByteArray ba("application/json");
+    return ba;
 }
 
 QByteArray QHttpServerLiterals::contentLengthHeader()
 {
-    return QByteArrayLiteral("Content-Length");
+    static QByteArray ba("Content-Length");
+    return ba;
 }
 
 QT_END_NAMESPACE
