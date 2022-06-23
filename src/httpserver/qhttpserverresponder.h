@@ -6,12 +6,9 @@
 
 #include <QtHttpServer/qthttpserverglobal.h>
 
-#include <QtCore/qdebug.h>
 #include <QtCore/qpair.h>
-#include <QtCore/qglobal.h>
-#include <QtCore/qstring.h>
+#include <QtCore/qstringfwd.h>
 #include <QtCore/qmetatype.h>
-#include <QtCore/qmimetype.h>
 
 #include <memory>
 #include <utility>
