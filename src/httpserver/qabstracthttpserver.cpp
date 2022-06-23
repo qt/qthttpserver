@@ -36,7 +36,7 @@ void QAbstractHttpServerPrivate::handleNewConnections()
     Q_ASSERT(tcpServer);
     while (auto socket = tcpServer->nextPendingConnection()) {
         auto request = new QHttpServerRequest(socket->peerAddress());  // TODO own tcp server could pre-allocate it
-        QObject::connect(socket, &QTcpSocket::readyRead, q_ptr,
+        QObject::connect(socket, &QTcpSocket::readyRead, q,
                          [this, request, socket] () {
             handleReadyRead(socket, request);
         });
