@@ -109,7 +109,7 @@ private:
         afterRequestImpl(std::move(handler));
     }
 
-    void afterRequestImpl(AfterRequestHandler &&afterRequestHandler);
+    void afterRequestImpl(AfterRequestHandler afterRequestHandler);
 
 private:
     template<typename Rule, typename ViewHandler, typename ViewTraits, int ... I, typename ... Args>
