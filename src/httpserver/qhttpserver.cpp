@@ -140,7 +140,7 @@ QHttpServerRouter *QHttpServer::router()
 /*!
     \internal
 */
-void QHttpServer::afterRequestImpl(AfterRequestHandler &&afterRequestHandler)
+void QHttpServer::afterRequestImpl(AfterRequestHandler afterRequestHandler)
 {
     Q_D(QHttpServer);
     d->afterRequestHandlers.push_back(std::move(afterRequestHandler));
