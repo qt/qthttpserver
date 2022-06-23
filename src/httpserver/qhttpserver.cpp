@@ -42,7 +42,7 @@ QHttpServer::QHttpServer(QObject *parent)
     : QAbstractHttpServer(*new QHttpServerPrivate, parent)
 {
     connect(this, &QAbstractHttpServer::missingHandler, this,
-            [=] (const QHttpServerRequest &request, QTcpSocket *socket) {
+            [this] (const QHttpServerRequest &request, QTcpSocket *socket) {
         qCDebug(lcHS) << "missing handler:" << request.url().path();
         sendResponse(QHttpServerResponder::StatusCode::NotFound, request, socket);
     });
