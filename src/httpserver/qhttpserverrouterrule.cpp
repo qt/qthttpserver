@@ -216,16 +216,16 @@ bool QHttpServerRouterRule::createPathRegexp(std::initializer_list<int> metaType
     for (auto type : metaTypes) {
         if (type >= QMetaType::User
             && !QMetaType::hasRegisteredConverterFunction(QMetaType::fromType<QString>(), QMetaType(type))) {
-            qCWarning(lcRouterRule) << QMetaType(type).name()
-                                    << "has not registered a converter to QString."
-                                    << "Use QHttpServerRouter::addConveter<Type>(converter).";
+            qCWarning(lcRouterRule,
+                      "%s has not registered a converter to QString. "
+                      "Use QHttpServerRouter::addConveter<Type>(converter).",
+                      QMetaType(type).name());
             return false;
         }
 
         auto it = converters.constFind(type);
         if (it == converters.end()) {
-            qCWarning(lcRouterRule) << "Can not find converter for type:"
-                                    << QMetaType(type).name();
+            qCWarning(lcRouterRule, "Can not find converter for type: %s", QMetaType(type).name());
             return false;
         }
 
