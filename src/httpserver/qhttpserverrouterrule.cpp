@@ -36,8 +36,6 @@ auto wrap(std::initializer_list<T> l) { return Wrapper<T>{l}; }
 
 } // unnamed namespace
 
-static const auto methodEnum = QMetaEnum::fromType<QHttpServerRequest::Method>();
-
 /*!
     \internal
 */
@@ -46,6 +44,7 @@ static QHttpServerRequest::Methods strToMethods(const char *strMethods)
     QHttpServerRequest::Methods methods;
 
     bool ok = false;
+    static const auto methodEnum = QMetaEnum::fromType<QHttpServerRequest::Method>();
     const int val = methodEnum.keysToValue(strMethods, &ok);
     if (ok)
         methods = static_cast<decltype(methods)>(val);
