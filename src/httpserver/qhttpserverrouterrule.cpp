@@ -16,23 +16,35 @@ QT_BEGIN_NAMESPACE
 
 Q_LOGGING_CATEGORY(lcRouterRule, "qt.httpserver.router.rule")
 
-// qdebug lacks op<< for std::initializer_list
+// qdebug lacks op<< for std::initializer_list and QMetaType
 // don't define it here locally, lest we risk ODR violations
 // define it for a local wrapper instead:
 namespace {
 
-template <typename T>
 struct Wrapper {
-    std::initializer_list<T> l;
-    friend QDebug operator<<(QDebug d, Wrapper r)
+    std::initializer_list<QMetaType> l;
+    friend QDebug operator<<(QDebug debug, Wrapper r)
     {
-        return QtPrivate::printSequentialContainer(std::move(d),
-                                                   "std::initializer_list", r.l);
+        QDebugStateSaver save(debug);
+
+        debug.nospace() << "std::initializer_list(";
+        bool first = true;
+
+        for (auto metaType : r.l) {
+            if (first)
+                first = false;
+            else
+                debug << ", ";
+            debug << "QMetaType(" << metaType.name() << ")";
+        }
+
+        debug << ")";
+
+        return debug;
     }
 };
 
-template <typename T>
-auto wrap(std::initializer_list<T> l) { return Wrapper<T>{l}; }
+auto wrap(std::initializer_list<QMetaType> l) { return Wrapper{l}; }
 
 } // unnamed namespace
 
@@ -226,26 +238,26 @@ bool QHttpServerRouterRule::matches(const QHttpServerRequest &request,
 /*!
     \internal
 */
-bool QHttpServerRouterRule::createPathRegexp(std::initializer_list<int> metaTypes,
-                                             const QMap<int, QLatin1StringView> &converters)
+bool QHttpServerRouterRule::createPathRegexp(std::initializer_list<QMetaType> metaTypes,
+                                             const QHash<QMetaType, QLatin1StringView> &converters)
 {
     Q_D(QHttpServerRouterRule);
 
     QString pathRegexp = d->pathPattern;
     const QLatin1StringView arg("<arg>");
-    for (auto type : metaTypes) {
-        if (type >= QMetaType::User
-            && !QMetaType::hasRegisteredConverterFunction(QMetaType::fromType<QString>(), QMetaType(type))) {
+    for (auto metaType : metaTypes) {
+        if (metaType.id() >= QMetaType::User
+            && !QMetaType::hasRegisteredConverterFunction(QMetaType::fromType<QString>(), metaType)) {
             qCWarning(lcRouterRule,
                       "%s has not registered a converter to QString. "
                       "Use QHttpServerRouter::addConveter<Type>(converter).",
-                      QMetaType(type).name());
+                      metaType.name());
             return false;
         }
 
-        auto it = converters.constFind(type);
+        auto it = converters.constFind(metaType);
         if (it == converters.end()) {
-            qCWarning(lcRouterRule, "Can not find converter for type: %s", QMetaType(type).name());
+            qCWarning(lcRouterRule, "Can not find converter for type: %s", metaType.name());
             return false;
         }
 

@@ -55,14 +55,14 @@ public:
         if (!QMetaType::registerConverter<QString, Type>())
             return false;
 
-        addConverter(qMetaTypeId<Type>(), regexp);
+        addConverter(QMetaType::fromType<Type>(), regexp);
         return true;
     }
 
-    void addConverter(const int type, QLatin1StringView regexp);
-    void removeConverter(const int);
+    void addConverter(QMetaType metaType, QLatin1StringView regexp);
+    void removeConverter(QMetaType metaType);
     void clearConverters();
-    const QMap<int, QLatin1StringView> &converters() const;
+    const QHash<QMetaType, QLatin1StringView> &converters() const;
 
     template<typename ViewHandler, typename ViewTraits = QHttpServerRouterViewTraits<ViewHandler>>
     bool addRule(std::unique_ptr<QHttpServerRouterRule> rule)
@@ -91,11 +91,11 @@ private:
     bool addRuleHelper(std::unique_ptr<QHttpServerRouterRule> rule,
                        QtPrivate::IndexesList<Idx...>)
     {
-        return addRuleImpl(std::move(rule), {ViewTraits::Arguments::template metaTypeId<Idx>()...});
+        return addRuleImpl(std::move(rule), {ViewTraits::Arguments::template metaType<Idx>()...});
     }
 
     bool addRuleImpl(std::unique_ptr<QHttpServerRouterRule> rule,
-                     std::initializer_list<int> metaTypes);
+                     std::initializer_list<QMetaType> metaTypes);
 
     template<typename ViewHandler, typename ViewTraits, int ... Cx, int ... Px>
     typename ViewTraits::BindableType

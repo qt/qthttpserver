@@ -6,7 +6,7 @@
 
 #include <QtHttpServer/qhttpserverrequest.h>
 
-#include <QtCore/qmap.h>
+#include <QtCore/qcontainerfwd.h>
 
 #include <functional> // for std::function
 #include <initializer_list>
@@ -44,8 +44,8 @@ protected:
 
     bool hasValidMethods() const;
 
-    bool createPathRegexp(std::initializer_list<int> metaTypes,
-                          const QMap<int, QLatin1StringView> &converters);
+    bool createPathRegexp(std::initializer_list<QMetaType> metaTypes,
+                          const QHash<QMetaType, QLatin1StringView> &converters);
 
     virtual bool matches(const QHttpServerRequest &request,
                          QRegularExpressionMatch *match) const;
