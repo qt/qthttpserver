@@ -120,7 +120,7 @@ void tst_QAbstractHttpServer::websocket()
 #else
     struct HttpServer : QAbstractHttpServer
     {
-        bool handleRequest(const QHttpServerRequest &, QTcpSocket *) override { return false; }
+        bool handleRequest(const QHttpServerRequest &, QTcpSocket *) override { return true; }
     } server;
     auto tcpServer = new QTcpServer;
     tcpServer->listen();

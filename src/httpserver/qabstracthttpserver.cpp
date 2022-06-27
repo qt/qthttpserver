@@ -77,13 +77,15 @@ void QAbstractHttpServerPrivate::handleReadyRead(QTcpSocket *socket,
     if (request->d->state != QHttpServerRequestPrivate::State::AllDone)
         return; // Partial read
 
+    qCDebug(lcHttpServer) << "Request:" << *request;
+
     if (request->d->upgrade) { // Upgrade
         const auto &upgradeValue = request->value(QByteArrayLiteral("upgrade"));
 #if defined(QT_WEBSOCKETS_LIB)
         if (upgradeValue.compare(QByteArrayLiteral("websocket"), Qt::CaseInsensitive) == 0) {
             static const auto signal = QMetaMethod::fromSignal(
                         &QAbstractHttpServer::newWebSocketConnection);
-            if (q->isSignalConnected(signal)) {
+            if (q->handleRequest(*request, socket) && q->isSignalConnected(signal)) {
                 // Socket will now be managed by websocketServer
                 socket->disconnect();
                 socket->rollbackTransaction();
@@ -93,7 +95,8 @@ void QAbstractHttpServerPrivate::handleReadyRead(QTcpSocket *socket,
                 Q_EMIT socket->readyRead();
             } else {
                 qWarning(lcHttpServer, "WebSocket received but no slots connected to "
-                                       "QWebSocketServer::newConnection");
+                                       "QWebSocketServer::newConnection or request not handled");
+                Q_EMIT q->missingHandler(*request, socket);
                 socket->disconnectFromHost();
             }
             return;
@@ -102,7 +105,6 @@ void QAbstractHttpServerPrivate::handleReadyRead(QTcpSocket *socket,
     }
 
     socket->commitTransaction();
-    qCDebug(lcHttpServer) << "Request:" << *request;
     request->d->handling = true;
     if (!q->handleRequest(*request, socket))
         Q_EMIT q->missingHandler(*request, socket);
