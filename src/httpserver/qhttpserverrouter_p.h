@@ -7,7 +7,7 @@
 #include <QtHttpServer/qhttpserverrouter.h>
 #include <QtHttpServer/qhttpserverrouterrule.h>
 
-#include <QtCore/qmap.h>
+#include <QtCore/qhash.h>
 #include <QtCore/qstring.h>
 
 #include <memory>
@@ -30,7 +30,7 @@ class QHttpServerRouterPrivate
 public:
     QHttpServerRouterPrivate();
 
-    QMap<int, QLatin1StringView> converters;
+    QHash<QMetaType, QLatin1StringView> converters;
     std::vector<std::unique_ptr<QHttpServerRouterRule>> rules;
 };
 

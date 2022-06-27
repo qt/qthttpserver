@@ -63,11 +63,11 @@ struct RouterViewTraitsHelper : ViewTraits<ViewHandler, DisableStaticAssert> {
             using Arg = ArgumentChecker<Idx>;
 
             template<int Idx>
-            static constexpr int metaTypeId() noexcept
+            static constexpr QMetaType metaType() noexcept
             {
                 using Type = typename FunctionTraits::template Arg<Idx>::CleanType;
 
-                return qMetaTypeId<
+                return QMetaType::fromType<
                     typename std::conditional<
                         QMetaTypeId2<Type>::Defined,
                         Type,
