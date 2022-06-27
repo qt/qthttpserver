@@ -17,6 +17,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QHttpServerFutureResponse
+    \since 6.4
     \inmodule QtHttpServer
     \brief QHttpServerFutureResponse is a simplified API for asynchronous responses.
 
