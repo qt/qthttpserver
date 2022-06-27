@@ -16,38 +16,6 @@ QT_BEGIN_NAMESPACE
 
 Q_LOGGING_CATEGORY(lcRouterRule, "qt.httpserver.router.rule")
 
-// qdebug lacks op<< for std::initializer_list and QMetaType
-// don't define it here locally, lest we risk ODR violations
-// define it for a local wrapper instead:
-namespace {
-
-struct Wrapper {
-    std::initializer_list<QMetaType> l;
-    friend QDebug operator<<(QDebug debug, Wrapper r)
-    {
-        QDebugStateSaver save(debug);
-
-        debug.nospace() << "std::initializer_list(";
-        bool first = true;
-
-        for (auto metaType : r.l) {
-            if (first)
-                first = false;
-            else
-                debug << ", ";
-            debug << "QMetaType(" << metaType.name() << ")";
-        }
-
-        debug << ")";
-
-        return debug;
-    }
-};
-
-auto wrap(std::initializer_list<QMetaType> l) { return Wrapper{l}; }
-
-} // unnamed namespace
-
 /*!
     \class QHttpServerRouterRule
     \since 6.4
@@ -249,7 +217,7 @@ bool QHttpServerRouterRule::createPathRegexp(std::initializer_list<QMetaType> me
         qCWarning(lcRouterRule) << "not enough types or one of the types is not supported, regexp:"
                                 << pathRegexp
                                 << ", pattern:" << d->pathPattern
-                                << ", types:" << wrap(metaTypes);
+                                << ", types:" << metaTypes;
         return false;
     }
 
