@@ -487,6 +487,7 @@ qsizetype QHttpServerRequestPrivate::getChunkSize(QAbstractSocket *socket, qsize
 
 /*!
     \class QHttpServerRequest
+    \since 6.4
     \inmodule QtHttpServer
     \brief Encapsulates an HTTP request.
 

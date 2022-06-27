@@ -106,6 +106,7 @@ void QAbstractHttpServerPrivate::handleReadyRead(QTcpSocket *socket,
 
 /*!
     \class QAbstractHttpServer
+    \since 6.4
     \inmodule QtHttpServer
     \brief API to subclass to implement an HTTP server.
 

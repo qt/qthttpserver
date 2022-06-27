@@ -19,6 +19,7 @@ QT_IMPL_METATYPE_EXTERN_TAGGED(QHttpServerResponder::StatusCode, QHttpServerResp
 
 /*!
     \class QHttpServerResponder
+    \since 6.4
     \inmodule QtHttpServer
     \brief API for sending replies from an HTTP server.
 

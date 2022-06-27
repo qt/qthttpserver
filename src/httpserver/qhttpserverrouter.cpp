@@ -43,6 +43,7 @@ static const QMap<int, QLatin1StringView> defaultConverters = {
 
 /*!
     \class QHttpServerRouter
+    \since 6.4
     \brief Provides functions to bind a URL to a \c ViewHandler.
     \inmodule QtHttpServer
 

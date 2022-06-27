@@ -17,6 +17,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QHttpServerResponse
+    \since 6.4
     \inmodule QtHttpServer
     \brief Encapsulates an HTTP response.
 

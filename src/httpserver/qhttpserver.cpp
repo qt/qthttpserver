@@ -20,6 +20,7 @@ Q_LOGGING_CATEGORY(lcHS, "qt.httpserver");
 
 /*!
     \class QHttpServer
+    \since 6.4
     \inmodule QtHttpServer
     \brief QHttpServer is a simplified API for QAbstractHttpServer and QHttpServerRouter.
 

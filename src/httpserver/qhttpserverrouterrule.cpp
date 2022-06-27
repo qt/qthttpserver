@@ -56,6 +56,7 @@ static QHttpServerRequest::Methods strToMethods(const char *strMethods)
 
 /*!
     \class QHttpServerRouterRule
+    \since 6.4
     \brief The QHttpServerRouterRule is the base class for QHttpServerRouter rules.
     \inmodule QtHttpServer
 
