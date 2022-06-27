@@ -7,14 +7,6 @@
     \title Qt HTTP Server
     \brief Provides a lightweight server implementing the HTTP protocol.
 
-    \section1 Getting Started
-
-    To include the definitions of the module's classes, use the following directive:
-
-    \code
-    #include <QtHttpServer/QtHttpServer>
-    \endcode
-
     \section1 Licenses
 
     QtHttpServer is available under commercial licenses from \l{The Qt Company}.

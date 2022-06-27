@@ -9,13 +9,6 @@
     \since 6.4
     \brief List of C++ classes that provide HTTP server framework.
 
-    To use these classes in your application, use the following include
-    statement:
-
-    \code
-    #include <QtHttpServer/QtHttpServer>
-    \endcode
-
     To link against this library with CMake, add the following to your
     CMakeLists.txt file:
 
