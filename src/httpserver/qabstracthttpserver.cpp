@@ -13,6 +13,11 @@
 #include <QtNetwork/qtcpserver.h>
 #include <QtNetwork/qtcpsocket.h>
 
+#if QT_CONFIG(ssl)
+#include <QtNetwork/qsslconfiguration.h>
+#include <QtNetwork/qsslserver.h>
+#endif
+
 #include <algorithm>
 
 QT_BEGIN_NAMESPACE

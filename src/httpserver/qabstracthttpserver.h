@@ -11,15 +11,16 @@
 #include <QtNetwork/qhostaddress.h>
 
 #if QT_CONFIG(ssl)
-#include <QtNetwork/qsslserver.h>
-#include <QtNetwork/qsslcertificate.h>
-#include <QtNetwork/qsslkey.h>
+#include <QtNetwork/qssl.h>
 #endif
 
 QT_BEGIN_NAMESPACE
 
 class QHttpServerRequest;
 class QHttpServerResponder;
+class QSslCertificate;
+class QSslConfiguration;
+class QSslKey;
 class QTcpServer;
 class QTcpSocket;
 class QWebSocket;

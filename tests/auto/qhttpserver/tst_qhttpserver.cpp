@@ -32,6 +32,9 @@
 #include <QtNetwork/qnetworkreply.h>
 #include <QtNetwork/qnetworkrequest.h>
 
+#include <QtNetwork/qsslconfiguration.h>
+#include <QtNetwork/qsslkey.h>
+
 static const char g_privateKey[] = R"(-----BEGIN RSA PRIVATE KEY-----
 MIIJKAIBAAKCAgEAvdrtZtVquwiG12+vd3OjRVibdK2Ob73DOOWgb5rIgQ+B2Uzc
 OFa0xsiRyc/bam9CEEqgn5YHSn95LJHvN3dbsA8vrFqIXTkisFAuHJqsmsYZbAIi
