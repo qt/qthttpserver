@@ -1,7 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 project(simple LANGUAGES CXX)
 
-set(INSTALL_EXAMPLEDIR "examples/httpserver/simple")
+if(NOT DEFINED INSTALL_EXAMPLESDIR)
+    set(INSTALL_EXAMPLESDIR "examples")
+endif()
+
+set(INSTALL_EXAMPLEDIR "${INSTALL_EXAMPLESDIR}/httpserver/${PROJECT_NAME}")
 
 find_package(Qt6 REQUIRED COMPONENTS HttpServer)
 
