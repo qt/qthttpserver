@@ -11,7 +11,7 @@ set(CMAKE_AUTOUIC ON)
 
 set(INSTALL_EXAMPLEDIR "examples/httpserver/simple")
 
-find_package(Qt6 COMPONENTS HttpServer)
+find_package(Qt6 REQUIRED COMPONENTS HttpServer)
 
 qt_add_executable(simple
     main.cpp

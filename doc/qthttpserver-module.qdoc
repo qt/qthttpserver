@@ -13,7 +13,7 @@
     CMakeLists.txt file:
 
     \code
-    find_package(Qt6 COMPONENTS HttpServer)
+    find_package(Qt6 REQUIRED COMPONENTS HttpServer)
     target_link_libraries(<project name> PUBLIC Qt::HttpServer)
     \endcode
 
