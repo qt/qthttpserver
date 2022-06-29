@@ -207,49 +207,6 @@ void tst_QHttpServerRouter::viewHandlerNoArg()
     static_assert(Args::PlaceholdersCount == 0,
                   "viewNonArg: Args::PlaceholdersCount == 0");
 
-    static_assert(Args::Last::IsRequest::Value == 0,
-                  "viewNonArg: Args::Last::IsRequest::Value == 0");
-    static_assert(Args::Last::IsRequest::Valid == 0,
-                  "viewNonArg: Args::Last::IsRequest::Valid == 0");
-    static_assert(Args::Last::IsResponder::Value == 0,
-                  "viewNonArg: Args::Last::IsResponder::Value == 0");
-    static_assert(Args::Last::IsResponder::Valid == 0,
-                  "viewNonArg: Args::Last::IsResponder::Valid == 0");
-    static_assert(Args::Last::IsSpecial::Value == 0,
-                  "viewNonArg: Args::Last::IsSpecial::Value == 0");
-    static_assert(Args::Last::IsSpecial::Valid == 0,
-                  "viewNonArg: Args::Last::IsSpecial::Valid == 0");
-    static_assert(Args::Last::IsSimple::Value == 0,
-                  "viewNonArg: Args::Last::IsSimple::Value == 0");
-    static_assert(Args::Last::IsSimple::Valid == 0,
-                  "viewNonArg: Args::Last::IsSimple::Valid == 0");
-    static_assert(Args::Last::Valid == 0,
-                  "viewOneArg: Args::Last::Valid");
-    static_assert(Args::Last::StaticAssert,
-                  "viewOneArg: Args::Last::StaticAssert");
-    static_assert(std::is_same<Args::Last::Type, std::false_type>::value,
-                  "viewNonArg: std::is_same<Args::Last::Type, std::false_type>");
-
-    using Arg1 = typename Args::template Arg<1>;
-    static_assert(Arg1::IsRequest::Value == 0,
-                  "viewNonArg: Args::Arg<1>::isRequest::Value == 0");
-    static_assert(Arg1::IsRequest::Valid == 0,
-                  "viewNonArg: Args::Arg<1>::IsRequest::Valid == 0");
-    static_assert(Arg1::IsResponder::Value == 0,
-                  "viewNonArg: Args::Arg<1>::IsResponder::Value == 0");
-    static_assert(Arg1::IsResponder::Valid == 0,
-                  "viewNonArg: Args::Arg<1>::IsResponder::Valid == 0");
-    static_assert(Arg1::IsSpecial::Value == 0,
-                  "viewNonArg: Args::Arg<1>::IsSpecial::Value == 0");
-    static_assert(Arg1::IsSpecial::Valid == 0,
-                  "viewNonArg: Args::Arg<1>::IsSpecial::Valid == 0");
-    static_assert(Arg1::Valid == 0,
-                  "viewOneArg: Args::Arg<1>::Valid");
-    static_assert(Arg1::StaticAssert,
-                  "viewOneArg: Args::Arg<1>::Valid::StaticAssert");
-    static_assert(std::is_same<Arg1::Type, std::false_type>::value,
-                  "viewNonArg: std::is_same<Args::Arg<1>::Type, std::false_type>");
-
     static_assert(Args::Valid, "viewNonArg: Args::Valid");
     static_assert(Args::StaticAssert, "viewNonArg: Args::StaticAssert");
 }

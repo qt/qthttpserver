@@ -36,22 +36,6 @@ struct FunctionTraitsHelper
     };
 };
 
-template<bool classMember, typename ReturnT>
-struct FunctionTraitsHelper<classMember, ReturnT>
-{
-    static constexpr const int ArgumentCount = 0;
-    static constexpr const int ArgumentIndexMax = -1;
-    static constexpr const bool IsClassMember = classMember;
-    using ReturnType = ReturnT;
-
-    template <int I>
-    struct Arg {
-        using Type = std::false_type;
-        using CleanType = Type;
-        static constexpr bool Defined = QMetaTypeId2<CleanType>::Defined;
-    };
-};
-
 template<typename T>
 struct FunctionTraits;
 
