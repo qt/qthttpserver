@@ -1,13 +1,5 @@
-# Generated from simple.pro.
-
 cmake_minimum_required(VERSION 3.16)
 project(simple LANGUAGES CXX)
-
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
 
 set(INSTALL_EXAMPLEDIR "examples/httpserver/simple")
 
@@ -16,17 +8,16 @@ find_package(Qt6 REQUIRED COMPONENTS HttpServer)
 qt_add_executable(simple
     main.cpp
 )
+
 target_link_libraries(simple PUBLIC
     Qt::HttpServer
 )
 
-
-# Resources:
 set(assets_resource_files
     "assets/qt-logo.png"
 )
 
-qt6_add_resources(simple "assets"
+qt_add_resources(simple "assets"
     PREFIX
         "/"
     FILES
