@@ -104,17 +104,11 @@ private:
                           QtPrivate::IndexesList<Cx...>,
                           QtPrivate::IndexesList<Px...>) const
     {
-        if constexpr (ViewTraits::Arguments::CapturableCount != 0) {
-            return std::bind(
-                std::forward<ViewHandler>(handler),
-                QVariant(match.captured(Cx + 1))
-                    .value<typename ViewTraits::Arguments::template Arg<Cx>::CleanType>()...,
-                QtPrivate::QHttpServerRouterPlaceholder<Px>{}...);
-        } else {
-            return std::bind(
-                std::forward<ViewHandler>(handler),
-                QtPrivate::QHttpServerRouterPlaceholder<Px>{}...);
-        }
+        return std::bind(
+            std::forward<ViewHandler>(handler),
+            QVariant(match.captured(Cx + 1))
+                .value<typename ViewTraits::Arguments::template Arg<Cx>::CleanType>()...,
+            QtPrivate::QHttpServerRouterPlaceholder<Px>{}...);
     }
 
     QScopedPointer<QHttpServerRouterPrivate> d_ptr;
