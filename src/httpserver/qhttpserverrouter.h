@@ -13,6 +13,7 @@
 
 #include <functional>
 #include <initializer_list>
+#include <memory>
 
 QT_BEGIN_NAMESPACE
 
@@ -41,6 +42,7 @@ class QHttpServerRouterPrivate;
 class Q_HTTPSERVER_EXPORT QHttpServerRouter
 {
     Q_DECLARE_PRIVATE(QHttpServerRouter)
+    Q_DISABLE_COPY_MOVE(QHttpServerRouter)
 
 public:
     QHttpServerRouter();
@@ -111,7 +113,7 @@ private:
             QtPrivate::QHttpServerRouterPlaceholder<Px>{}...);
     }
 
-    QScopedPointer<QHttpServerRouterPrivate> d_ptr;
+    std::unique_ptr<QHttpServerRouterPrivate> d_ptr;
 };
 
 QT_END_NAMESPACE

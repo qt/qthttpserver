@@ -10,6 +10,7 @@
 
 #include <functional> // for std::function
 #include <initializer_list>
+#include <memory>
 
 QT_BEGIN_NAMESPACE
 
@@ -53,7 +54,7 @@ protected:
     QHttpServerRouterRule(QHttpServerRouterRulePrivate *d);
 
 private:
-    QScopedPointer<QHttpServerRouterRulePrivate> d_ptr;
+    std::unique_ptr<QHttpServerRouterRulePrivate> d_ptr;
 
     friend class QHttpServerRouter;
 };
