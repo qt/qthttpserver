@@ -11,6 +11,8 @@
 #include <QtCore/qurlquery.h>
 #include <QtNetwork/qhostaddress.h>
 
+#include <memory>
+
 QT_BEGIN_NAMESPACE
 
 class QRegularExpression;
@@ -73,7 +75,7 @@ private:
 
     Q_HTTPSERVER_EXPORT explicit QHttpServerRequest(const QHostAddress &remoteAddress);
 
-    QScopedPointer<QHttpServerRequestPrivate> d;
+    std::unique_ptr<QHttpServerRequestPrivate> d;
 };
 
 QT_END_NAMESPACE
