@@ -14,7 +14,6 @@
 #include <QtNetwork/qtcpsocket.h>
 
 #if QT_CONFIG(ssl)
-#include <QtNetwork/qsslconfiguration.h>
 #include <QtNetwork/qsslserver.h>
 #endif
 

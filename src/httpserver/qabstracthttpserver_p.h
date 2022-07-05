@@ -23,6 +23,10 @@
 #include <QtWebSockets/qwebsocketserver.h>
 #endif // defined(QT_WEBSOCKETS_LIB)
 
+#if QT_CONFIG(ssl)
+#include <QtNetwork/qsslconfiguration.h>
+#endif
+
 QT_BEGIN_NAMESPACE
 
 class QHttpServerRequest;
