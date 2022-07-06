@@ -84,8 +84,11 @@ void QAbstractHttpServerPrivate::handleReadyRead(QTcpSocket *socket,
             static const auto signal = QMetaMethod::fromSignal(
                         &QAbstractHttpServer::newWebSocketConnection);
             if (q->isSignalConnected(signal)) {
-                QObject::disconnect(socket, &QTcpSocket::readyRead, nullptr, nullptr);
+                // Socket will now be managed by websocketServer
+                socket->disconnect();
                 socket->rollbackTransaction();
+                // And we can delete the request, as it's no longer used
+                delete request;
                 websocketServer.handleConnection(socket);
                 Q_EMIT socket->readyRead();
             } else {
