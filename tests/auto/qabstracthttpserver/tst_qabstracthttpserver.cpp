@@ -141,8 +141,8 @@ void tst_QAbstractHttpServer::websocket()
 
     QSignalSpy newConnectionSpy(&server, &HttpServer::newWebSocketConnection);
     QTRY_COMPARE(newConnectionSpy.count(), 2);
-    delete server.nextPendingWebSocketConnection();
-    delete server.nextPendingWebSocketConnection();
+    server.nextPendingWebSocketConnection();
+    server.nextPendingWebSocketConnection();
     delete s1;
     delete s2;
 #endif // defined(QT_WEBSOCKETS_LIB)
