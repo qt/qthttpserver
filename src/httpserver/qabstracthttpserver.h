@@ -14,6 +14,12 @@
 #include <QtNetwork/qssl.h>
 #endif
 
+#if defined(QT_WEBSOCKETS_LIB)
+#include <QtWebSockets/qwebsocket.h>
+#endif // defined(QT_WEBSOCKETS_LIB)
+
+#include <memory>
+
 QT_BEGIN_NAMESPACE
 
 class QHttpServerRequest;
@@ -23,7 +29,6 @@ class QSslConfiguration;
 class QSslKey;
 class QTcpServer;
 class QTcpSocket;
-class QWebSocket;
 
 class QAbstractHttpServerPrivate;
 class Q_HTTPSERVER_EXPORT QAbstractHttpServer : public QObject
@@ -54,7 +59,7 @@ Q_SIGNALS:
 
 public:
     bool hasPendingWebSocketConnections() const;
-    QWebSocket *nextPendingWebSocketConnection();
+    std::unique_ptr<QWebSocket> nextPendingWebSocketConnection();
 #endif // defined(QT_WEBSOCKETS_LIB)
 
 protected:

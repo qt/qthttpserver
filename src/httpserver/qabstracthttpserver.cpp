@@ -275,21 +275,18 @@ bool QAbstractHttpServer::hasPendingWebSocketConnections() const
 
 /*!
     Returns the next pending connection as a connected QWebSocket
-    object. QAbstractHttpServer does not take ownership of the
-    returned QWebSocket object. It is up to the caller to delete the
-    object explicitly when it will no longer be used, otherwise a
-    memory leak will occur. \c nullptr is returned if this function
-    is called when there are no pending connections.
+    object. \nullptr is returned if this function is called when
+    there are no pending connections.
 
     \note The returned QWebSocket object cannot be used from another
     thread.
 
     \sa newWebSocketConnection(), hasPendingWebSocketConnections()
 */
-QWebSocket *QAbstractHttpServer::nextPendingWebSocketConnection()
+std::unique_ptr<QWebSocket> QAbstractHttpServer::nextPendingWebSocketConnection()
 {
     Q_D(QAbstractHttpServer);
-    return d->websocketServer.nextPendingConnection();
+    return std::unique_ptr<QWebSocket>(d->websocketServer.nextPendingConnection());
 }
 #endif
 
