@@ -41,7 +41,7 @@ struct AfterRequestViewTraitsHelper : ViewTraits<ViewHandler, DisableStaticAsser
         using IsResponse = typename VTraits::template Special<I, QHttpServerResponse &&>;
         static_assert(IsResponse::AssertCondition,
                       "ViewHandler arguments error: "
-                      "QHttpServerResponse can only be passed as a universal reference");
+                      "QHttpServerResponse can only be passed as an rvalue reference");
 
         using IsSpecial = CheckAny<IsRequest, IsResponse>;
 
