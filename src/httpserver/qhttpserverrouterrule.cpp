@@ -239,7 +239,7 @@ bool QHttpServerRouterRule::matches(const QHttpServerRequest &request,
     \internal
 */
 bool QHttpServerRouterRule::createPathRegexp(std::initializer_list<QMetaType> metaTypes,
-                                             const QHash<QMetaType, QLatin1StringView> &converters)
+                                             const QHash<QMetaType, QString> &converters)
 {
     Q_D(QHttpServerRouterRule);
 
