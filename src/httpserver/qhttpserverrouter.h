@@ -49,7 +49,7 @@ public:
     ~QHttpServerRouter();
 
     template<typename Type>
-    bool addConverter(QLatin1StringView regexp) {
+    bool addConverter(QAnyStringView regexp) {
         static_assert(QMetaTypeId2<Type>::Defined,
                       "Type is not registered with Qt's meta-object system: "
                       "please apply Q_DECLARE_METATYPE() to it");
@@ -61,10 +61,10 @@ public:
         return true;
     }
 
-    void addConverter(QMetaType metaType, QLatin1StringView regexp);
+    void addConverter(QMetaType metaType, QAnyStringView regexp);
     void removeConverter(QMetaType metaType);
     void clearConverters();
-    const QHash<QMetaType, QLatin1StringView> &converters() const;
+    const QHash<QMetaType, QString> &converters() const;
 
     template<typename ViewHandler, typename ViewTraits = QHttpServerRouterViewTraits<ViewHandler>>
     bool addRule(std::unique_ptr<QHttpServerRouterRule> rule)

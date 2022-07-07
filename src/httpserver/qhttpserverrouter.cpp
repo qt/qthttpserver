@@ -16,29 +16,31 @@ QT_BEGIN_NAMESPACE
 
 Q_LOGGING_CATEGORY(lcRouter, "qt.httpserver.router")
 
+using namespace Qt::StringLiterals;
+
 /*!
     \internal
 */
-static const QHash<QMetaType, QLatin1StringView> defaultConverters = {
-    { QMetaType::fromType<int>(), QLatin1StringView("[+-]?\\d+") },
-    { QMetaType::fromType<long>(), QLatin1StringView("[+-]?\\d+") },
-    { QMetaType::fromType<long long>(), QLatin1StringView("[+-]?\\d+") },
-    { QMetaType::fromType<short>(), QLatin1StringView("[+-]?\\d+") },
+static const QHash<QMetaType, QString> defaultConverters = {
+    { QMetaType::fromType<int>(), u"[+-]?\\d+"_s },
+    { QMetaType::fromType<long>(), u"[+-]?\\d+"_s },
+    { QMetaType::fromType<long long>(), u"[+-]?\\d+"_s },
+    { QMetaType::fromType<short>(), u"[+-]?\\d+"_s },
 
-    { QMetaType::fromType<unsigned int>(), QLatin1StringView("[+]?\\d+") },
-    { QMetaType::fromType<unsigned long>(), QLatin1StringView("[+]?\\d+") },
-    { QMetaType::fromType<unsigned long long>(), QLatin1StringView("[+]?\\d+") },
-    { QMetaType::fromType<unsigned short>(), QLatin1StringView("[+]?\\d+") },
+    { QMetaType::fromType<unsigned int>(), u"[+]?\\d+"_s },
+    { QMetaType::fromType<unsigned long>(), u"[+]?\\d+"_s },
+    { QMetaType::fromType<unsigned long long>(), u"[+]?\\d+"_s },
+    { QMetaType::fromType<unsigned short>(), u"[+]?\\d+"_s },
 
-    { QMetaType::fromType<double>(), QLatin1StringView("[+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+)") },
-    { QMetaType::fromType<float>(), QLatin1StringView("[+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+)") },
+    { QMetaType::fromType<double>(), u"[+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+)"_s },
+    { QMetaType::fromType<float>(), u"[+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+)"_s },
 
-    { QMetaType::fromType<QString>(), QLatin1StringView("[^/]+") },
-    { QMetaType::fromType<QByteArray>(), QLatin1StringView("[^/]+") },
+    { QMetaType::fromType<QString>(), u"[^/]+"_s },
+    { QMetaType::fromType<QByteArray>(), u"[^/]+"_s },
 
-    { QMetaType::fromType<QUrl>(), QLatin1StringView(".*") },
+    { QMetaType::fromType<QUrl>(), u".*"_s },
 
-    { QMetaType::fromType<void>(), QLatin1StringView("") },
+    { QMetaType::fromType<void>(), u""_s },
 };
 
 /*!
@@ -76,7 +78,7 @@ static const QHash<QMetaType, QLatin1StringView> defaultConverters = {
     \endcode
 */
 
-/*! \fn template <typename Type> bool QHttpServerRouter::addConverter(QLatin1StringView regexp)
+/*! \fn template <typename Type> bool QHttpServerRouter::addConverter(QAnyStringView regexp)
 
     Adds a new converter for type \e Type matching regular expression \a regexp,
     and returns \c true if this was successful, otherwise returns \c false.
@@ -95,7 +97,7 @@ static const QHash<QMetaType, QLatin1StringView> defaultConverters = {
     Q_DECLARE_METATYPE(CustomArg);
 
     QHttpServerRouter router;
-    router.addConverter<CustomArg>(QLatin1StringView("[+-]?\\d+"));
+    router.addConverter<CustomArg>(u"[+-]?\\d+"));
 
     auto pageView = [] (const CustomArg &customArg) {
         qDebug("data: %d", customArg.data);
@@ -194,10 +196,10 @@ QHttpServerRouter::~QHttpServerRouter()
     If there is already a converter of type \a type, that converter's regexp
     is replaced with \a regexp.
 */
-void QHttpServerRouter::addConverter(QMetaType metaType, QLatin1StringView regexp)
+void QHttpServerRouter::addConverter(QMetaType metaType, QAnyStringView regexp)
 {
     Q_D(QHttpServerRouter);
-    d->converters[metaType] = regexp;
+    d->converters[metaType] = regexp.toString();
 }
 
 /*!
@@ -242,7 +244,7 @@ void QHttpServerRouter::clearConverters()
     \value QMetaType::QUrl
     \value QMetaType::Void       An empty converter.
 */
-const QHash<QMetaType, QLatin1StringView> &QHttpServerRouter::converters() const
+const QHash<QMetaType, QString> &QHttpServerRouter::converters() const
 {
     Q_D(const QHttpServerRouter);
     return d->converters;
