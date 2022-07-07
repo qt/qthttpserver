@@ -71,10 +71,11 @@ public:
         afterRequestHelper<ViewTraits, ViewHandler>(std::move(viewHandler));
     }
 
+private:
     using AfterRequestHandler =
         std::function<QHttpServerResponse(QHttpServerResponse &&response,
                       const QHttpServerRequest &request)>;
-private:
+
     template<typename ViewTraits, typename ViewHandler>
     void afterRequestHelper(ViewHandler &&viewHandler) {
         auto handler = [viewHandler](QHttpServerResponse &&resp,
