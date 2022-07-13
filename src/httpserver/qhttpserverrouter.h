@@ -17,23 +17,6 @@
 
 QT_BEGIN_NAMESPACE
 
-namespace QtPrivate {
-    template<int> struct QHttpServerRouterPlaceholder {};
-}
-
-QT_END_NAMESPACE
-
-namespace std {
-
-template<int N>
-struct is_placeholder<QT_PREPEND_NAMESPACE(QtPrivate::QHttpServerRouterPlaceholder<N>)> :
-    integral_constant<int , N + 1>
-{};
-
-}
-
-QT_BEGIN_NAMESPACE
-
 class QTcpSocket;
 class QHttpServerRequest;
 class QHttpServerRouterRule;
@@ -75,10 +58,8 @@ public:
                       const QRegularExpressionMatch &match) const
     {
         return bindCapturedImpl<ViewHandler, ViewTraits>(
-                std::forward<ViewHandler>(handler),
-                match,
-                typename ViewTraits::Arguments::CapturableIndexes{},
-                typename ViewTraits::Arguments::PlaceholdersIndexes{});
+                std::forward<ViewHandler>(handler), match,
+                typename ViewTraits::Arguments::CapturableIndexes{});
     }
 
     bool handleRequest(const QHttpServerRequest &request,
@@ -95,18 +76,28 @@ private:
     bool addRuleImpl(std::unique_ptr<QHttpServerRouterRule> rule,
                      std::initializer_list<QMetaType> metaTypes);
 
-    template<typename ViewHandler, typename ViewTraits, int ... Cx, int ... Px>
-    typename ViewTraits::BindableType
-            bindCapturedImpl(ViewHandler &&handler,
-                          const QRegularExpressionMatch &match,
-                          QtPrivate::IndexesList<Cx...>,
-                          QtPrivate::IndexesList<Px...>) const
+    // Implementation of C++20 std::bind_front() in C++17
+    template<typename F, typename... Args>
+    auto bind_front(F &&f, Args &&...args) const
     {
-        return std::bind(
-            std::forward<ViewHandler>(handler),
-            QVariant(match.captured(Cx + 1))
-                .value<typename ViewTraits::Arguments::template Arg<Cx>::CleanType>()...,
-            QtPrivate::QHttpServerRouterPlaceholder<Px>{}...);
+        return [f = std::forward<F>(f),
+                args = std::make_tuple(std::forward<Args>(args)...)](auto &&...callArgs) {
+            return std::apply(f,
+                              std::tuple_cat(args,
+                                             std::forward_as_tuple(std::forward<decltype(callArgs)>(
+                                                     callArgs)...)));
+        };
+    }
+
+    template<typename ViewHandler, typename ViewTraits, int... Cx>
+    typename ViewTraits::BindableType bindCapturedImpl(ViewHandler &&handler,
+                                                       const QRegularExpressionMatch &match,
+                                                       QtPrivate::IndexesList<Cx...>) const
+    {
+        return bind_front(
+                std::forward<ViewHandler>(handler),
+                QVariant(match.captured(Cx + 1))
+                        .value<typename ViewTraits::Arguments::template Arg<Cx>::CleanType>()...);
     }
 
     std::unique_ptr<QHttpServerRouterPrivate> d_ptr;
