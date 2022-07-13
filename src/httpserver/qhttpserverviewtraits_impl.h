@@ -18,12 +18,11 @@ QT_BEGIN_NAMESPACE
 
 namespace QtPrivate {
 
-template<bool classMember, typename ReturnT, typename ... Args>
+template<typename ReturnT, typename... Args>
 struct FunctionTraitsHelper
 {
     static constexpr const int ArgumentCount = sizeof ... (Args);
     static constexpr const int ArgumentIndexMax = ArgumentCount - 1;
-    static constexpr const bool IsClassMember = classMember;
     using ReturnType = ReturnT;
 
     template <int I>
@@ -42,17 +41,15 @@ struct FunctionTraits;
 template<typename T>
 struct FunctionTraits : public FunctionTraits<decltype(&T::operator())>{};
 
-template<typename ReturnT, typename ... Args>
-struct FunctionTraits<ReturnT (*)(Args...)>
-    : public FunctionTraitsHelper<false, ReturnT, Args...>
+template<typename ReturnT, typename... Args>
+struct FunctionTraits<ReturnT (*)(Args...)> : public FunctionTraitsHelper<ReturnT, Args...>
 {
 };
 
-template<class ReturnT, class ClassT, class ...Args>
+template<class ReturnT, class ClassT, class... Args>
 struct FunctionTraits<ReturnT (ClassT::*)(Args...) const>
-    : public FunctionTraitsHelper<true, ReturnT, Args...>
+    : public FunctionTraitsHelper<ReturnT, Args...>
 {
-    using classType = ClassT;
 };
 
 template<typename ... T>
