@@ -43,16 +43,6 @@ public:
         Connect = 0x0080,
 
         All = Get | Put | Delete | Post | Head | Options | Patch | Connect,
-
-        // Include upper-case aliases for the sake of parsing from strings:
-        GET     = Get,
-        PUT     = Put,
-        DELETE  = Delete,
-        POST    = Post,
-        HEAD    = Head,
-        OPTIONS = Options,
-        PATCH   = Patch,
-        CONNECT = Connect
     };
     Q_ENUM(Method)
     Q_DECLARE_FLAGS(Methods, Method)
