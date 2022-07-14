@@ -29,7 +29,7 @@ struct RouterViewTraitsHelper : ViewTraits<ViewHandler, DisableStaticAssert> {
         using IsResponder = typename VTraits::template Special<I, QHttpServerResponder &&>;
         static_assert(IsResponder::AssertCondition,
                       "ViewHandler arguments error: "
-                      "QHttpServerResponder can only be passed as a universal reference");
+                      "QHttpServerResponder can only be passed as an rvalue reference");
 
         using IsSpecial = CheckAny<IsRequest, IsResponder>;
 
