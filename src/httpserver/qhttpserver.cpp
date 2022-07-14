@@ -83,6 +83,18 @@ QHttpServer::QHttpServer(QObject *parent)
 
     \endcode
 
+    The request handler may return \c {QFuture<QHttpServerResponse>} if
+    asynchronous processing is desired:
+
+    \code
+    server.route("/feature/", [] (int id) {
+        return QtConcurrent::run([] () {
+            return QHttpServerResponse("the future is coming");
+        });
+    });
+    \endcode
+
+
     \sa QHttpServerRouter::addRule
 */
 
@@ -159,6 +171,17 @@ void QHttpServer::sendResponse(QHttpServerResponse &&response,
         response = afterRequestHandler(std::move(response), request);
     response.write(makeResponder(request, socket));
 }
+
+#if QT_CONFIG(future)
+void QHttpServer::sendResponse(QFuture<QHttpServerResponse> &&response,
+                               const QHttpServerRequest &request,
+                               QTcpSocket *socket)
+{
+    response.then(this, [this, &request, socket](QHttpServerResponse &&response) {
+        sendResponse(std::move(response), request, socket);
+    });
+}
+#endif // QT_CONFIG(future)
 
 /*!
     \internal

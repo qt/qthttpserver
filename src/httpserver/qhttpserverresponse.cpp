@@ -214,15 +214,6 @@ QHttpServerResponse QHttpServerResponse::fromFile(const QString &fileName)
 }
 
 /*!
-    \internal
-*/
-QHttpServerResponse::QHttpServerResponse(QHttpServerResponsePrivate *d)
-    : d_ptr(d)
-{
-    d->derived = true;
-}
-
-/*!
     Returns the response body.
 */
 QByteArray QHttpServerResponse::data() const

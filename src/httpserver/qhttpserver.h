@@ -12,6 +12,10 @@
 #include <QtHttpServer/qhttpserverrouterviewtraits.h>
 #include <QtHttpServer/qhttpserverviewtraits.h>
 
+#if QT_CONFIG(future)
+#  include <QtCore/qfuture.h>
+#endif
+
 #include <tuple>
 
 QT_BEGIN_NAMESPACE
@@ -38,11 +42,15 @@ class Q_HTTPSERVER_EXPORT QHttpServer final : public QAbstractHttpServer
 
     template<typename T>
     using ResponseType =
-        typename std::conditional<
-            std::is_base_of<QHttpServerResponse, T>::value,
-            T,
+#if QT_CONFIG(future)
+        std::conditional_t<
+            std::is_same_v<QFuture<QHttpServerResponse>, T>,
+            QFuture<QHttpServerResponse>,
             QHttpServerResponse
-        >::type;
+        >;
+#else
+        QHttpServerResponse;
+#endif
 
 public:
     explicit QHttpServer(QObject *parent = nullptr);
@@ -156,6 +164,12 @@ private:
     void sendResponse(QHttpServerResponse &&response,
                       const QHttpServerRequest &request,
                       QTcpSocket *socket);
+
+#if QT_CONFIG(future)
+    void sendResponse(QFuture<QHttpServerResponse> &&response,
+                      const QHttpServerRequest &request,
+                      QTcpSocket *socket);
+#endif
 };
 
 QT_END_NAMESPACE
