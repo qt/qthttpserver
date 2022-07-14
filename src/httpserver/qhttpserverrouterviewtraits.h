@@ -45,8 +45,7 @@ struct RouterViewTraitsHelper : ViewTraits<ViewHandler, DisableStaticAssert> {
 
             static_assert(StaticAssert,
                           "ViewHandler arguments error: "
-                          "Type is not registered, please use the Q_DECLARE_METATYPE macro "
-                          "to make it known to Qt's meta-object system");
+                          "Type is not copy constructible");
         };
 
         using CheckOk = CheckAny<IsSimple, IsSpecial>;
@@ -76,6 +75,7 @@ struct RouterViewTraitsHelper : ViewTraits<ViewHandler, DisableStaticAssert> {
             static constexpr std::size_t Count = FunctionTraits::ArgumentCount;
             static constexpr std::size_t CapturableCount =
                     (0 + ... + static_cast<std::size_t>(FunctionTraits::template Arg<I>::CopyConstructible));
+
             static constexpr std::size_t PlaceholdersCount = Count - CapturableCount;
 
             static constexpr bool Valid = (Arg<I>::Valid && ...);
