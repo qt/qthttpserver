@@ -117,9 +117,8 @@ private:
         auto routerHandler = [this, viewHandler = std::forward<ViewHandler>(viewHandler)] (
                     const QRegularExpressionMatch &match,
                     const QHttpServerRequest &request,
-                    QTcpSocket *socket) mutable {
-            auto boundViewHandler = router()->bindCaptured<ViewHandler, ViewTraits>(
-                    std::move(viewHandler), match);
+                    QTcpSocket *socket) {
+            auto boundViewHandler = router()->bindCaptured(viewHandler, match);
             responseImpl<ViewTraits>(boundViewHandler, request, socket);
         };
 

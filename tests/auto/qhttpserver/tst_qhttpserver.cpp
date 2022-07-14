@@ -168,6 +168,7 @@ private slots:
     void checkRouteLambdaCapture();
     void afterRequest();
     void disconnectedInEventLoop();
+    void multipleRequests();
 
 private:
     void checkReply(QNetworkReply *reply, const QString &response);
@@ -985,6 +986,27 @@ void tst_QHttpServer::disconnectedInEventLoop()
     connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
     reply->deleteLater();
+}
+
+void tst_QHttpServer::multipleRequests()
+{
+    // Test to ensure that the passed lambda is not moved away after the
+    // first handled request
+    httpserver.route("/do-not-move", [v = std::vector<int>{1, 2, 3}] () {
+        return QString::number(v.size());
+    });
+
+    checkReply(networkAccessManager.get(
+                   QNetworkRequest(QUrl(urlBase.arg("/do-not-move")))),
+               "3");
+    if (QTest::currentTestFailed())
+        return;
+
+    checkReply(networkAccessManager.get(
+                   QNetworkRequest(QUrl(urlBase.arg("/do-not-move")))),
+               "3");
+    if (QTest::currentTestFailed())
+        return;
 }
 
 QT_END_NAMESPACE
