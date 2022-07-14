@@ -78,6 +78,8 @@ private:
     std::unique_ptr<QHttpServerRequestPrivate> d;
 };
 
+Q_DECLARE_OPERATORS_FOR_FLAGS(QHttpServerRequest::Methods)
+
 QT_END_NAMESPACE
 
 #endif // QHTTPSERVERREQUEST_H
