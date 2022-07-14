@@ -50,10 +50,6 @@ public:
 
     template<typename Type>
     bool addConverter(QAnyStringView regexp) {
-        static_assert(QMetaTypeId2<Type>::Defined,
-                      "Type is not registered with Qt's meta-object system: "
-                      "please apply Q_DECLARE_METATYPE() to it");
-
         if (!QMetaType::registerConverter<QString, Type>())
             return false;
 
