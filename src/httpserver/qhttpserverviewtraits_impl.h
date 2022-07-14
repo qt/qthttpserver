@@ -32,7 +32,7 @@ struct FunctionTraitsHelper
 
         using CleanType = q20::remove_cvref_t<Type>;
 
-        static constexpr bool Defined = QMetaTypeId2<CleanType>::Defined;
+        static constexpr bool CopyConstructible = std::is_copy_constructible_v<CleanType>;
     };
 };
 
