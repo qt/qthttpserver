@@ -76,9 +76,11 @@ private:
 
 void tst_QHttpServerRouter::initTestCase()
 {
-    httpserver.route("/page/", [] (const quint64 &page, QHttpServerResponder &&responder) {
+    auto pageHandler = [] (const quint64 &page, QHttpServerResponder &&responder) {
         responder.write(QString("page: %1").arg(page).toUtf8(), "text/plain");
-    });
+    };
+
+    httpserver.route("/page/", pageHandler);
 
     httpserver.route("/post-only", QHttpServerRequest::Method::Post,
                      [] (QHttpServerResponder &&responder) {
