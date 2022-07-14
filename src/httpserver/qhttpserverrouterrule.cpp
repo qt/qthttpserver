@@ -49,24 +49,6 @@ auto wrap(std::initializer_list<QMetaType> l) { return Wrapper{l}; }
 } // unnamed namespace
 
 /*!
-    \internal
-*/
-static QHttpServerRequest::Methods strToMethods(const char *strMethods)
-{
-    QHttpServerRequest::Methods methods;
-
-    bool ok = false;
-    static const auto methodEnum = QMetaEnum::fromType<QHttpServerRequest::Method>();
-    const int val = methodEnum.keysToValue(strMethods, &ok);
-    if (ok)
-        methods = static_cast<decltype(methods)>(val);
-    else
-        qCWarning(lcRouterRule, "Can not convert %s to QHttpServerRequest::Method", strMethods);
-
-    return methods;
-}
-
-/*!
     \class QHttpServerRouterRule
     \since 6.4
     \brief The QHttpServerRouterRule is the base class for QHttpServerRouter rules.
@@ -151,22 +133,6 @@ QHttpServerRouterRule::QHttpServerRouterRule(const QString &pathPattern,
         new QHttpServerRouterRulePrivate{pathPattern,
                                          methods,
                                          std::move(routerHandler), {}})
-{
-}
-
-/*!
-    Constructs a rule with pathPattern \a pathPattern, methods \a methods
-    and routerHandler \a routerHandler.
-
-    \note \a methods shall be joined with | as separator (not spaces or commas)
-    and that either the upper-case or the capitalised form may be used.
-*/
-QHttpServerRouterRule::QHttpServerRouterRule(const QString &pathPattern,
-                                             const char *methods,
-                                             RouterHandler routerHandler)
-    : QHttpServerRouterRule(pathPattern,
-                            strToMethods(methods),
-                            std::move(routerHandler))
 {
 }
 

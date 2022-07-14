@@ -211,19 +211,22 @@ void tst_QHttpServer::initTestCase()
         return "Hello world post";
     });
 
-    httpserver.route("/post-and-get", "GET|POST", [] (const QHttpServerRequest &request) {
-        if (request.method() == QHttpServerRequest::Method::Get)
-            return "Hello world get";
-        else if (request.method() == QHttpServerRequest::Method::Post)
-            return "Hello world post";
+    httpserver.route("/post-and-get",
+                     QHttpServerRequest::Method::Get | QHttpServerRequest::Method::Post,
+                     [](const QHttpServerRequest &request) {
+                         if (request.method() == QHttpServerRequest::Method::Get)
+                             return "Hello world get";
+                         else if (request.method() == QHttpServerRequest::Method::Post)
+                             return "Hello world post";
 
-        return "This should not work";
-    });
+                         return "This should not work";
+                     });
 
-    httpserver.route("/any", "All", [] (const QHttpServerRequest &request) {
-        static const auto metaEnum = QMetaEnum::fromType<QHttpServerRequest::Method>();
-        return metaEnum.valueToKey(static_cast<int>(request.method()));
-    });
+    httpserver.route(
+            "/any", QHttpServerRequest::Method::All, [](const QHttpServerRequest &request) {
+                static const auto metaEnum = QMetaEnum::fromType<QHttpServerRequest::Method>();
+                return metaEnum.valueToKey(static_cast<int>(request.method()));
+            });
 
     httpserver.route("/page/", [] (const qint32 number) {
         return QString("page: %1").arg(number);
@@ -276,9 +279,8 @@ void tst_QHttpServer::initTestCase()
         return QString("data = %1").arg(customArg.data);
     });
 
-    httpserver.route("/post-body", "POST", [] (const QHttpServerRequest &request) {
-        return request.body();
-    });
+    httpserver.route("/post-body", QHttpServerRequest::Method::Post,
+                     [](const QHttpServerRequest &request) { return request.body(); });
 
     httpserver.route("/file/", [] (const QString &file) {
         return QHttpServerResponse::fromFile(QFINDTESTDATA("data/"_L1 + file));
@@ -866,26 +868,6 @@ void tst_QHttpServer::invalidRouterArguments()
     QCOMPARE(
         httpserver.route("/datetime/", [] (const QDateTime &datetime) {
             return QString("datetime: %1").arg(datetime.toString());
-        }),
-        false);
-
-    QTest::ignoreMessage(QtWarningMsg, "Can not convert GeT to QHttpServerRequest::Method");
-    QCOMPARE(
-        httpserver.route("/invalid-rule-method", "GeT", [] () {
-            return "";
-        }),
-        false);
-
-    QTest::ignoreMessage(QtWarningMsg, "Can not convert Garbage to QHttpServerRequest::Method");
-    QCOMPARE(
-        httpserver.route("/invalid-rule-method", "Garbage", [] () {
-            return "";
-        }),
-        false);
-
-    QCOMPARE(
-        httpserver.route("/invalid-rule-method", "Unknown", [] () {
-            return "";
         }),
         false);
 
