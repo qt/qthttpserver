@@ -39,7 +39,7 @@ template<typename T>
 struct FunctionTraits;
 
 template<typename T>
-struct FunctionTraits : public FunctionTraits<decltype(&T::operator())>{};
+struct FunctionTraits : public FunctionTraits<decltype(&q20::remove_cvref_t<T>::operator())>{};
 
 template<typename ReturnT, typename... Args>
 struct FunctionTraits<ReturnT (*)(Args...)> : public FunctionTraitsHelper<ReturnT, Args...>
