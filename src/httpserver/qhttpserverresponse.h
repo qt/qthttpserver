@@ -13,7 +13,7 @@ QT_BEGIN_NAMESPACE
 class QJsonObject;
 
 class QHttpServerResponsePrivate;
-class Q_HTTPSERVER_EXPORT QHttpServerResponse
+class Q_HTTPSERVER_EXPORT QHttpServerResponse final
 {
     Q_DECLARE_PRIVATE(QHttpServerResponse)
     Q_DISABLE_COPY(QHttpServerResponse)
@@ -48,7 +48,7 @@ public:
                         QByteArray &&data,
                         const StatusCode status = StatusCode::Ok);
 
-    virtual ~QHttpServerResponse();
+    ~QHttpServerResponse();
     static QHttpServerResponse fromFile(const QString &fileName);
 
     QByteArray data() const;
@@ -86,11 +86,9 @@ public:
 
     QList<QByteArray> headers(const QByteArray &name) const;
 
-    virtual void write(QHttpServerResponder &&responder) const;
+    void write(QHttpServerResponder &&responder) const;
 
 protected:
-    QHttpServerResponse(QHttpServerResponsePrivate *d);
-
     std::unique_ptr<QHttpServerResponsePrivate> d_ptr;
 };
 

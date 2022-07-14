@@ -42,13 +42,6 @@ qt_internal_extend_target(HttpServer CONDITION TARGET Qt::WebSockets
         Qt::WebSocketsPrivate
 )
 
-qt_internal_extend_target(HttpServer CONDITION TARGET Qt::Concurrent
-    SOURCES
-        qhttpserverfutureresponse.cpp qhttpserverfutureresponse.h
-    PUBLIC_LIBRARIES
-        Qt::Concurrent
-)
-
 qt_internal_add_docs(HttpServer
                      ../../doc/config/qthttpserver.qdocconf
 )

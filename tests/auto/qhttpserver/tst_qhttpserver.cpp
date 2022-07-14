@@ -5,10 +5,6 @@
 #include <QtHttpServer/qhttpserverrequest.h>
 #include <QtHttpServer/qhttpserverrouterrule.h>
 
-#if QT_CONFIG(concurrent)
-#  include <QtHttpServer/qhttpserverfutureresponse.h>
-#endif
-
 #include <private/qhttpserverrouterrule_p.h>
 #include <private/qhttpserverliterals_p.h>
 
@@ -334,16 +330,14 @@ void tst_QHttpServer::initTestCase()
     });
 
 #if QT_CONFIG(concurrent)
-    httpserver.route("/future/", [] (int id) -> QHttpServerFutureResponse {
-        if (id == 0)
-            return QHttpServerResponse::StatusCode::NotFound;
+    httpserver.route("/future/", [] (int id) {
+        return QtConcurrent::run([id] () -> QHttpServerResponse {
+             if (id == 0)
+                return QHttpServerResponse::StatusCode::NotFound;
 
-        auto future = QtConcurrent::run([] () {
             QTest::qSleep(500);
             return QHttpServerResponse("future is coming");
         });
-
-        return future;
     });
 #endif
 
