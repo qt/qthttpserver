@@ -18,3 +18,8 @@ qt_internal_add_test(tst_qhttpserver
         Qt::HttpServerPrivate
     TESTDATA ${test_data}
 )
+
+qt_internal_extend_target(tst_qhttpserver CONDITION QT_FEATURE_concurrent
+    PUBLIC_LIBRARIES
+        Qt::Concurrent
+)
