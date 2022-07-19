@@ -16,8 +16,8 @@ qt_add_executable(afterrequest
     main.cpp
 )
 
-target_link_libraries(afterrequest PUBLIC
-    Qt::HttpServer
+target_link_libraries(afterrequest PRIVATE
+    Qt6::HttpServer
 )
 
 install(TARGETS afterrequest

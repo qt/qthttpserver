@@ -16,8 +16,8 @@ qt_add_executable(simple
     main.cpp
 )
 
-target_link_libraries(simple PUBLIC
-    Qt::HttpServer
+target_link_libraries(simple PRIVATE
+    Qt6::HttpServer
 )
 
 set(assets_resource_files
