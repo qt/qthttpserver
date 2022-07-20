@@ -43,6 +43,7 @@ static const std::map<QHttpServerResponder::StatusCode, QByteArray> statusString
 #define XX(name, string) { QHttpServerResponder::StatusCode::name, QByteArrayLiteral(string) }
     XX(Continue, "Continue"),
     XX(SwitchingProtocols, "Switching Protocols"),
+    XX(Processing, "Processing"),
     XX(Ok, "OK"),
     XX(Created, "Created"),
     XX(Accepted, "Accepted"),
