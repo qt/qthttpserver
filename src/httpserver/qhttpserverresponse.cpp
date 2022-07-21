@@ -154,7 +154,9 @@ QHttpServerResponse::QHttpServerResponse(const QByteArray &mimeType,
                                          const StatusCode status)
     : d_ptr(new QHttpServerResponsePrivate(QByteArray(data), status))
 {
-    setHeader(QHttpServerLiterals::contentTypeHeader(), mimeType);
+    if (!mimeType.isEmpty()) {
+        setHeader(QHttpServerLiterals::contentTypeHeader(), mimeType);
+    }
 }
 
 QHttpServerResponse::QHttpServerResponse(QByteArray &&mimeType,
@@ -162,7 +164,9 @@ QHttpServerResponse::QHttpServerResponse(QByteArray &&mimeType,
                                          const StatusCode status)
     : d_ptr(new QHttpServerResponsePrivate(QByteArray(data), status))
 {
-    setHeader(QHttpServerLiterals::contentTypeHeader(), std::move(mimeType));
+    if (!mimeType.isEmpty()) {
+        setHeader(QHttpServerLiterals::contentTypeHeader(), std::move(mimeType));
+    }
 }
 
 QHttpServerResponse::QHttpServerResponse(const QByteArray &mimeType,
@@ -170,7 +174,9 @@ QHttpServerResponse::QHttpServerResponse(const QByteArray &mimeType,
                                          const StatusCode status)
     : d_ptr(new QHttpServerResponsePrivate(std::move(data), status))
 {
-    setHeader(QHttpServerLiterals::contentTypeHeader(), mimeType);
+    if (!mimeType.isEmpty()) {
+        setHeader(QHttpServerLiterals::contentTypeHeader(), mimeType);
+    }
 }
 
 QHttpServerResponse::QHttpServerResponse(QByteArray &&mimeType,
@@ -178,7 +184,9 @@ QHttpServerResponse::QHttpServerResponse(QByteArray &&mimeType,
                                          const StatusCode status)
     : d_ptr(new QHttpServerResponsePrivate(std::move(data), status))
 {
-    setHeader(QHttpServerLiterals::contentTypeHeader(), std::move(mimeType));
+    if (!mimeType.isEmpty()) {
+        setHeader(QHttpServerLiterals::contentTypeHeader(), std::move(mimeType));
+    }
 }
 
 /*!
