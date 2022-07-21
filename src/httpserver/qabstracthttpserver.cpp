@@ -79,9 +79,9 @@ void QAbstractHttpServerPrivate::handleReadyRead(QTcpSocket *socket,
 
     qCDebug(lcHttpServer) << "Request:" << *request;
 
+#if defined(QT_WEBSOCKETS_LIB)
     if (request->d->upgrade) { // Upgrade
         const auto &upgradeValue = request->value(QByteArrayLiteral("upgrade"));
-#if defined(QT_WEBSOCKETS_LIB)
         if (upgradeValue.compare(QByteArrayLiteral("websocket"), Qt::CaseInsensitive) == 0) {
             static const auto signal = QMetaMethod::fromSignal(
                         &QAbstractHttpServer::newWebSocketConnection);
@@ -101,8 +101,8 @@ void QAbstractHttpServerPrivate::handleReadyRead(QTcpSocket *socket,
             }
             return;
         }
-#endif
     }
+#endif
 
     socket->commitTransaction();
     request->d->handling = true;
