@@ -13,13 +13,13 @@ list(APPEND test_data "data/")
 qt_internal_add_test(tst_qhttpserver
     SOURCES
         tst_qhttpserver.cpp
-    PUBLIC_LIBRARIES
+    LIBRARIES
         Qt::HttpServer
         Qt::HttpServerPrivate
     TESTDATA ${test_data}
 )
 
 qt_internal_extend_target(tst_qhttpserver CONDITION QT_FEATURE_concurrent
-    PUBLIC_LIBRARIES
+    LIBRARIES
         Qt::Concurrent
 )
