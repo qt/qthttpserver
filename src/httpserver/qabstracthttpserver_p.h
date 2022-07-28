@@ -19,6 +19,8 @@
 
 #include <private/qobject_p.h>
 
+#include <QtCore/qcoreapplication.h>
+
 #if defined(QT_WEBSOCKETS_LIB)
 #include <QtWebSockets/qwebsocketserver.h>
 #endif // defined(QT_WEBSOCKETS_LIB)
@@ -40,7 +42,7 @@ public:
 
 #if defined(QT_WEBSOCKETS_LIB)
     QWebSocketServer websocketServer {
-        QLatin1StringView("QtHttpServer"),
+        QCoreApplication::applicationName() + QLatin1Char('/') + QCoreApplication::applicationVersion(),
         QWebSocketServer::NonSecureMode
     };
 #endif // defined(QT_WEBSOCKETS_LIB)
