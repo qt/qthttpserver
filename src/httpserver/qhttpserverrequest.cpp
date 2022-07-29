@@ -32,7 +32,7 @@ Q_HTTPSERVER_EXPORT QDebug operator<<(QDebug debug, const QHttpServerRequest &re
             firstHeader = false;
         else
             debug << ", ";
-        debug << "(" << i.key() << ": " << i.value().toString() << ")";
+        debug << "(" << i->first << ": " << i->second << ")";
     }
     debug << ")";
     debug << "(RemoteHost: " << request.remoteAddress() << ")";
@@ -542,12 +542,9 @@ QHttpServerRequest::Method QHttpServerRequest::method() const
 /*!
     Returns all the request headers.
 */
-QVariantMap QHttpServerRequest::headers() const
+QList<QPair<QByteArray, QByteArray>> QHttpServerRequest::headers() const
 {
-    QVariantMap ret;
-    for (auto it : d->parser.headers())
-        ret.insert(QString::fromUtf8(it.first), it.second);
-    return ret;
+    return d->parser.headers();
 }
 
 /*!
