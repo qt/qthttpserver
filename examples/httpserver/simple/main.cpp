@@ -6,7 +6,7 @@
 
 static inline QString host(const QHttpServerRequest &request)
 {
-    return request.headers()[QStringLiteral("Host")].toString();
+    return QString::fromLatin1(request.value("Host"));
 }
 
 int main(int argc, char *argv[])

@@ -625,7 +625,7 @@ void tst_QHttpServer::routeGet()
 void tst_QHttpServer::routeKeepAlive()
 {
     httpserver.route("/keep-alive", [] (const QHttpServerRequest &req) -> QHttpServerResponse {
-        if (!req.headers()["Connection"].toByteArray().contains("keep-alive"))
+        if (!req.value("Connection").contains("keep-alive"))
             return QHttpServerResponse::StatusCode::NotFound;
 
         return QString("header: %1, query: %2, body: %3, method: %4")
