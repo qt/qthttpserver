@@ -165,6 +165,7 @@ private slots:
     void afterRequest();
     void disconnectedInEventLoop();
     void multipleRequests();
+    void pipelinedRequests();
 
 private:
     void checkReply(QNetworkReply *reply, const QString &response);
@@ -983,6 +984,20 @@ void tst_QHttpServer::multipleRequests()
                "3");
     if (QTest::currentTestFailed())
         return;
+}
+
+void tst_QHttpServer::pipelinedRequests()
+{
+    QNetworkReply *replies[10];
+
+    for (std::size_t i = 0; i < std::size(replies); i++) {
+        QNetworkRequest req(QUrl(urlBase.arg("/user/") + QString::number(i)));
+        req.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
+        replies[i] = networkAccessManager.get(req);
+    }
+
+    for (std::size_t i = 0; i < std::size(replies); i++)
+        checkReply(replies[i], QString::number(i));
 }
 
 QT_END_NAMESPACE

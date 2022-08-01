@@ -111,6 +111,8 @@ void QAbstractHttpServerPrivate::handleReadyRead(QTcpSocket *socket,
     request->d->handling = false;
     if (socket->state() == QAbstractSocket::UnconnectedState)
         socket->deleteLater();
+    else if (socket->bytesAvailable() > 0)
+        QMetaObject::invokeMethod(socket, &QAbstractSocket::readyRead, Qt::QueuedConnection);
 }
 
 /*!
