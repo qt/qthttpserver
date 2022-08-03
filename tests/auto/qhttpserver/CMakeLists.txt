@@ -1,5 +1,9 @@
 # Generated from qhttpserver.pro.
 
+if(NOT QT_FEATURE_private_tests)
+    return()
+endif()
+
 #####################################################################
 ## tst_qhttpserver Test:
 #####################################################################
