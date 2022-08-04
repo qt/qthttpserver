@@ -51,6 +51,9 @@ static const std::map<QHttpServerResponder::StatusCode, QByteArray> statusString
     XX(NoContent, "No Content"),
     XX(ResetContent, "Reset Content"),
     XX(PartialContent, "Partial Content"),
+    XX(MultiStatus, "Multi-Status"),
+    XX(AlreadyReported, "Already Reported"),
+    XX(IMUsed, "I'm Used"),
     XX(MultipleChoices, "Multiple Choices"),
     XX(MovedPermanently, "Moved Permanently"),
     XX(Found, "Found"),
@@ -58,8 +61,10 @@ static const std::map<QHttpServerResponder::StatusCode, QByteArray> statusString
     XX(NotModified, "Not Modified"),
     XX(UseProxy, "Use Proxy"),
     XX(TemporaryRedirect, "Temporary Redirect"),
+    XX(PermanentRedirect, "Permanent Redirect"),
     XX(BadRequest, "Bad Request"),
     XX(Unauthorized, "Unauthorized"),
+    XX(PaymentRequired, "Payment Required"),
     XX(Forbidden, "Forbidden"),
     XX(NotFound, "Not Found"),
     XX(MethodNotAllowed, "Method Not Allowed"),
@@ -75,12 +80,28 @@ static const std::map<QHttpServerResponder::StatusCode, QByteArray> statusString
     XX(UnsupportedMediaType, "Unsupported Media Type"),
     XX(RequestRangeNotSatisfiable, "Requested Range Not Satisfiable"),
     XX(ExpectationFailed, "Expectation Failed"),
+    XX(ImATeapot, "I'm a teapot"),
+    XX(MisdirectedRequest, "Misdirected Request"),
+    XX(UnprocessableEntity, "Unprocessable Entity"),
+    XX(Locked, "Locked"),
+    XX(FailedDependency, "Failed Dependency"),
+    XX(UpgradeRequired, "Upgrade Required"),
+    XX(PreconditionRequired, "Precondition Required"),
+    XX(TooManyRequests, "Too Many Requests"),
+    XX(RequestHeaderFieldsTooLarge, "Request Header Fields Too Large"),
+    XX(UnavailableForLegalReasons, "Unavailable For Legal Reasons"),
     XX(InternalServerError, "Internal Server Error"),
     XX(NotImplemented, "Not Implemented"),
     XX(BadGateway, "Bad Gateway"),
     XX(ServiceUnavailable, "Service Unavailable"),
     XX(GatewayTimeout, "Gateway Timeout"),
     XX(HttpVersionNotSupported, "HTTP Version Not Supported"),
+    XX(VariantAlsoNegotiates, "Variant Also Negotiates"),
+    XX(InsufficientStorage, "Insufficient Storage"),
+    XX(LoopDetected, "Loop Detected"),
+    XX(NotExtended, "Not Extended"),
+    XX(NetworkAuthenticationRequired, "Network Authentication Required"),
+    XX(NetworkConnectTimeoutError, "Network Connect Timeout Error"),
 #undef XX
 };
 
@@ -370,8 +391,11 @@ void QHttpServerResponder::writeStatusLine(StatusCode status,
     d->socket->write(QByteArray::number(version.second));
     d->socket->write(" ");
     d->socket->write(QByteArray::number(quint32(status)));
-    d->socket->write(" ");
-    d->socket->write(statusString.at(status));
+    const auto it = statusString.find(status);
+    if (it != statusString.end()) {
+        d->socket->write(" ");
+        d->socket->write(statusString.at(status));
+    }
     d->socket->write("\r\n");
 }
 
