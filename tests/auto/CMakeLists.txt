@@ -1,5 +1,6 @@
 # Generated from auto.pro.
 
+add_subdirectory(cmake)
 add_subdirectory(qabstracthttpserver)
 add_subdirectory(qhttpserver)
 add_subdirectory(qhttpserverresponder)
