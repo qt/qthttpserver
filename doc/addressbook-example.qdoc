@@ -1,0 +1,38 @@
+// Copyright (C) 2022 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GFDL-1.3-no-invariants-only
+
+/*!
+\ingroup qthttpserver-examples
+\title RESTful Address Book Example
+\brief Example of how to create a RESTful API using the QHttpServer.
+
+This example shows how to set up a RESTful API using the QHttpServer class.
+The Address Book API allows create, read, update and delete operations of
+name and address entries.
+
+\snippet addressbook/main.cpp GET example
+In the example above, the route is specified for the GET method,
+which returns the JSON array with all address entries stored.
+To achieve that, the \l QHttpServer::route() method is used
+with the \l QHttpServerRequest::Method::Get enumeration.
+
+\snippet addressbook/main.cpp POST example
+In this example, the route is specified for the POST method,
+which adds a new entry to the address book and returns a JSON object
+that represents the added entry. This JSON object also contains
+an HTTP status code: \c Created for new entries,
+or \c AlreadyReported for pre-existing entries.
+This example makes use of an overload of QHttpServerResponse::QHttpServerResponse
+to send a JSON object and corresponding HTTP status code.
+
+To create an entry the request body must be a JSON object with
+\c address and \c name fields. For example:
+    \code
+    {
+        "address": "Example Street 1, Big City"
+        "name": "John Smith"
+    }
+    \endcode
+
+\example addressbook
+*/
