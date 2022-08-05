@@ -77,55 +77,54 @@ QHttpServerResponse::QHttpServerResponse(
 }
 
 /*!
-    Creates a QHttpServerResponse object from \a data.
+    Creates a QHttpServerResponse object from \a data with the status code \a status.
 */
-QHttpServerResponse::QHttpServerResponse(const char *data)
-    : QHttpServerResponse(QByteArray::fromRawData(data, qstrlen(data)))
+QHttpServerResponse::QHttpServerResponse(const char *data, const StatusCode status)
+    : QHttpServerResponse(QByteArray::fromRawData(data, qstrlen(data)), status)
 {
 }
 
 /*!
-    Creates a QHttpServerResponse object from \a data.
+    Creates a QHttpServerResponse object from \a data with the status code \a status.
 */
-QHttpServerResponse::QHttpServerResponse(const QString &data)
-    : QHttpServerResponse(data.toUtf8())
+QHttpServerResponse::QHttpServerResponse(const QString &data, const StatusCode status)
+    : QHttpServerResponse(data.toUtf8(), status)
 {
 }
 
 /*!
-    Creates a QHttpServerResponse object from \a data.
+    Creates a QHttpServerResponse object from \a data with the status code \a status.
 */
-QHttpServerResponse::QHttpServerResponse(const QByteArray &data)
-    : QHttpServerResponse(QMimeDatabase().mimeTypeForData(data).name().toLocal8Bit(), data)
+QHttpServerResponse::QHttpServerResponse(const QByteArray &data, const StatusCode status)
+    : QHttpServerResponse(QMimeDatabase().mimeTypeForData(data).name().toLocal8Bit(), data, status)
 {
 }
 
 /*!
     Move-constructs a QHttpServerResponse whose body will contain the given
-    \a data.
+    \a data with the status code \a status.
 */
-QHttpServerResponse::QHttpServerResponse(QByteArray &&data)
-    : QHttpServerResponse(
-            QMimeDatabase().mimeTypeForData(data).name().toLocal8Bit(),
-            std::move(data))
+QHttpServerResponse::QHttpServerResponse(QByteArray &&data, const StatusCode status)
+    : QHttpServerResponse(QMimeDatabase().mimeTypeForData(data).name().toLocal8Bit(),
+                          std::move(data), status)
 {
 }
 
 /*!
-    Creates a QHttpServerResponse object from \a data.
+    Creates a QHttpServerResponse object from \a data with the status code \a status.
 */
-QHttpServerResponse::QHttpServerResponse(const QJsonObject &data)
+QHttpServerResponse::QHttpServerResponse(const QJsonObject &data, const StatusCode status)
     : QHttpServerResponse(QHttpServerLiterals::contentTypeJson(),
-                          QJsonDocument(data).toJson(QJsonDocument::Compact))
+                          QJsonDocument(data).toJson(QJsonDocument::Compact), status)
 {
 }
 
 /*!
-    Creates a QHttpServerResponse object from \a data.
+    Creates a QHttpServerResponse object from \a data with the status code \a status.
 */
-QHttpServerResponse::QHttpServerResponse(const QJsonArray &data)
+QHttpServerResponse::QHttpServerResponse(const QJsonArray &data, const StatusCode status)
     : QHttpServerResponse(QHttpServerLiterals::contentTypeJson(),
-                          QJsonDocument(data).toJson(QJsonDocument::Compact))
+                          QJsonDocument(data).toJson(QJsonDocument::Compact), status)
 {
 }
 

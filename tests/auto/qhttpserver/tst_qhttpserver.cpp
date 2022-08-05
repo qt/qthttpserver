@@ -297,6 +297,11 @@ void tst_QHttpServer::initTestCase()
         };
     });
 
+    httpserver.route("/data-and-custom-status-code/", []() {
+        return QHttpServerResponse(QJsonObject{ { "key", "value" } },
+                                   QHttpServerResponder::StatusCode::Accepted);
+    });
+
     httpserver.route("/chunked/", [] (QHttpServerResponder &&responder) {
         responder.writeStatusLine(QHttpServerResponder::StatusCode::Ok);
         responder.writeHeaders({
@@ -549,6 +554,10 @@ void tst_QHttpServer::routeGet_data()
         << 200
         << "application/json"
         << "[1,\"2\",{\"name\":\"test\"}]";
+
+    QTest::addRow("data-and-custom-status-code")
+            << urlBase.arg("/data-and-custom-status-code/") << 202 << "application/json"
+            << "{\"key\":\"value\"}";
 
     QTest::addRow("chunked")
         << urlBase.arg("/chunked/")
