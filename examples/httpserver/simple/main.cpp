@@ -89,13 +89,41 @@ int main(int argc, char *argv[])
 
     const auto port = httpServer.listen(QHostAddress::Any);
     if (!port) {
-        qDebug() << QCoreApplication::translate(
-                "QHttpServerExample", "Server failed to listen on a port.");
+        qDebug() << QCoreApplication::translate("QHttpServerExample",
+                                                "Server failed to listen on a port.");
         return 0;
     }
 
-    qDebug() << QCoreApplication::translate(
-            "QHttpServerExample", "Running on http://127.0.0.1:%1/ (Press CTRL+C to quit)").arg(port);
+    //! [HTTPS Configuration example]
+    const auto sslCertificateChain =
+            QSslCertificate::fromPath(QStringLiteral(":/assets/certificate.crt"));
+    if (sslCertificateChain.empty()) {
+        qDebug() << QCoreApplication::translate("QHttpServerExample",
+                                                "Couldn't retrive SSL certificate from file.");
+        return 0;
+    }
+    QFile privateKeyFile(QStringLiteral(":/assets/private.key"));
+    if (!privateKeyFile.open(QIODevice::ReadOnly)) {
+        qDebug() << QCoreApplication::translate("QHttpServerExample",
+                                                "Couldn't open file for reading.");
+        return 0;
+    }
+    httpServer.sslSetup(sslCertificateChain.front(), QSslKey(&privateKeyFile, QSsl::Rsa));
+    privateKeyFile.close();
+
+    const auto sslPort = httpServer.listen(QHostAddress::Any);
+    if (!sslPort) {
+        qDebug() << QCoreApplication::translate("QHttpServerExample",
+                                                "Server failed to listen on a port.");
+        return 0;
+    }
+    //! [HTTPS Configuration example]
+
+    qDebug() << QCoreApplication::translate("QHttpServerExample",
+                                            "Running on http://127.0.0.1:%1/ and "
+                                            "https://127.0.0.1:%2/ (Press CTRL+C to quit)")
+                        .arg(port)
+                        .arg(sslPort);
 
     return app.exec();
 }

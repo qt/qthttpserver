@@ -13,5 +13,9 @@ The server is bound to an incoming port using the \c listen() function, and the
 incoming URLs. For one of the URLs, "/auth", \l{RFC 7617}{Basic HTTP
 Authentication} is used.
 
+\snippet simple/main.cpp HTTPS Configuration example
+In the above example \c QSslConfiguration is used to show how to create
+an SSL configuration for a QHttpServer to serve HTTPS traffic.
+
 \example simple
 */

@@ -23,6 +23,8 @@ target_link_libraries(simple PUBLIC
 
 # Resources:
 set(assets_resource_files
+    "assets/certificate.crt"
+    "assets/private.key"
     "assets/qt-logo.png"
 )
 
