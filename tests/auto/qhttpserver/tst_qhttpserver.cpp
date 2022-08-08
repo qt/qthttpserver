@@ -6,7 +6,6 @@
 #include <QtHttpServer/qhttpserverrouterrule.h>
 
 #include <private/qhttpserverrouterrule_p.h>
-#include <private/qhttpserverliterals_p.h>
 
 #include <QtTest/qtest.h>
 #include <QtTest/qsignalspy.h>
@@ -189,19 +188,16 @@ void tst_QHttpServer::initTestCase()
 
     httpserver.route("/req-and-resp", [] (QHttpServerResponder &&resp,
                                           const QHttpServerRequest &req) {
-        resp.write(req.body(),
-                   QHttpServerLiterals::contentTypeTextHtml());
+        resp.write(req.body(), "text/html"_ba);
     });
 
     httpserver.route("/resp-and-req", [] (const QHttpServerRequest &req,
                                           QHttpServerResponder &&resp) {
-        resp.write(req.body(),
-                   QHttpServerLiterals::contentTypeTextHtml());
+        resp.write(req.body(), "text/html"_ba);
     });
 
     httpserver.route("/test", [] (QHttpServerResponder &&responder) {
-        responder.write("test msg",
-                        QHttpServerLiterals::contentTypeTextHtml());
+        responder.write("test msg", "text/html"_ba);
     });
 
     httpserver.route("/", QHttpServerRequest::Method::Get, [] () {
@@ -647,8 +643,7 @@ void tst_QHttpServer::routeKeepAlive()
 
     request.setUrl(urlBase.arg("/keep-alive?po=98"));
     request.setRawHeader("CustomHeader", "1");
-    request.setHeader(QNetworkRequest::ContentTypeHeader,
-                      QHttpServerLiterals::contentTypeTextHtml());
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "text/html"_ba);
 
     checkReply(networkAccessManager.post(request, QByteArray("test")),
                QString("header: 1, query: po=98, body: test, method: %1")
@@ -658,8 +653,7 @@ void tst_QHttpServer::routeKeepAlive()
 
     request = QNetworkRequest(urlBase.arg("/keep-alive"));
     request.setRawHeader(QByteArray("Connection"), QByteArray("keep-alive"));
-    request.setHeader(QNetworkRequest::ContentTypeHeader,
-                      QHttpServerLiterals::contentTypeTextHtml());
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "text/html"_ba);
 
     checkReply(networkAccessManager.post(request, QByteArray("")),
                QString("header: , query: , body: , method: %1")
@@ -777,10 +771,8 @@ void tst_QHttpServer::routePost()
     QFETCH(QString, body);
 
     QNetworkRequest request(url);
-    if (data.size()) {
-        request.setHeader(QNetworkRequest::ContentTypeHeader,
-                          QHttpServerLiterals::contentTypeTextHtml());
-    }
+    if (data.size())
+        request.setHeader(QNetworkRequest::ContentTypeHeader, "text/html"_ba);
 
     auto reply = networkAccessManager.post(request, data.toUtf8());
 

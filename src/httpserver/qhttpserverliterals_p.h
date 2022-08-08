@@ -22,11 +22,11 @@ QT_BEGIN_NAMESPACE
 
 namespace QHttpServerLiterals {
 
-Q_AUTOTEST_EXPORT QByteArray contentTypeHeader();
-Q_AUTOTEST_EXPORT QByteArray contentTypeXEmpty();
-Q_AUTOTEST_EXPORT QByteArray contentTypeTextHtml();
-Q_AUTOTEST_EXPORT QByteArray contentTypeJson();
-Q_AUTOTEST_EXPORT QByteArray contentLengthHeader();
+QByteArray contentTypeHeader();
+QByteArray contentTypeXEmpty();
+QByteArray contentTypeTextHtml();
+QByteArray contentTypeJson();
+QByteArray contentLengthHeader();
 
 }
 
