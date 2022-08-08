@@ -1,9 +1,5 @@
 # Generated from qhttpserverresponse.pro.
 
-if(NOT QT_FEATURE_private_tests)
-    return()
-endif()
-
 #####################################################################
 ## tst_qhttpserverresponse Test:
 #####################################################################
@@ -16,6 +12,5 @@ qt_internal_add_test(tst_qhttpserverresponse
         tst_qhttpserverresponse.cpp
     PUBLIC_LIBRARIES
         Qt::HttpServer
-        Qt::HttpServerPrivate
     TESTDATA ${test_data}
 )

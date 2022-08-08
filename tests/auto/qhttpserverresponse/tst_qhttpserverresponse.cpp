@@ -3,8 +3,6 @@
 
 #include <QtHttpServer/qhttpserverresponse.h>
 
-#include <private/qhttpserverliterals_p.h>
-
 #include <QtCore/qfile.h>
 #include <QtTest/qtest.h>
 
@@ -39,7 +37,7 @@ void tst_QHttpServerResponse::mimeTypeDetection_data()
 
     QTest::addRow("text/html")
         << QFINDTESTDATA("data/text.html")
-        << QHttpServerLiterals::contentTypeTextHtml();
+        << "text/html"_ba;
 
     QTest::addRow("image/png")
         << QFINDTESTDATA("data/image.png")
@@ -82,7 +80,7 @@ void tst_QHttpServerResponse::mimeTypeDetectionFromFile_data()
 
     QTest::addRow("text/html")
             << QFINDTESTDATA("data/text.html")
-            << QHttpServerLiterals::contentTypeTextHtml();
+            << "text/html"_ba;
 
     QTest::addRow("image/png")
             << QFINDTESTDATA("data/image.png")
@@ -116,8 +114,8 @@ void tst_QHttpServerResponse::headers()
     const QByteArray test1 = "test1"_ba;
     const QByteArray test2 = "test2"_ba;
     const QByteArray zero = "application/x-zerosize"_ba;
-    const auto &contentTypeHeader = QHttpServerLiterals::contentTypeHeader();
-    const auto &contentLengthHeader = QHttpServerLiterals::contentLengthHeader();
+    const auto contentTypeHeader = "Content-Type"_ba;
+    const auto contentLengthHeader = "Content-Length"_ba;
 
     QVERIFY(!resp.hasHeader(contentLengthHeader));
     QVERIFY(resp.hasHeader(contentTypeHeader, zero));
