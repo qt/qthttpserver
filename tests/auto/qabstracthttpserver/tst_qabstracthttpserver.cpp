@@ -171,22 +171,22 @@ void tst_QAbstractHttpServer::servers()
 void tst_QAbstractHttpServer::fork()
 {
 #if defined(Q_OS_UNIX)
-    const auto message = QByteArrayLiteral("Hello world!");
+    const auto message = "Hello world!"_ba;
     struct HttpServer : QAbstractHttpServer
     {
         const QByteArray &message;
         HttpServer(const QByteArray &message) : message(message) {}
         bool handleRequest(const QHttpServerRequest &, QTcpSocket *socket) override
         {
-            socket->write(QByteArrayLiteral("HTTP/1.1 200 OK"));
-            socket->write(QByteArrayLiteral("\r\n"));
-            socket->write(QByteArrayLiteral("Content-Length: "));
+            socket->write("HTTP/1.1 200 OK"_ba);
+            socket->write("\r\n"_ba);
+            socket->write("Content-Length: "_ba);
             socket->write(QByteArray::number(message.size()));
-            socket->write(QByteArrayLiteral("\r\n"));
-            socket->write(QByteArrayLiteral("Connection: close"));
-            socket->write(QByteArrayLiteral("\r\n"));
-            socket->write(QByteArrayLiteral("Content-Type: text/html"));
-            socket->write(QByteArrayLiteral("\r\n\r\n"));
+            socket->write("\r\n"_ba);
+            socket->write("Connection: close"_ba);
+            socket->write("\r\n"_ba);
+            socket->write("Content-Type: text/html"_ba);
+            socket->write("\r\n\r\n"_ba);
             socket->write(message);
             socket->flush();
             ::kill(::getpid(), SIGKILL);  // Avoids continuing running tests in the child process
