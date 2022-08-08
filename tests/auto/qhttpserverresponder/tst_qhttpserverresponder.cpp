@@ -17,8 +17,10 @@
 
 QT_BEGIN_NAMESPACE
 
-static const QByteArray headerServerString(QByteArrayLiteral("Server"));
-static const QByteArray headerServerValue(QByteArrayLiteral("Test server"));
+using namespace Qt::Literals;
+
+static const QByteArray headerServerString = "Server"_ba;
+static const QByteArray headerServerValue = "Test server"_ba;
 
 class tst_QHttpServerResponder : public QObject
 {
@@ -80,7 +82,7 @@ void tst_QHttpServerResponder::defaultStatusCodeByteArray()
 
 void tst_QHttpServerResponder::defaultStatusCodeJson()
 {
-    const auto json = QJsonDocument::fromJson(QByteArrayLiteral("{}"));
+    const auto json = QJsonDocument::fromJson("{}"_ba);
     HttpServer server([json](QHttpServerResponder responder) { responder.write(json); });
     auto reply = networkAccessManager->get(QNetworkRequest(server.url));
     qWaitForFinished(reply);
@@ -113,7 +115,7 @@ void tst_QHttpServerResponder::writeStatusCode()
     QCOMPARE(reply->bytesAvailable(), 0);
     QCOMPARE(reply->error(), networkError);
     QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader).toByteArray(),
-             QByteArrayLiteral("application/x-empty"));
+             "application/x-empty"_ba);
 }
 
 void tst_QHttpServerResponder::writeStatusCodeExtraHeader()
@@ -130,7 +132,7 @@ void tst_QHttpServerResponder::writeStatusCodeExtraHeader()
 
 void tst_QHttpServerResponder::writeJson()
 {
-    const auto json = QJsonDocument::fromJson(QByteArrayLiteral(R"JSON({ "key" : "value" })JSON"));
+    const auto json = QJsonDocument::fromJson(R"JSON({ "key" : "value" })JSON"_ba);
     HttpServer server([json](QHttpServerResponder responder) { responder.write(json); });
     auto reply = networkAccessManager->get(QNetworkRequest(server.url));
     qWaitForFinished(reply);
@@ -142,7 +144,7 @@ void tst_QHttpServerResponder::writeJson()
 
 void tst_QHttpServerResponder::writeJsonExtraHeader()
 {
-    const auto json = QJsonDocument::fromJson(QByteArrayLiteral(R"JSON({ "key" : "value" })JSON"));
+    const auto json = QJsonDocument::fromJson(R"JSON({ "key" : "value" })JSON"_ba);
     HttpServer server([json](QHttpServerResponder responder) {
         responder.write(json, {{ headerServerString, headerServerValue }});
     });

@@ -10,6 +10,8 @@
 
 QT_BEGIN_NAMESPACE
 
+using namespace Qt::Literals;
+
 class tst_QHttpServerResponse : public QObject
 {
     Q_OBJECT
@@ -29,11 +31,11 @@ void tst_QHttpServerResponse::mimeTypeDetection_data()
 
     QTest::addRow("application/x-zerosize")
         << QFINDTESTDATA("data/empty")
-        << QByteArrayLiteral("application/x-zerosize");
+        << "application/x-zerosize"_ba;
 
     QTest::addRow("text/plain")
         << QFINDTESTDATA("data/text.plain")
-        << QByteArrayLiteral("text/plain");
+        << "text/plain"_ba;
 
     QTest::addRow("text/html")
         << QFINDTESTDATA("data/text.html")
@@ -41,15 +43,15 @@ void tst_QHttpServerResponse::mimeTypeDetection_data()
 
     QTest::addRow("image/png")
         << QFINDTESTDATA("data/image.png")
-        << QByteArrayLiteral("image/png");
+        << "image/png"_ba;
 
     QTest::addRow("image/jpeg")
              << QFINDTESTDATA("data/image.jpeg")
-             << QByteArrayLiteral("image/jpeg");
+             << "image/jpeg"_ba;
 
     QTest::addRow("image/svg+xml")
              << QFINDTESTDATA("data/image.svg")
-             << QByteArrayLiteral("image/svg+xml");
+             << "image/svg+xml"_ba;
 }
 
 void tst_QHttpServerResponse::mimeTypeDetection()
@@ -72,11 +74,11 @@ void tst_QHttpServerResponse::mimeTypeDetectionFromFile_data()
 
     QTest::addRow("application/x-zerosize")
             << QFINDTESTDATA("data/empty")
-            << QByteArrayLiteral("application/x-zerosize");
+            << "application/x-zerosize"_ba;
 
     QTest::addRow("text/plain")
             << QFINDTESTDATA("data/text.plain")
-            << QByteArrayLiteral("text/plain");
+            << "text/plain"_ba;
 
     QTest::addRow("text/html")
             << QFINDTESTDATA("data/text.html")
@@ -84,19 +86,19 @@ void tst_QHttpServerResponse::mimeTypeDetectionFromFile_data()
 
     QTest::addRow("image/png")
             << QFINDTESTDATA("data/image.png")
-            << QByteArrayLiteral("image/png");
+            << "image/png"_ba;
 
     QTest::addRow("image/jpeg")
             << QFINDTESTDATA("data/image.jpeg")
-            << QByteArrayLiteral("image/jpeg");
+            << "image/jpeg"_ba;
 
     QTest::addRow("image/svg+xml")
             << QFINDTESTDATA("data/image.svg")
-            << QByteArrayLiteral("image/svg+xml");
+            << "image/svg+xml"_ba;
 
     QTest::addRow("application/json")
             << QFINDTESTDATA("data/application.json")
-            << QByteArrayLiteral("application/json");
+            << "application/json"_ba;
 }
 
 void tst_QHttpServerResponse::mimeTypeDetectionFromFile()
@@ -111,9 +113,9 @@ void tst_QHttpServerResponse::headers()
 {
     QHttpServerResponse resp("");
 
-    const QByteArray test1 = QByteArrayLiteral("test1");
-    const QByteArray test2 = QByteArrayLiteral("test2");
-    const QByteArray zero = QByteArrayLiteral("application/x-zerosize");
+    const QByteArray test1 = "test1"_ba;
+    const QByteArray test2 = "test2"_ba;
+    const QByteArray zero = "application/x-zerosize"_ba;
     const auto &contentTypeHeader = QHttpServerLiterals::contentTypeHeader();
     const auto &contentLengthHeader = QHttpServerLiterals::contentLengthHeader();
 
