@@ -5,8 +5,6 @@
 #include <QtHttpServer/qhttpserverrequest.h>
 #include <QtHttpServer/qhttpserverrouterrule.h>
 
-#include <private/qhttpserverrouterrule_p.h>
-
 #include <QtTest/qtest.h>
 #include <QtTest/qsignalspy.h>
 
