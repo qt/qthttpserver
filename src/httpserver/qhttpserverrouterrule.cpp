@@ -113,7 +113,7 @@ auto wrap(std::initializer_list<QMetaType> l) { return Wrapper{l}; }
 QHttpServerRouterRule::QHttpServerRouterRule(const QString &pathPattern,
                                              RouterHandler routerHandler)
     : QHttpServerRouterRule(pathPattern,
-                            QHttpServerRequest::Method::All,
+                            QHttpServerRequest::Method::AnyKnown,
                             std::move(routerHandler))
 {
 }
@@ -157,7 +157,7 @@ QHttpServerRouterRule::~QHttpServerRouterRule()
 bool QHttpServerRouterRule::hasValidMethods() const
 {
     Q_D(const QHttpServerRouterRule);
-    return d->methods & QHttpServerRequest::Method::All;
+    return d->methods & QHttpServerRequest::Method::AnyKnown;
 }
 
 /*!
