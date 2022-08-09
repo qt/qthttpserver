@@ -41,8 +41,9 @@ public:
         Options = 0x0020,
         Patch   = 0x0040,
         Connect = 0x0080,
+        Trace   = 0x0100,
 
-        All = Get | Put | Delete | Post | Head | Options | Patch | Connect,
+        AnyKnown = Get | Put | Delete | Post | Head | Options | Patch | Connect | Trace,
     };
     Q_ENUM(Method)
     Q_DECLARE_FLAGS(Methods, Method)

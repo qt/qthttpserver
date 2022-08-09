@@ -495,6 +495,35 @@ qsizetype QHttpServerRequestPrivate::getChunkSize(QAbstractSocket *socket, qsize
 */
 
 /*!
+    \enum QHttpServerRequest::Method
+
+    This enum type specifies an HTTP request method:
+
+    \value Unknown
+        An unknown method.
+    \value Get
+        HTTP GET method.
+    \value Put
+        HTTP PUT method.
+    \value Delete
+        HTTP DELETE method.
+    \value Post
+        HTTP POST method.
+    \value Head
+        HTTP HEAD method.
+    \value Options
+        HTTP OPTIONS method.
+    \value Patch
+        HTTP PATCH method (\l {https://www.rfc-editor.org/rfc/rfc5789}{RFC 5789}).
+    \value Connect
+        HTTP CONNECT method.
+    \value Trace
+        HTTP TRACE method.
+    \value AnyKnown
+        Combination of all known methods.
+*/
+
+/*!
     \internal
 */
 QHttpServerRequest::QHttpServerRequest(const QHostAddress &remoteAddress) :

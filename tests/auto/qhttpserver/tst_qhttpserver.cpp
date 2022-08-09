@@ -218,7 +218,7 @@ void tst_QHttpServer::initTestCase()
                      });
 
     httpserver.route(
-            "/any", QHttpServerRequest::Method::All, [](const QHttpServerRequest &request) {
+            "/any", QHttpServerRequest::Method::AnyKnown, [](const QHttpServerRequest &request) {
                 static const auto metaEnum = QMetaEnum::fromType<QHttpServerRequest::Method>();
                 return metaEnum.valueToKey(static_cast<int>(request.method()));
             });
