@@ -46,6 +46,12 @@ QHttpServerResponsePrivate::QHttpServerResponsePrivate(const QHttpServerResponse
 { }
 
 /*!
+    \typealias QHttpServerResponse::StatusCode
+
+    Type alias for QHttpServerResponder::StatusCode
+*/
+
+/*!
     Move-constructs an instance of a QHttpServerResponse object from \a other.
 */
 QHttpServerResponse::QHttpServerResponse(QHttpServerResponse &&other) noexcept
@@ -295,6 +301,16 @@ void QHttpServerResponse::addHeaders(QHttpServerResponder::HeaderList headers)
     for (auto &&header : headers)
         addHeader(header.first, header.second);
 }
+
+/*!
+    \fn template<typename Container> void QHttpServerResponse::addHeaders(const Container
+   &headerList)
+
+    Adds the HTTP headers in \a headerList, does not override any previously set headers.
+
+    \c Container must be a container that represents the header name and content as
+    key-value pairs.
+*/
 
 /*!
     Removes the HTTP header with name \a name.

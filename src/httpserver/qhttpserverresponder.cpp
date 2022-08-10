@@ -30,6 +30,85 @@ QT_IMPL_METATYPE_EXTERN_TAGGED(QHttpServerResponder::StatusCode, QHttpServerResp
 */
 
 /*!
+    \typealias QHttpServerResponder::HeaderList
+
+    Type alias for std::initializer_list<std::pair<QByteArray, QByteArray>>
+*/
+
+/*!
+    \enum QHttpServerResponder::StatusCode
+
+    HTTP status codes
+
+    \value Continue
+    \value SwitchingProtocols
+    \value Processing
+
+    \value Ok
+    \value Created
+    \value Accepted
+    \value NonAuthoritativeInformation
+    \value NoContent
+    \value ResetContent
+    \value PartialContent
+    \value MultiStatus
+    \value AlreadyReported
+    \value IMUsed
+
+    \value MultipleChoices
+    \value MovedPermanently
+    \value Found
+    \value SeeOther
+    \value NotModified
+    \value UseProxy
+
+    \value TemporaryRedirect
+    \value PermanentRedirect
+
+    \value BadRequest
+    \value Unauthorized
+    \value PaymentRequired
+    \value Forbidden
+    \value NotFound
+    \value MethodNotAllowed
+    \value NotAcceptable
+    \value ProxyAuthenticationRequired
+    \value RequestTimeout
+    \value Conflict
+    \value Gone
+    \value LengthRequired
+    \value PreconditionFailed
+    \value PayloadTooLarge
+    \value UriTooLong
+    \value UnsupportedMediaType
+    \value RequestRangeNotSatisfiable
+    \value ExpectationFailed
+    \value ImATeapot
+    \value MisdirectedRequest
+    \value UnprocessableEntity
+    \value Locked
+    \value FailedDependency
+    \value UpgradeRequired
+    \value PreconditionRequired
+    \value TooManyRequests
+    \value RequestHeaderFieldsTooLarge
+    \value UnavailableForLegalReasons
+
+    \value InternalServerError
+    \value NotImplemented
+    \value BadGateway
+    \value ServiceUnavailable
+    \value GatewayTimeout
+    \value HttpVersionNotSupported
+    \value VariantAlsoNegotiates
+    \value InsufficientStorage
+    \value LoopDetected
+    \value NotExtended
+    \value NetworkAuthenticationRequired
+    \value NetworkConnectTimeoutError
+*/
+
+/*!
     \internal
 */
 static const QLoggingCategory &lc()
