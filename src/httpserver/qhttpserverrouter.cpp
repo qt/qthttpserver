@@ -191,9 +191,9 @@ QHttpServerRouter::~QHttpServerRouter()
 {}
 
 /*!
-    Adds a new converter for type \a type matching regular expression \a regexp.
+    Adds a new converter for type \a metaType matching regular expression \a regexp.
 
-    If there is already a converter of type \a type, that converter's regexp
+    If there is already a converter of type \a metaType, that converter's regexp
     is replaced with \a regexp.
 */
 void QHttpServerRouter::addConverter(QMetaType metaType, QAnyStringView regexp)
@@ -203,7 +203,7 @@ void QHttpServerRouter::addConverter(QMetaType metaType, QAnyStringView regexp)
 }
 
 /*!
-    Removes the converter for type \a type.
+    Removes the converter for type \a metaType.
 */
 void QHttpServerRouter::removeConverter(QMetaType metaType)
 {
