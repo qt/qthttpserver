@@ -19,6 +19,14 @@ QT_BEGIN_NAMESPACE
 using namespace Qt::StringLiterals;
 
 #if !defined(QT_NO_DEBUG_STREAM)
+
+/*!
+    \fn QDebug QHttpServerRequest::operator<<(QDebug debug, const QHttpServerRequest &request)
+
+    Writes information about \a request to the \a debug stream.
+
+    \sa QDebug
+ */
 Q_HTTPSERVER_EXPORT QDebug operator<<(QDebug debug, const QHttpServerRequest &request)
 {
     QDebugStateSaver saver(debug);

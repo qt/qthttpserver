@@ -104,6 +104,13 @@ auto wrap(std::initializer_list<QMetaType> l) { return Wrapper{l}; }
 */
 
 /*!
+   \typealias QHttpServerRouterRule::RouterHandler
+
+   Type alias for
+    std::function<void(const QRegularExpressionMatch &,const QHttpServerRequest &, QTcpSocket *)>
+ */
+
+/*!
     Constructs a rule with pathPattern \a pathPattern, and routerHandler \a routerHandler.
 
     The rule accepts all HTTP methods by default.
