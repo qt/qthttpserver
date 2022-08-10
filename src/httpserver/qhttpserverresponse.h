@@ -88,7 +88,7 @@ public:
 
     void write(QHttpServerResponder &&responder) const;
 
-protected:
+private:
     std::unique_ptr<QHttpServerResponsePrivate> d_ptr;
 };
 
