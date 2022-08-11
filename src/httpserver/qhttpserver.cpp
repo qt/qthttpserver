@@ -59,7 +59,8 @@ QHttpServer::QHttpServer(QObject *parent)
     to the QHttpServerRouter. It returns \c true if a new rule is created,
     otherwise it returns \c false.
 
-    \c ViewHandler can only be a lambda. The lambda definition can take two
+    \c ViewHandler can be a function pointer, non-mutable lambda, or any
+    other copiable callable with const call operator. The callable can take two
     optional special arguments: \c {const QHttpServerRequest&} and
     \c {QHttpServerResponder&&}. These special arguments must be the last in
     the parameter list, but in any order, and there can be none, one, or both
