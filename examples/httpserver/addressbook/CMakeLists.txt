@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 cmake_minimum_required(VERSION 3.16)
-project(addressbook LANGUAGES CXX)
+project(addressbookserver LANGUAGES CXX)
 
 if(NOT DEFINED INSTALL_EXAMPLESDIR)
     set(INSTALL_EXAMPLESDIR "examples")
@@ -12,15 +12,15 @@ set(INSTALL_EXAMPLEDIR "${INSTALL_EXAMPLESDIR}/httpserver/${PROJECT_NAME}")
 
 find_package(Qt6 REQUIRED COMPONENTS HttpServer)
 
-qt_add_executable(addressbook
+qt_add_executable(addressbookserver
     main.cpp
 )
 
-target_link_libraries(addressbook PRIVATE
+target_link_libraries(addressbookserver PRIVATE
     Qt::HttpServer
 )
 
-install(TARGETS addressbook
+install(TARGETS addressbookserver
     RUNTIME DESTINATION "${INSTALL_EXAMPLEDIR}"
     BUNDLE DESTINATION "${INSTALL_EXAMPLEDIR}"
     LIBRARY DESTINATION "${INSTALL_EXAMPLEDIR}"

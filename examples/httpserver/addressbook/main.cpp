@@ -4,31 +4,50 @@
 #include <QtCore>
 #include <QtHttpServer>
 
-struct AddressEntry
-{
-    QString address;
-    QString name;
+#define API_KEY "SecretKey"
 
-    QJsonObject toJson(qint64 id) const
+struct ContactEntry
+{
+    qint64 id;
+    QString name;
+    QString address;
+
+    ContactEntry(const QString &name, const QString &address)
+        : id(ContactEntry::nextId()), name(name), address(address)
     {
-        return QJsonObject{ { "id", id }, { "address", address }, { "name", name } };
     }
 
+    QJsonObject toJson() const
+    {
+        return QJsonObject{ { "id", id }, { "name", name }, { "address", address } };
+    }
+
+private:
     static qint64 nextId();
 };
 
-qint64 AddressEntry::nextId()
+qint64 ContactEntry::nextId()
 {
     static qint64 lastId = 0;
     return lastId++;
 }
 
-static QJsonObject insertAddress(QMap<qint64, AddressEntry> &addresses, const QString &address,
-                                 const QString &name)
+static bool checkApiKeyHeader(const QList<QPair<QByteArray, QByteArray>> &headers)
 {
-    const auto entry = AddressEntry{ address, name };
-    const auto it = addresses.insert(AddressEntry::nextId(), entry);
-    return it->toJson(it.key());
+    for (const auto &[key, value] : headers) {
+        if (key == "api_key" && value == API_KEY) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static QJsonObject insertAddress(QMap<qint64, ContactEntry> &contacts, const QString &name,
+                                 const QString &address)
+{
+    ContactEntry entry(name, address);
+    const auto it = contacts.insert(entry.id, std::move(entry));
+    return it->toJson();
 }
 
 static std::optional<QJsonObject> byteArrayToJsonObject(const QByteArray &arr)
@@ -44,83 +63,93 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
 
-    QMap<qint64, AddressEntry> addresses;
+    QMap<qint64, ContactEntry> contacts;
     // Setup QHttpServer
     QHttpServer httpServer;
     //! [GET example]
     httpServer.route("/v2/contact", QHttpServerRequest::Method::Get,
-                     [&addresses](const QHttpServerRequest &request) {
+                     [&contacts](const QHttpServerRequest &) {
                          QJsonArray array;
-                         std::transform(addresses.constKeyValueBegin(),
-                                        addresses.constKeyValueEnd(),
+                         std::transform(contacts.cbegin(), contacts.cend(),
                                         std::inserter(array, array.begin()),
-                                        [](const auto &it) { return it.second.toJson(it.first); });
+                                        [](const auto &it) { return it.toJson(); });
 
                          return QHttpServerResponse(array);
                      });
     //! [GET example]
 
     httpServer.route("/v2/contact/<arg>", QHttpServerRequest::Method::Get,
-                     [&addresses](qint64 contactId, const QHttpServerRequest &request) {
-                         const auto address = addresses.find(contactId);
-                         return address != addresses.end()
-                                 ? QHttpServerResponse(address->toJson(address.key()))
+                     [&contacts](qint64 contactId, const QHttpServerRequest &) {
+                         const auto address = contacts.find(contactId);
+                         return address != contacts.end()
+                                 ? QHttpServerResponse(address->toJson())
                                  : QHttpServerResponse(QHttpServerResponder::StatusCode::NotFound);
                      });
 
     //! [POST example]
     httpServer.route(
             "/v2/contact", QHttpServerRequest::Method::Post,
-            [&addresses](const QHttpServerRequest &request) {
+            [&contacts](const QHttpServerRequest &request) {
+                if (!checkApiKeyHeader(request.headers())) {
+                    return QHttpServerResponse(QHttpServerResponder::StatusCode::Unauthorized);
+                }
                 const auto json = byteArrayToJsonObject(request.body());
                 if (!json || !json->contains("address") || !json->contains("name"))
                     return QHttpServerResponse(QHttpServerResponder::StatusCode::BadRequest);
-
-                const auto entry = insertAddress(addresses, json->value("address").toString(),
-                                                 json->value("name").toString());
+                const auto entry = insertAddress(contacts, json->value("name").toString(),
+                                                 json->value("address").toString());
                 return QHttpServerResponse(entry, QHttpServerResponder::StatusCode::Created);
             });
     //! [POST example]
 
     httpServer.route(
             "/v2/contact/<arg>", QHttpServerRequest::Method::Put,
-            [&addresses](qint64 contactId, const QHttpServerRequest &request) {
+            [&contacts](qint64 contactId, const QHttpServerRequest &request) {
+                if (!checkApiKeyHeader(request.headers())) {
+                    return QHttpServerResponse(QHttpServerResponder::StatusCode::Unauthorized);
+                }
                 const auto json = byteArrayToJsonObject(request.body());
                 if (!json || !json->contains("address") || !json->contains("name")) {
                     return QHttpServerResponse(QHttpServerResponder::StatusCode::BadRequest);
                 }
-                auto address = addresses.find(contactId);
-                if (address == addresses.end())
+                auto address = contacts.find(contactId);
+                if (address == contacts.end())
                     return QHttpServerResponse(QHttpServerResponder::StatusCode::NoContent);
-                address->address = json->value("address").toString();
                 address->name = json->value("name").toString();
-                return QHttpServerResponse(address->toJson(address.key()));
+                address->address = json->value("address").toString();
+                return QHttpServerResponse(address->toJson());
             });
 
     httpServer.route(
             "/v2/contact/<arg>", QHttpServerRequest::Method::Patch,
-            [&addresses](qint64 contactId, const QHttpServerRequest &request) {
+            [&contacts](qint64 contactId, const QHttpServerRequest &request) {
+                if (!checkApiKeyHeader(request.headers())) {
+                    return QHttpServerResponse(QHttpServerResponder::StatusCode::Unauthorized);
+                }
                 const auto json = byteArrayToJsonObject(request.body());
                 if (!json) {
                     return QHttpServerResponse(QHttpServerResponder::StatusCode::BadRequest);
                 }
-                auto address = addresses.find(contactId);
-                if (address == addresses.end())
+                auto address = contacts.find(contactId);
+                if (address == contacts.end())
                     return QHttpServerResponse(QHttpServerResponder::StatusCode::NoContent);
-                if (json->contains("address"))
-                    address->address = json->value("address").toString();
                 if (json->contains("name"))
                     address->name = json->value("name").toString();
-                return QHttpServerResponse(address->toJson(address.key()));
+                if (json->contains("address"))
+                    address->address = json->value("address").toString();
+                return QHttpServerResponse(address->toJson());
             });
 
-    httpServer.route("/v2/contact/<arg>", QHttpServerRequest::Method::Delete,
-                     [&addresses](qint64 contactId, const QHttpServerRequest &request) {
-                         if (!addresses.remove(contactId))
-                             return QHttpServerResponse(
-                                     QHttpServerResponder::StatusCode::NoContent);
-                         return QHttpServerResponse(QHttpServerResponder::StatusCode::Ok);
-                     });
+    httpServer.route(
+            "/v2/contact/<arg>", QHttpServerRequest::Method::Delete,
+            [&contacts](qint64 contactId, const QHttpServerRequest &request) {
+                if (!checkApiKeyHeader(request.headers())) {
+                    return QHttpServerResponse(QHttpServerResponder::StatusCode::Unauthorized);
+                }
+                if (!contacts.remove(contactId))
+                    return QHttpServerResponse(QHttpServerResponder::StatusCode::NoContent);
+                return QHttpServerResponse(QHttpServerResponder::StatusCode::Ok);
+            });
 
     const auto port = httpServer.listen(QHostAddress::Any);
     if (!port) {
