@@ -12,8 +12,6 @@
     REST APIs, or making devices in a trusted environment configurable also via HTTP.
     The limitations are described in \l{Limitations & Security}.
 
-    This module is in \e {Technical Preview} state.
-
     \section1 Overview
 
     Qt HTTP Server provides building blocks for embedding a lightweight HTTP server
