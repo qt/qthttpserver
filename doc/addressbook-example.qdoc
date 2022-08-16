@@ -5,6 +5,7 @@
 \ingroup qthttpserver-examples
 \title RESTful Address Book Example
 \brief Example of how to create a RESTful API using the QHttpServer.
+\image restful-address-book-server-example.png
 
 This example shows how to set up a RESTful API using the QHttpServer class.
 The Address Book API allows create, read, update and delete operations of
