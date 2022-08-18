@@ -9,7 +9,6 @@
 #include <QtTest/qsignalspy.h>
 #include <QtTest/qtest.h>
 #include <QtNetwork/qnetworkaccessmanager.h>
-#include <QtNetwork/qtcpsocket.h>
 
 Q_DECLARE_METATYPE(QNetworkAccessManager::Operation);
 
@@ -24,14 +23,14 @@ struct HttpServer : QAbstractHttpServer {
     void route(const char *path, const QHttpServerRequest::Methods methods, ViewHandler &&viewHandler)
     {
         auto rule = std::make_unique<QHttpServerRouterRule>(
-                path, methods, [this, viewHandler = std::forward<ViewHandler>(viewHandler)]
-                                                    (const QRegularExpressionMatch &match,
-                                                     const QHttpServerRequest &request,
-                                                     QTcpSocket *socket) mutable {
-            auto boundViewHandler = router.bindCaptured<ViewHandler>(
-                    std::forward<ViewHandler>(viewHandler), match);
-            boundViewHandler(makeResponder(request, socket));
-        });
+                path, methods,
+                [this, viewHandler = std::forward<ViewHandler>(viewHandler)](
+                        const QRegularExpressionMatch &match, const QHttpServerRequest &,
+                        QHttpServerResponder &&responder) mutable {
+                    auto boundViewHandler = router.bindCaptured<ViewHandler>(
+                            std::forward<ViewHandler>(viewHandler), match);
+                    boundViewHandler(std::move(responder));
+                });
 
         router.addRule<ViewHandler>(std::move(rule));
     }
@@ -42,12 +41,14 @@ struct HttpServer : QAbstractHttpServer {
         route(path, QHttpServerRequest::Method::AnyKnown, std::forward<ViewHandler>(viewHandler));
     }
 
-    bool handleRequest(const QHttpServerRequest &request, QTcpSocket *socket) override {
-        return router.handleRequest(request, socket);
+    bool handleRequest(const QHttpServerRequest &request, QHttpServerResponder &responder) override
+    {
+        return router.handleRequest(request, responder);
     }
 
-    void missingHandler(const QHttpServerRequest &request, QTcpSocket *socket) override {
-        makeResponder(request, socket).write(QHttpServerResponder::StatusCode::NotFound);
+    void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&responder) override
+    {
+        responder.write(QHttpServerResponder::StatusCode::NotFound);
     }
 };
 

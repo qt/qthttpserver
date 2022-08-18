@@ -69,7 +69,7 @@ static const QHash<QMetaType, QString> defaultConverters = {
     router.addRoute<ViewHandler>(
         new QHttpServerRouterRule("/page/", [=] (QRegularExpressionMatch &match,
                                                  const QHttpServerRequest &,
-                                                 QTcpSocket *) {
+                                                 QHttpServerResponder &&) {
         auto boundView = router.bindCaptured(pageView, match);
 
         // it calls pageView
@@ -108,7 +108,7 @@ static const QHash<QMetaType, QString> defaultConverters = {
         "/<arg>/<arg>/log",
         [&router, &pageView] (QRegularExpressionMatch &match,
                               const QHttpServerRequest &request,
-                              QTcpSocket *socket) {
+                              QHttpServerResponder &&responder) {
         // Bind and call viewHandler with match's captured string and quint32:
         router.bindCaptured(pageView, match)();
     });
@@ -134,7 +134,7 @@ static const QHash<QMetaType, QString> defaultConverters = {
         "/<arg>/<arg>/log",
         [] (QRegularExpressionMatch &match,
             const QHttpServerRequest &request,
-            QTcpSocket *socket) {
+            QHttpServerResponder &&responder) {
     });
 
     router.addRule<ViewHandler>(std::move(rule));
@@ -162,7 +162,7 @@ static const QHash<QMetaType, QString> defaultConverters = {
         "/<arg>/<arg>/log",
         [&router, &pageView] (QRegularExpressionMatch &match,
                               const QHttpServerRequest &request,
-                              QTcpSocket *socket) {
+                              QHttpServerResponder &&responder) {
         // Bind and call viewHandler with match's captured string and quint32:
         router.bindCaptured(pageView, match)();
     });
@@ -264,18 +264,18 @@ bool QHttpServerRouter::addRuleImpl(std::unique_ptr<QHttpServerRouterRule> rule,
 }
 
 /*!
-    Handles each new \a request for the HTTP server using \a socket.
+    Handles each new \a request for the HTTP server using \a responder.
 
     Iterates through the list of rules to find the first that matches,
     then executes this rule, returning \c true. Returns \c false if no rule
     matches the request.
 */
 bool QHttpServerRouter::handleRequest(const QHttpServerRequest &request,
-                                      QTcpSocket *socket) const
+                                      QHttpServerResponder &responder) const
 {
     Q_D(const QHttpServerRouter);
     for (const auto &rule : d->rules) {
-        if (rule->exec(request, socket))
+        if (rule->exec(request, responder))
             return true;
     }
 

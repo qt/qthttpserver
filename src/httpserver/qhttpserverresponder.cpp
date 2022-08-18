@@ -6,6 +6,7 @@
 #include <private/qhttpserverresponder_p.h>
 #include <private/qhttpserverliterals_p.h>
 #include <private/qhttpserverrequest_p.h>
+#include <private/qhttpserverstream_p.h>
 #include <QtCore/qjsondocument.h>
 #include <QtCore/qloggingcategory.h>
 #include <QtCore/qtimer.h>
@@ -25,8 +26,7 @@ QT_IMPL_METATYPE_EXTERN_TAGGED(QHttpServerResponder::StatusCode, QHttpServerResp
 
     Provides functions for writing back to an HTTP client with overloads for
     serializing JSON objects. It also has support for writing HTTP headers and
-    status code. This class can be constructed by calling the \c protected
-    \c static function \c makeResponder() in the QAbstractHttpServer class.
+    status code.
 */
 
 /*!
@@ -271,11 +271,12 @@ struct IOChunkedTransfer
 /*!
     \internal
 */
-QHttpServerResponder::QHttpServerResponder(const QHttpServerRequest &request,
-                                           QTcpSocket *socket) :
-    d_ptr(new QHttpServerResponderPrivate(request, socket))
+QHttpServerResponder::QHttpServerResponder(QHttpServerStream *stream)
+    : d_ptr(new QHttpServerResponderPrivate(stream))
 {
-    Q_ASSERT(socket);
+    Q_ASSERT(stream);
+    Q_ASSERT(!stream->handlingRequest);
+    stream->handlingRequest = true;
 }
 
 /*!
@@ -290,7 +291,13 @@ QHttpServerResponder::QHttpServerResponder(QHttpServerResponder &&other)
     Destroys a QHttpServerResponder.
 */
 QHttpServerResponder::~QHttpServerResponder()
-{}
+{
+    Q_D(QHttpServerResponder);
+    if (d) {
+        Q_ASSERT(d->stream);
+        d->stream->responderDestroyed();
+    }
+}
 
 /*!
     Answers a request with an HTTP status code \a status and
@@ -307,7 +314,7 @@ void QHttpServerResponder::write(QIODevice *data,
                                  StatusCode status)
 {
     Q_D(QHttpServerResponder);
-    Q_ASSERT(d->socket);
+    Q_ASSERT(d->stream);
     std::unique_ptr<QIODevice, QScopedPointerDeleteLater> input(data);
 
     input->setParent(nullptr);
@@ -325,11 +332,6 @@ void QHttpServerResponder::write(QIODevice *data,
         return;
     }
 
-    if (!d->socket->isOpen()) {
-        qCWarning(lc, "Cannot write to socket. It's disconnected");
-        return;
-    }
-
     writeStatusLine(status);
 
     if (!input->isSequential()) { // Non-sequential QIODevice should know its data size
@@ -340,7 +342,7 @@ void QHttpServerResponder::write(QIODevice *data,
     for (auto &&header : headers)
         writeHeader(header.first, header.second);
 
-    d->socket->write("\r\n");
+    d->stream->write("\r\n");
 
     if (input->atEnd()) {
         qCDebug(lc, "No more data available.");
@@ -348,7 +350,7 @@ void QHttpServerResponder::write(QIODevice *data,
     }
 
     // input takes ownership of the IOChunkedTransfer pointer inside his constructor
-    new IOChunkedTransfer<>(input.release(), d->socket);
+    new IOChunkedTransfer<>(input.release(), d->stream->socket);
 }
 
 /*!
@@ -461,15 +463,15 @@ void QHttpServerResponder::write(HeaderList headers, StatusCode status)
 void QHttpServerResponder::writeStatusLine(StatusCode status)
 {
     Q_D(const QHttpServerResponder);
-    Q_ASSERT(d->socket->isOpen());
-    d->socket->write("HTTP/1.1 ");
-    d->socket->write(QByteArray::number(quint32(status)));
+    Q_ASSERT(d->stream);
+    d->stream->write("HTTP/1.1 ");
+    d->stream->write(QByteArray::number(quint32(status)));
     const auto it = statusString.find(status);
     if (it != statusString.end()) {
-        d->socket->write(" ");
-        d->socket->write(statusString.at(status));
+        d->stream->write(" ");
+        d->stream->write(statusString.at(status));
     }
-    d->socket->write("\r\n");
+    d->stream->write("\r\n");
 }
 
 /*!
@@ -480,11 +482,11 @@ void QHttpServerResponder::writeHeader(const QByteArray &header,
                                        const QByteArray &value)
 {
     Q_D(const QHttpServerResponder);
-    Q_ASSERT(d->socket->isOpen());
-    d->socket->write(header);
-    d->socket->write(": ");
-    d->socket->write(value);
-    d->socket->write("\r\n");
+    Q_ASSERT(d->stream);
+    d->stream->write(header);
+    d->stream->write(": ");
+    d->stream->write(value);
+    d->stream->write("\r\n");
 }
 
 /*!
@@ -502,14 +504,15 @@ void QHttpServerResponder::writeHeaders(HeaderList headers)
 void QHttpServerResponder::writeBody(const char *body, qint64 size)
 {
     Q_D(QHttpServerResponder);
-    Q_ASSERT(d->socket->isOpen());
+
+    Q_ASSERT(d->stream);
 
     if (!d->bodyStarted) {
-        d->socket->write("\r\n");
+        d->stream->write("\r\n");
         d->bodyStarted = true;
     }
 
-    d->socket->write(body, size);
+    d->stream->write(body, size);
 }
 
 /*!
@@ -526,15 +529,6 @@ void QHttpServerResponder::writeBody(const char *body)
 void QHttpServerResponder::writeBody(const QByteArray &body)
 {
     writeBody(body.constData(), body.size());
-}
-
-/*!
-    Returns the socket used.
-*/
-QTcpSocket *QHttpServerResponder::socket() const
-{
-    Q_D(const QHttpServerResponder);
-    return d->socket;
 }
 
 QT_END_NAMESPACE

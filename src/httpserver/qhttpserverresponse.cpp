@@ -428,8 +428,6 @@ QList<QByteArray> QHttpServerResponse::headers(const QByteArray &name) const
 void QHttpServerResponse::write(QHttpServerResponder &&responder) const
 {
     Q_D(const QHttpServerResponse);
-    if (responder.socket()->state() != QAbstractSocket::ConnectedState)
-        return;
 
     responder.writeStatusLine(d->statusCode);
 

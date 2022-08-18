@@ -48,8 +48,6 @@ public:
 #endif // defined(QT_WEBSOCKETS_LIB)
 
     void handleNewConnections();
-    void handleReadyRead(QTcpSocket *socket,
-                         QHttpServerRequest *request);
 
 #if QT_CONFIG(ssl)
     QSslConfiguration sslConfiguration;

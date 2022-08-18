@@ -17,7 +17,7 @@
 
 QT_BEGIN_NAMESPACE
 
-class QTcpSocket;
+class QHttpServerResponder;
 class QHttpServerRequest;
 class QHttpServerRouterRule;
 
@@ -62,8 +62,7 @@ public:
                 typename ViewTraits::Arguments::CapturableIndexes{});
     }
 
-    bool handleRequest(const QHttpServerRequest &request,
-                       QTcpSocket *socket) const;
+    bool handleRequest(const QHttpServerRequest &request, QHttpServerResponder &responder) const;
 
 private:
     template<typename ViewTraits, int ... Idx>

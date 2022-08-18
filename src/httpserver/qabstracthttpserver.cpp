@@ -5,13 +5,13 @@
 
 #include <QtHttpServer/qhttpserverrequest.h>
 #include <QtHttpServer/qhttpserverresponder.h>
+
 #include <private/qabstracthttpserver_p.h>
 #include <private/qhttpserverrequest_p.h>
+#include <private/qhttpserverstream_p.h>
 
 #include <QtCore/qloggingcategory.h>
-#include <QtCore/qmetaobject.h>
 #include <QtNetwork/qtcpserver.h>
-#include <QtNetwork/qtcpsocket.h>
 
 #if QT_CONFIG(ssl)
 #include <QtNetwork/qsslserver.h>
@@ -38,81 +38,9 @@ void QAbstractHttpServerPrivate::handleNewConnections()
     Q_Q(QAbstractHttpServer);
     auto tcpServer = qobject_cast<QTcpServer *>(q->sender());
     Q_ASSERT(tcpServer);
-    while (auto socket = tcpServer->nextPendingConnection()) {
-        auto request = new QHttpServerRequest(socket->peerAddress());  // TODO own tcp server could pre-allocate it
-        QObject::connect(socket, &QTcpSocket::readyRead, q,
-                         [this, request, socket] () {
-            handleReadyRead(socket, request);
-        });
 
-        QObject::connect(socket, &QTcpSocket::disconnected, socket, [request, socket] () {
-            if (!request->d->handling)
-                socket->deleteLater();
-        });
-
-        QObject::connect(socket, &QObject::destroyed, socket, [request] () {
-            delete request;
-        });
-    }
-}
-
-/*!
-    \internal
-*/
-void QAbstractHttpServerPrivate::handleReadyRead(QTcpSocket *socket,
-                                                 QHttpServerRequest *request)
-{
-    Q_Q(QAbstractHttpServer);
-    Q_ASSERT(socket);
-    Q_ASSERT(request);
-
-    if (!socket->isTransactionStarted())
-        socket->startTransaction();
-
-    if (!request->d->parse(socket)) {
-        socket->disconnectFromHost();
-        return;
-    }
-
-    if (request->d->state != QHttpServerRequestPrivate::State::AllDone)
-        return; // Partial read
-
-    qCDebug(lcHttpServer) << "Request:" << *request;
-
-#if defined(QT_WEBSOCKETS_LIB)
-    if (request->d->upgrade) { // Upgrade
-        const auto &upgradeValue = request->value(QByteArrayLiteral("upgrade"));
-        if (upgradeValue.compare(QByteArrayLiteral("websocket"), Qt::CaseInsensitive) == 0) {
-            static const auto signal = QMetaMethod::fromSignal(
-                        &QAbstractHttpServer::newWebSocketConnection);
-            if (q->handleRequest(*request, socket) && q->isSignalConnected(signal)) {
-                // Socket will now be managed by websocketServer
-                socket->disconnect();
-                socket->rollbackTransaction();
-                // And we can delete the request, as it's no longer used
-                delete request;
-                websocketServer.handleConnection(socket);
-                Q_EMIT socket->readyRead();
-            } else {
-                qWarning(lcHttpServer, "WebSocket received but no slots connected to "
-                                       "QWebSocketServer::newConnection or request not handled");
-                q->missingHandler(*request, socket);
-                socket->disconnectFromHost();
-            }
-            return;
-        }
-    }
-#endif
-
-    socket->commitTransaction();
-    request->d->handling = true;
-    if (!q->handleRequest(*request, socket))
-        q->missingHandler(*request, socket);
-    request->d->handling = false;
-    if (socket->state() == QAbstractSocket::UnconnectedState)
-        socket->deleteLater();
-    else if (socket->bytesAvailable() > 0)
-        QMetaObject::invokeMethod(socket, &QAbstractSocket::readyRead, Qt::QueuedConnection);
+    while (auto socket = tcpServer->nextPendingConnection())
+        new QHttpServerStream(q, socket);
 }
 
 /*!
@@ -293,30 +221,23 @@ std::unique_ptr<QWebSocket> QAbstractHttpServer::nextPendingWebSocketConnection(
 #endif
 
 /*!
-    \internal
-*/
-QHttpServerResponder QAbstractHttpServer::makeResponder(const QHttpServerRequest &request,
-                                                        QTcpSocket *socket)
-{
-    return QHttpServerResponder(request, socket);
-}
-
-/*!
     \fn QAbstractHttpServer::handleRequest(const QHttpServerRequest &request,
-                                           QTcpSocket *socket)
-    Overload this function to handle each incoming \a request from \a socket,
-    by examining the \a request and sending the appropriate response back to
-    \a socket. Returns \c true if the \a request was handled. Otherwise,
-    returns \c false. If returning \c false, \c missingHandler() will be
-    called afterwards.
+                                           QHttpServerResponder &responder)
+    Overload this function to handle each incoming \a request, by examining
+    the \a request and sending the appropriate response back to \a responder.
+    Return \c true if the \a request was handled successfully. If this method
+    returns \c false, \c missingHandler() will be called afterwards.
+
+    This function must move out of \a responder before returning \c true.
 */
 
 /*!
-    \fn QAbstractHttpServer::missingHandler(const QHttpServerRequest &request, QTcpSocket *socket)
+    \fn QAbstractHttpServer::missingHandler(const QHttpServerRequest &request,
+                                            QHttpServerResponder &&responder)
 
     This function is called whenever \c handleRequest() returns \c false.
-    The \a request and \a socket parameters are the same as \c handleRequest()
-    was called with.
+    The \a request and \a responder parameters are the same as
+    \c handleRequest() was called with.
 */
 
 #if QT_CONFIG(ssl)

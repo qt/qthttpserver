@@ -72,7 +72,7 @@ auto wrap(std::initializer_list<QMetaType> l) { return Wrapper{l}; }
                 path, methods, [this, viewHandler = std::forward<ViewHandler>(viewHandler)]
                                                    (QRegularExpressionMatch &match,
                                                     const QHttpServerRequest &request,
-                                                    QTcpSocket *const socket) mutable {
+                                                    QHttpServerResponder &&responder) mutable {
             auto boundViewHandler = router.bindCaptured<ViewHandler>(
                     std::move(viewHandler), match);
             // call viewHandler
@@ -107,7 +107,7 @@ auto wrap(std::initializer_list<QMetaType> l) { return Wrapper{l}; }
    \typealias QHttpServerRouterRule::RouterHandler
 
    Type alias for
-    std::function<void(const QRegularExpressionMatch &,const QHttpServerRequest &, QTcpSocket *)>
+    std::function<void(const QRegularExpressionMatch &,const QHttpServerRequest &, QHttpServerResponder &&)>
  */
 
 /*!
@@ -172,11 +172,11 @@ bool QHttpServerRouterRule::hasValidMethods() const
 
     This function is called by QHttpServerRouter when it receives a new
     request. If the given \a request matches this rule, this function handles
-    the request by delivering a response to the given \a socket, then returns
+    the request by delivering a response to the given \a responder, then returns
     \c true. Otherwise, it returns \c false.
 */
 bool QHttpServerRouterRule::exec(const QHttpServerRequest &request,
-                                 QTcpSocket *socket) const
+                                 QHttpServerResponder &responder) const
 {
     Q_D(const QHttpServerRouterRule);
 
@@ -184,7 +184,7 @@ bool QHttpServerRouterRule::exec(const QHttpServerRequest &request,
     if (!matches(request, &match))
         return false;
 
-    d->routerHandler(match, request, socket);
+    d->routerHandler(match, request, std::move(responder));
     return true;
 }
 

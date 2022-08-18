@@ -28,12 +28,12 @@ class QSslCertificate;
 class QSslConfiguration;
 class QSslKey;
 class QTcpServer;
-class QTcpSocket;
 
 class QAbstractHttpServerPrivate;
 class Q_HTTPSERVER_EXPORT QAbstractHttpServer : public QObject
 {
     Q_OBJECT
+    friend class QHttpServerStream;
 
 public:
     explicit QAbstractHttpServer(QObject *parent = nullptr);
@@ -63,11 +63,10 @@ public:
 protected:
     QAbstractHttpServer(QAbstractHttpServerPrivate &dd, QObject *parent = nullptr);
 
-    virtual bool handleRequest(const QHttpServerRequest &request, QTcpSocket *socket) = 0;
-    virtual void missingHandler(const QHttpServerRequest &request, QTcpSocket *socket) = 0;
-
-    static QHttpServerResponder makeResponder(const QHttpServerRequest &request,
-                                              QTcpSocket *socket);
+    virtual bool handleRequest(const QHttpServerRequest &request,
+                               QHttpServerResponder &responder) = 0;
+    virtual void missingHandler(const QHttpServerRequest &request,
+                                QHttpServerResponder &&responder) = 0;
 
 private:
     Q_DECLARE_PRIVATE(QAbstractHttpServer)

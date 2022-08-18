@@ -8,6 +8,8 @@
 #include <QtHttpServer/qhttpserverrequest.h>
 #include <QtHttpServer/qhttpserverresponder.h>
 
+#include <private/qhttpserverstream_p.h>
+
 #include <QtCore/qcoreapplication.h>
 #include <QtCore/qpair.h>
 #include <QtCore/qpointer.h>
@@ -30,14 +32,12 @@ QT_BEGIN_NAMESPACE
 class QHttpServerResponderPrivate
 {
 public:
-    QHttpServerResponderPrivate(const QHttpServerRequest &request, QTcpSocket *const socket)
-        : request(request), socket(socket) {}
+    QHttpServerResponderPrivate(QHttpServerStream *stream) : stream(stream) { }
 
-    const QHttpServerRequest &request;
 #if defined(QT_DEBUG)
-    const QPointer<QTcpSocket> socket;
+    const QPointer<QHttpServerStream> stream;
 #else
-    QTcpSocket *const socket;
+    QHttpServerStream *const stream;
 #endif
     bool bodyStarted{false};
 };

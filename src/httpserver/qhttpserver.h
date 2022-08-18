@@ -21,7 +21,6 @@
 
 QT_BEGIN_NAMESPACE
 
-class QTcpSocket;
 class QHttpServerRequest;
 
 class QHttpServerPrivate;
@@ -128,12 +127,12 @@ private:
     template<typename Rule, typename ViewHandler, typename ViewTraits, typename ... Args>
     bool routeImpl(Args &&...args, ViewHandler &&viewHandler)
     {
-        auto routerHandler = [this, viewHandler = std::forward<ViewHandler>(viewHandler)] (
-                    const QRegularExpressionMatch &match,
-                    const QHttpServerRequest &request,
-                    QTcpSocket *socket) {
+        auto routerHandler = [this, viewHandler = std::forward<ViewHandler>(viewHandler)](
+                                     const QRegularExpressionMatch &match,
+                                     const QHttpServerRequest &request,
+                                     QHttpServerResponder &&responder) {
             auto boundViewHandler = router()->bindCaptured(viewHandler, match);
-            responseImpl<ViewTraits>(boundViewHandler, request, socket);
+            responseImpl<ViewTraits>(boundViewHandler, request, std::move(responder));
         };
 
         auto rule = std::make_unique<Rule>(std::forward<Args>(args)..., std::move(routerHandler));
@@ -142,44 +141,45 @@ private:
     }
 
     template<typename ViewTraits, typename T>
-    void responseImpl(T &boundViewHandler, const QHttpServerRequest &request, QTcpSocket *socket)
+    void responseImpl(T &boundViewHandler, const QHttpServerRequest &request,
+                      QHttpServerResponder &&responder)
     {
         if constexpr (ViewTraits::Arguments::PlaceholdersCount == 0) {
             ResponseType<typename ViewTraits::ReturnType> response(boundViewHandler());
-            sendResponse(std::move(response), request, socket);
+            sendResponse(std::move(response), request, std::move(responder));
         } else if constexpr (ViewTraits::Arguments::PlaceholdersCount == 1) {
             if constexpr (ViewTraits::Arguments::Last::IsRequest::Value) {
                 ResponseType<typename ViewTraits::ReturnType> response(boundViewHandler(request));
-                sendResponse(std::move(response), request, socket);
+                sendResponse(std::move(response), request, std::move(responder));
             } else {
                 static_assert(std::is_same_v<typename ViewTraits::ReturnType, void>,
                     "Handlers with responder argument must have void return type.");
-                boundViewHandler(makeResponder(request, socket));
+                boundViewHandler(std::move(responder));
             }
         } else if constexpr (ViewTraits::Arguments::PlaceholdersCount == 2) {
             static_assert(std::is_same_v<typename ViewTraits::ReturnType, void>,
                 "Handlers with responder argument must have void return type.");
             if constexpr (ViewTraits::Arguments::Last::IsRequest::Value) {
-                boundViewHandler(makeResponder(request, socket), request);
+                boundViewHandler(std::move(responder), request);
             } else {
-                boundViewHandler(request, makeResponder(request, socket));
+                boundViewHandler(request, std::move(responder));
             }
         } else {
             static_assert(dependent_false_v<ViewTraits>);
         }
     }
 
-    bool handleRequest(const QHttpServerRequest &request, QTcpSocket *socket) override final;
-    void missingHandler(const QHttpServerRequest &request, QTcpSocket *socket) override final;
+    bool handleRequest(const QHttpServerRequest &request,
+                       QHttpServerResponder &responder) override final;
+    void missingHandler(const QHttpServerRequest &request,
+                        QHttpServerResponder &&responder) override final;
 
-    void sendResponse(QHttpServerResponse &&response,
-                      const QHttpServerRequest &request,
-                      QTcpSocket *socket);
+    void sendResponse(QHttpServerResponse &&response, const QHttpServerRequest &request,
+                      QHttpServerResponder &&responder);
 
 #if QT_CONFIG(future)
-    void sendResponse(QFuture<QHttpServerResponse> &&response,
-                      const QHttpServerRequest &request,
-                      QTcpSocket *socket);
+    void sendResponse(QFuture<QHttpServerResponse> &&response, const QHttpServerRequest &request,
+                      QHttpServerResponder &&responder);
 #endif
 };
 

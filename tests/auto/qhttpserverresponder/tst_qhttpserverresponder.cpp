@@ -51,15 +51,16 @@ struct HttpServer : QAbstractHttpServer {
     QUrl url { QStringLiteral("http://localhost:%1").arg(listen()) };
 
     HttpServer(decltype(handleRequestFunction) function) : handleRequestFunction(function) {}
-    bool handleRequest(const QHttpServerRequest &request, QTcpSocket *socket) override;
-    void missingHandler(const QHttpServerRequest &, QTcpSocket *) override {
+    bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &) override;
+    void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&) override
+    {
         Q_ASSERT(false);
     }
 };
 
-bool HttpServer::handleRequest(const QHttpServerRequest &request, QTcpSocket *socket)
+bool HttpServer::handleRequest(const QHttpServerRequest &, QHttpServerResponder &responder)
 {
-    handleRequestFunction(makeResponder(request, socket));
+    handleRequestFunction(std::move(responder));
     return true;
 }
 

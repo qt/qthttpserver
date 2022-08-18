@@ -3,12 +3,12 @@
 
 #include <QtHttpServer/qhttpserver.h>
 
-
 #include <QtHttpServer/qhttpserverrequest.h>
 #include <QtHttpServer/qhttpserverresponder.h>
 #include <QtHttpServer/qhttpserverresponse.h>
 
 #include <private/qhttpserver_p.h>
+#include <private/qhttpserverstream_p.h>
 
 #include <QtCore/qloggingcategory.h>
 
@@ -18,16 +18,16 @@ QT_BEGIN_NAMESPACE
 
 Q_LOGGING_CATEGORY(lcHS, "qt.httpserver");
 
-void QHttpServerPrivate::callMissingHandler(const QHttpServerRequest &request, QTcpSocket *socket)
+void QHttpServerPrivate::callMissingHandler(const QHttpServerRequest &request,
+                                            QHttpServerResponder &&responder)
 {
     Q_Q(QHttpServer);
 
     if (missingHandler) {
-        auto responder = QHttpServer::makeResponder(request, socket);
         missingHandler(request, std::move(responder));
     } else {
         qCDebug(lcHS) << "missing handler:" << request.url().path();
-        q->sendResponse(QHttpServerResponder::StatusCode::NotFound, request, socket);
+        q->sendResponse(QHttpServerResponder::StatusCode::NotFound, request, std::move(responder));
     }
 }
 
@@ -193,42 +193,44 @@ void QHttpServer::afterRequestImpl(AfterRequestHandler afterRequestHandler)
 /*!
     \internal
 */
-void QHttpServer::sendResponse(QHttpServerResponse &&response,
-                               const QHttpServerRequest &request,
-                               QTcpSocket *socket)
+void QHttpServer::sendResponse(QHttpServerResponse &&response, const QHttpServerRequest &request,
+                               QHttpServerResponder &&responder)
 {
     Q_D(QHttpServer);
     for (auto afterRequestHandler : d->afterRequestHandlers)
         response = afterRequestHandler(std::move(response), request);
-    response.write(makeResponder(request, socket));
+    response.write(std::move(responder));
 }
 
 #if QT_CONFIG(future)
 void QHttpServer::sendResponse(QFuture<QHttpServerResponse> &&response,
-                               const QHttpServerRequest &request,
-                               QTcpSocket *socket)
+                               const QHttpServerRequest &request, QHttpServerResponder &&responder)
 {
-    response.then(this, [this, &request, socket](QHttpServerResponse &&response) {
-        sendResponse(std::move(response), request, socket);
-    });
+    response.then(this,
+                  [this, &request,
+                   responder = std::move(responder)](QHttpServerResponse &&response) mutable {
+                      sendResponse(std::move(response), request, std::move(responder));
+                  });
 }
 #endif // QT_CONFIG(future)
 
 /*!
     \internal
 */
-bool QHttpServer::handleRequest(const QHttpServerRequest &request, QTcpSocket *socket)
+bool QHttpServer::handleRequest(const QHttpServerRequest &request, QHttpServerResponder &responder)
 {
     Q_D(QHttpServer);
-    return d->router.handleRequest(request, socket);
+    return d->router.handleRequest(request, responder);
 }
 
 /*!
     \internal
 */
-void QHttpServer::missingHandler(const QHttpServerRequest &request, QTcpSocket *socket) {
+void QHttpServer::missingHandler(const QHttpServerRequest &request,
+                                 QHttpServerResponder &&responder)
+{
     Q_D(QHttpServer);
-    return d->callMissingHandler(request, socket);
+    return d->callMissingHandler(request, std::move(responder));
 }
 
 QT_END_NAMESPACE
