@@ -18,6 +18,19 @@ QT_BEGIN_NAMESPACE
 
 Q_LOGGING_CATEGORY(lcHS, "qt.httpserver");
 
+void QHttpServerPrivate::callMissingHandler(const QHttpServerRequest &request, QTcpSocket *socket)
+{
+    Q_Q(QHttpServer);
+
+    if (missingHandler) {
+        auto responder = QHttpServer::makeResponder(request, socket);
+        missingHandler(request, std::move(responder));
+    } else {
+        qCDebug(lcHS) << "missing handler:" << request.url().path();
+        q->sendResponse(QHttpServerResponder::StatusCode::NotFound, request, socket);
+    }
+}
+
 /*!
     \class QHttpServer
     \since 6.4
@@ -42,11 +55,6 @@ Q_LOGGING_CATEGORY(lcHS, "qt.httpserver");
 QHttpServer::QHttpServer(QObject *parent)
     : QAbstractHttpServer(*new QHttpServerPrivate, parent)
 {
-    connect(this, &QAbstractHttpServer::missingHandler, this,
-            [this] (const QHttpServerRequest &request, QTcpSocket *socket) {
-        qCDebug(lcHS) << "missing handler:" << request.url().path();
-        sendResponse(QHttpServerResponder::StatusCode::NotFound, request, socket);
-    });
 }
 
 /*! \fn template<typename Rule = QHttpServerRouterRule, typename ... Args> bool QHttpServer::route(Args && ... args)
@@ -153,6 +161,27 @@ QHttpServerRouter *QHttpServer::router()
 }
 
 /*!
+    \typealias QHttpServer::MissingHandler
+
+    Type alias for std::function<void(const QHttpServerRequest &request,
+                                      QHttpServerResponder &&responder)>.
+*/
+
+/*!
+    Set a handler to call for unhandled paths.
+
+    The invocable passed as \a handler will be invoked for each request
+    that cannot be handled by any of registered route handlers. Passing a
+    default-constructed std::function resets the handler to the default one
+    that produces replies with status 404 Not Found.
+*/
+void QHttpServer::setMissingHandler(QHttpServer::MissingHandler handler)
+{
+    Q_D(QHttpServer);
+    d->missingHandler = handler;
+}
+
+/*!
     \internal
 */
 void QHttpServer::afterRequestImpl(AfterRequestHandler afterRequestHandler)
@@ -192,6 +221,14 @@ bool QHttpServer::handleRequest(const QHttpServerRequest &request, QTcpSocket *s
 {
     Q_D(QHttpServer);
     return d->router.handleRequest(request, socket);
+}
+
+/*!
+    \internal
+*/
+void QHttpServer::missingHandler(const QHttpServerRequest &request, QTcpSocket *socket) {
+    Q_D(QHttpServer);
+    return d->callMissingHandler(request, socket);
 }
 
 QT_END_NAMESPACE

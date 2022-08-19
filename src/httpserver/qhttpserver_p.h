@@ -36,6 +36,9 @@ public:
 
     QHttpServerRouter router;
     std::vector<QHttpServer::AfterRequestHandler> afterRequestHandlers;
+    QHttpServer::MissingHandler missingHandler;
+
+    void callMissingHandler(const QHttpServerRequest &request, QTcpSocket *socket);
 };
 
 QT_END_NAMESPACE

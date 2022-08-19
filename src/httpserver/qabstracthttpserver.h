@@ -51,10 +51,8 @@ public:
     void sslSetup(const QSslConfiguration &sslConfiguration);
 #endif
 
-Q_SIGNALS:
-    void missingHandler(const QHttpServerRequest &request, QTcpSocket *socket);
-
 #if defined(QT_WEBSOCKETS_LIB)
+Q_SIGNALS:
     void newWebSocketConnection();
 
 public:
@@ -66,6 +64,8 @@ protected:
     QAbstractHttpServer(QAbstractHttpServerPrivate &dd, QObject *parent = nullptr);
 
     virtual bool handleRequest(const QHttpServerRequest &request, QTcpSocket *socket) = 0;
+    virtual void missingHandler(const QHttpServerRequest &request, QTcpSocket *socket) = 0;
+
     static QHttpServerResponder makeResponder(const QHttpServerRequest &request,
                                               QTcpSocket *socket);
 
