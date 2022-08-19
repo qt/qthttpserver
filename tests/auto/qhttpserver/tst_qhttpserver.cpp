@@ -163,6 +163,7 @@ private slots:
     void disconnectedInEventLoop();
     void multipleRequests();
     void pipelinedRequests();
+    void missingHandler();
 
 private:
     void checkReply(QNetworkReply *reply, const QString &response);
@@ -997,6 +998,34 @@ void tst_QHttpServer::pipelinedRequests()
 
     for (std::size_t i = 0; i < std::size(replies); i++)
         checkReply(replies[i], QString::number(i));
+}
+
+void tst_QHttpServer::missingHandler()
+{
+    const QUrl requestUrl(urlBase.arg("/missing"));
+    auto reply = networkAccessManager.get(QNetworkRequest(requestUrl));
+    QTRY_VERIFY(reply->isFinished());
+    QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 404);
+    reply->deleteLater();
+
+    {
+        auto guard = QScopeGuard([this]() { httpserver.setMissingHandler({}); });
+
+        httpserver.setMissingHandler(
+                [](const QHttpServerRequest &, QHttpServerResponder &&responder) {
+                    responder.write(QHttpServerResponder::StatusCode::Ok);
+                });
+
+        reply = networkAccessManager.get(QNetworkRequest(requestUrl));
+        QTRY_VERIFY(reply->isFinished());
+        QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 200);
+        reply->deleteLater();
+    }
+
+    reply = networkAccessManager.get(QNetworkRequest(requestUrl));
+    QTRY_VERIFY(reply->isFinished());
+    QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 404);
+    reply->deleteLater();
 }
 
 QT_END_NAMESPACE

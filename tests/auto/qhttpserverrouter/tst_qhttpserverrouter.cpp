@@ -18,14 +18,7 @@ QT_BEGIN_NAMESPACE
 struct HttpServer : QAbstractHttpServer {
     QHttpServerRouter router;
 
-    HttpServer()
-        : QAbstractHttpServer()
-    {
-        connect(this, &QAbstractHttpServer::missingHandler,
-                [] (const QHttpServerRequest &request, QTcpSocket *socket) {
-            makeResponder(request, socket).write(QHttpServerResponder::StatusCode::NotFound);
-        });
-    }
+    HttpServer() = default;
 
     template<typename ViewHandler>
     void route(const char *path, const QHttpServerRequest::Methods methods, ViewHandler &&viewHandler)
@@ -51,6 +44,10 @@ struct HttpServer : QAbstractHttpServer {
 
     bool handleRequest(const QHttpServerRequest &request, QTcpSocket *socket) override {
         return router.handleRequest(request, socket);
+    }
+
+    void missingHandler(const QHttpServerRequest &request, QTcpSocket *socket) override {
+        makeResponder(request, socket).write(QHttpServerResponder::StatusCode::NotFound);
     }
 };
 

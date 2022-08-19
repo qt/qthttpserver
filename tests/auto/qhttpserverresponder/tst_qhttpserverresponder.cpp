@@ -52,6 +52,9 @@ struct HttpServer : QAbstractHttpServer {
 
     HttpServer(decltype(handleRequestFunction) function) : handleRequestFunction(function) {}
     bool handleRequest(const QHttpServerRequest &request, QTcpSocket *socket) override;
+    void missingHandler(const QHttpServerRequest &, QTcpSocket *) override {
+        Q_ASSERT(false);
+    }
 };
 
 bool HttpServer::handleRequest(const QHttpServerRequest &request, QTcpSocket *socket)

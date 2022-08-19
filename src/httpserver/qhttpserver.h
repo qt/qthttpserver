@@ -16,6 +16,7 @@
 #  include <QtCore/qfuture.h>
 #endif
 
+#include <functional>
 #include <tuple>
 
 QT_BEGIN_NAMESPACE
@@ -78,6 +79,11 @@ public:
                       "ViewHandler arguments are in the wrong order or not supported");
         afterRequestHelper<ViewTraits, ViewHandler>(std::move(viewHandler));
     }
+
+    using MissingHandler = std::function<void(const QHttpServerRequest &request,
+                                              QHttpServerResponder &&responder)>;
+
+    void setMissingHandler(MissingHandler handler);
 
 private:
     using AfterRequestHandler =
@@ -160,6 +166,7 @@ private:
     }
 
     bool handleRequest(const QHttpServerRequest &request, QTcpSocket *socket) override final;
+    void missingHandler(const QHttpServerRequest &request, QTcpSocket *socket) override final;
 
     void sendResponse(QHttpServerResponse &&response,
                       const QHttpServerRequest &request,
