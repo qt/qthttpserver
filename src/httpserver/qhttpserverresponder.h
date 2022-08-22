@@ -6,7 +6,6 @@
 
 #include <QtHttpServer/qthttpserverglobal.h>
 
-#include <QtCore/qpair.h>
 #include <QtCore/qstringfwd.h>
 #include <QtCore/qmetatype.h>
 
@@ -135,8 +134,7 @@ public:
     void write(StatusCode status = StatusCode::Ok);
 
 
-    void writeStatusLine(StatusCode status = StatusCode::Ok,
-                         const QPair<quint8, quint8> &version = qMakePair(1u, 1u));
+    void writeStatusLine(StatusCode status = StatusCode::Ok);
 
     void writeHeader(const QByteArray &key, const QByteArray &value);
     void writeHeaders(HeaderList headers);
