@@ -456,19 +456,13 @@ void QHttpServerResponder::write(HeaderList headers, StatusCode status)
 }
 
 /*!
-    This function writes HTTP status line with an HTTP status code \a status
-    and an HTTP version \a version.
+    This function writes HTTP status line with an HTTP status code \a status.
 */
-void QHttpServerResponder::writeStatusLine(StatusCode status,
-                                           const QPair<quint8, quint8> &version)
+void QHttpServerResponder::writeStatusLine(StatusCode status)
 {
     Q_D(const QHttpServerResponder);
     Q_ASSERT(d->socket->isOpen());
-    d->socket->write("HTTP/");
-    d->socket->write(QByteArray::number(version.first));
-    d->socket->write(".");
-    d->socket->write(QByteArray::number(version.second));
-    d->socket->write(" ");
+    d->socket->write("HTTP/1.1 ");
     d->socket->write(QByteArray::number(quint32(status)));
     const auto it = statusString.find(status);
     if (it != statusString.end()) {
