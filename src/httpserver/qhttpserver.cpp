@@ -102,7 +102,8 @@ QHttpServer::QHttpServer(QObject *parent)
 /*! \fn template<typename ViewHandler> void QHttpServer::afterRequest(ViewHandler &&viewHandler)
     Register a function to be run after each request.
 
-    The \a viewHandler argument can only be a lambda. The lambda definition
+    The \a viewHandler argument can be a function pointer, non-mutable lambda,
+    or any other copiable callable with const call operator. The callable
     can take one or two optional arguments: \c {QHttpServerResponse &&} and
     \c {const QHttpServerRequest &}. If both are given, they can be in either
     order.
