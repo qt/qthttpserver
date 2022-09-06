@@ -152,9 +152,13 @@ private:
                 ResponseType<typename ViewTraits::ReturnType> response(boundViewHandler(request));
                 sendResponse(std::move(response), request, socket);
             } else {
+                static_assert(std::is_same_v<typename ViewTraits::ReturnType, void>,
+                    "Handlers with responder argument must have void return type.");
                 boundViewHandler(makeResponder(request, socket));
             }
         } else if constexpr (ViewTraits::Arguments::PlaceholdersCount == 2) {
+            static_assert(std::is_same_v<typename ViewTraits::ReturnType, void>,
+                "Handlers with responder argument must have void return type.");
             if constexpr (ViewTraits::Arguments::Last::IsRequest::Value) {
                 boundViewHandler(makeResponder(request, socket), request);
             } else {
