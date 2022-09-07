@@ -35,13 +35,16 @@ qhp.QtHttpServer.indexRoot      =
 
 qhp.QtHttpServer.subprojects = classes examples
 qhp.QtHttpServer.subprojects.classes.title = C++ Classes
-qhp.QtHttpServer.subprojects.classes.indexTitle = Qt HTTP Server Classes
+qhp.QtHttpServer.subprojects.classes.indexTitle = Qt HTTP Server C++ Classes
 qhp.QtHttpServer.subprojects.classes.selectors = class fake:headerfile
 qhp.QtHttpServer.subprojects.classes.sortPages = true
 qhp.QtHttpServer.subprojects.examples.title = Examples
 qhp.QtHttpServer.subprojects.examples.indexTitle = Qt HTTP Server Examples
 qhp.QtHttpServer.subprojects.examples.selectors = fake:example
 qhp.QtHttpServer.subprojects.examples.sortPages = true
+
+navigation.cppclassespage = "Qt HTTP Server C++ Classes"
+navigation.landingpage = "Qt HTTP Server"
 
 # Fail the documentation build if there are more warnings than the limit
 warninglimit = 0
