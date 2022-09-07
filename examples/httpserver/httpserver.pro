@@ -4,3 +4,6 @@ SUBDIRS = \
     afterrequest \
     simple
 
+qtHaveModule(gui): qtHaveModule(concurrent) {
+    SUBDIRS += colorpalette
+}
