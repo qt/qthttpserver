@@ -1,3 +1,5 @@
-qt_internal_add_example(addressbookserver)
+if(TARGET Qt::Gui AND TARGET Qt::Concurrent)
+    qt_internal_add_example(colorpalette)
+endif()
 qt_internal_add_example(afterrequest)
 qt_internal_add_example(simple)
