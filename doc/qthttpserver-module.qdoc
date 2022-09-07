@@ -10,20 +10,4 @@
     \brief List of C++ classes that provide HTTP server framework.
 
     This module is in \e {Technical Preview} state.
-
-    To link against this library with CMake, add the following to your
-    CMakeLists.txt file:
-
-    \code
-    find_package(Qt6 COMPONENTS HttpServer)
-    target_link_libraries(<project name> PUBLIC Qt::HttpServer)
-    \endcode
-
-    If, on the other hand, you are using \l qmake, add this to your \c .pro
-    file:
-
-    \code
-    QT += httpserver
-    \endcode
-
 */
