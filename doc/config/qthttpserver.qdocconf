@@ -6,7 +6,7 @@ project                 = QtHttpServer
 description             = Qt Lightweight HTTP Server Reference Documentation
 version                 = $QT_VERSION
 
-depends += qtcore qtnetwork qtdoc qmake qtwebsockets
+depends += qtcore qtnetwork qtwebsockets qtdoc qmake qtcmake
 
 headerdirs  += ../../src/httpserver
 
