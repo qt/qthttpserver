@@ -8,11 +8,9 @@
     \brief Provides a lightweight server implementing the HTTP protocol.
 
     Qt HTTP Server supports building HTTP server functionality into an application.
-    It provides an implementation of the server side of the HTTP protocol, and also
-    provides security through Transport Layer Security. Because it is designed for
-    embedding in applications to expose things in a trusted network, and doesn't
-    have robustness/security as a goal, it is not suitable for being
-    internet-facing.
+    Common use cases are exposing the application's functionality through
+    REST APIs, or making devices in a trusted environment configurable also via HTTP.
+    The limitations are described in \l{Limitations & Security}.
 
     This module is in \e {Technical Preview} state.
 
@@ -36,9 +34,17 @@
 
     Runtime logging can be configured as described \l{qthttpserver-logging.html}{here}.
 
-    When security is needed and you have Qt compiled with support for TLS,
-    you can bind QAbstractHttpServer and its subclasses to a QSslServer object,
-    providing Transport Layer Security handling, turning it into an HTTPS server.
+    \section1 Limitations & Security
+
+    Qt HTTP Server does not have many of the more advanced features and optimizations
+    that general-purpose HTTP servers have. It also has not seen
+    the same scrutiny regarding various attack vectors over the network.
+    Use Qt HTTP Server, therefore, only for local connections
+    or in a trusted network, and do not expose the ports to the internet.
+
+    You can add HTTPS support as a basic security measure, though. If Qt is compiled
+    with support for TLS, you can bind QAbstractHttpServer and its subclasses to a
+    QSslServer object, providing Transport Layer Security handling.
     This can also be achieved by calling the QAbstractHttpServer::sslSetup()
     function before calling \l{QAbstractHttpServer::}{listen()}.
 
