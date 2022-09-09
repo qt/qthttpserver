@@ -19,11 +19,6 @@
 #include <QtNetwork/qtcpsocket.h>
 #include <QtHttpServer/qhttpserverrequest.h>
 
-#if defined(Q_OS_UNIX)
-#  include <signal.h>
-#  include <unistd.h>
-#endif
-
 QT_BEGIN_NAMESPACE
 
 using namespace Qt::StringLiterals;
@@ -38,7 +33,6 @@ private slots:
     void checkListenWarns();
     void websocket();
     void servers();
-    void fork();
     void qtbug82053();
 };
 
@@ -182,67 +176,6 @@ void tst_QAbstractHttpServer::servers()
     QTRY_COMPARE(server.serverPorts().first(), tcpServer->serverPort());
     QTRY_COMPARE(server.servers().last(), tcpServer2);
     QTRY_COMPARE(server.serverPorts().last(), tcpServer2->serverPort());
-}
-
-void tst_QAbstractHttpServer::fork()
-{
-#if defined(Q_OS_UNIX)
-    const auto message = "Hello world!"_ba;
-    struct HttpServer : QAbstractHttpServer
-    {
-        const QByteArray &message;
-        HttpServer(const QByteArray &message) : message(message) {}
-        bool handleRequest(const QHttpServerRequest &, QTcpSocket *socket) override
-        {
-            socket->write("HTTP/1.1 200 OK"_ba);
-            socket->write("\r\n"_ba);
-            socket->write("Content-Length: "_ba);
-            socket->write(QByteArray::number(message.size()));
-            socket->write("\r\n"_ba);
-            socket->write("Connection: close"_ba);
-            socket->write("\r\n"_ba);
-            socket->write("Content-Type: text/html"_ba);
-            socket->write("\r\n\r\n"_ba);
-            socket->write(message);
-            socket->flush();
-            ::kill(::getpid(), SIGKILL);  // Avoids continuing running tests in the child process
-            return true;
-        }
-
-        void missingHandler(const QHttpServerRequest &, QTcpSocket *) override {
-            Q_ASSERT(false);
-        }
-    } server = { message };
-
-    struct TcpServer : QTcpServer
-    {
-        void incomingConnection(qintptr socketDescriptor) override
-        {
-            if (::fork() != 0) {
-                // Parent process: Create a QTcpSocket with the descriptor to close it properly
-                QTcpSocket socket;
-                socket.setSocketDescriptor(socketDescriptor);
-                socket.close();
-            } else {
-                // Child process: It will parse the request and call HttpServer::handleRequest
-                QTcpServer::incomingConnection(socketDescriptor);
-            }
-        }
-    };
-    auto tcpServer = new TcpServer;
-    tcpServer->listen();
-    server.bind(tcpServer);
-    QNetworkAccessManager networkAccessManager;
-    const QUrl url(QString::fromLatin1("http://localhost:%1").arg(tcpServer->serverPort()));
-    auto reply = networkAccessManager.get(QNetworkRequest(url));
-    QSignalSpy finishedSpy(reply, &QNetworkReply::finished);
-    QTRY_VERIFY(finishedSpy.count());
-    QCOMPARE(reply->readAll(), message);
-    reply->close();
-    reply->deleteLater();
-#else
-    QSKIP("fork() not supported by this platform");
-#endif
 }
 
 void tst_QAbstractHttpServer::qtbug82053()
