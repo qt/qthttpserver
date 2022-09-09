@@ -307,8 +307,8 @@ QHttpServerResponder QAbstractHttpServer::makeResponder(const QHttpServerRequest
     Overload this function to handle each incoming \a request from \a socket,
     by examining the \a request and sending the appropriate response back to
     \a socket. Returns \c true if the \a request was handled. Otherwise,
-    returns \c false. If returning \c false, the \c missingHandler() signal
-    will be emitted.
+    returns \c false. If returning \c false, \c missingHandler() will be
+    called afterwards.
 */
 
 /*!
