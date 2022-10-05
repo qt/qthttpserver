@@ -63,7 +63,7 @@ bool QHttpServerRequestPrivate::parseRequestLine(QByteArrayView line)
     const auto requestMethod = line.first(i);
     i++;
 
-    while (i < line.length() && line[i] == ' ')
+    while (i < line.size() && line[i] == ' ')
         i++;
 
     auto j = line.indexOf(' ', i);
@@ -73,16 +73,16 @@ bool QHttpServerRequestPrivate::parseRequestLine(QByteArrayView line)
     const auto requestUrl = line.sliced(i, j - i);
     i = j + 1;
 
-    while (i < line.length() && line[i] == ' ')
+    while (i < line.size() && line[i] == ' ')
         i++;
 
-    if (i >= line.length())
+    if (i >= line.size())
         return false;
 
     j = line.indexOf(' ', i);
 
     const auto protocol = j == -1 ? line.sliced(i) : line.sliced(i, j - i);
-    if (protocol.length() != 8 || !protocol.startsWith("HTTP"))
+    if (protocol.size() != 8 || !protocol.startsWith("HTTP"))
         return false;
 
     parser.setMajorVersion(protocol[5] - '0');
@@ -143,7 +143,7 @@ qsizetype QHttpServerRequestPrivate::readRequestLine(QAbstractSocket *socket)
         if (c == '\n') {
             // remove the CR at the end
             if (fragment.endsWith('\r')) {
-                fragment.truncate(fragment.length() - 1);
+                fragment.truncate(fragment.size() - 1);
             }
             bool ok = parseRequestLine(fragment);
             state = State::ReadingHeader;
@@ -211,8 +211,8 @@ qsizetype QHttpServerRequestPrivate::readHeader(QAbstractSocket *socket)
 
                 // there is another case: We have no headers. Then the fragment equals just the line
                 // ending
-                if ((fragment.length() == 2 && fragment.endsWith("\r\n"))
-                    || (fragment.length() == 1 && fragment.endsWith("\n")))
+                if ((fragment.size() == 2 && fragment.endsWith("\r\n"))
+                    || (fragment.size() == 1 && fragment.endsWith("\n")))
                     allHeaders = true;
             }
         }

@@ -203,7 +203,7 @@ void tst_QHttpServerResponder::writeFile()
     QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), code);
     QCOMPARE(reply->readAll().trimmed(), data);
 
-    QCOMPARE(spyDestroyIoDevice.count(), 1);
+    QCOMPARE(spyDestroyIoDevice.size(), 1);
 }
 
 void tst_QHttpServerResponder::writeFileExtraHeader()
@@ -227,7 +227,7 @@ void tst_QHttpServerResponder::writeFileExtraHeader()
     QCOMPARE(reply->header(QNetworkRequest::ServerHeader).toByteArray(), headerServerValue);
     QCOMPARE(reply->readAll().trimmed(), "<html></html>");
 
-    QCOMPARE(spyDestroyIoDevice.count(), 1);
+    QCOMPARE(spyDestroyIoDevice.size(), 1);
 }
 
 void tst_QHttpServerResponder::writeByteArrayExtraHeader()
