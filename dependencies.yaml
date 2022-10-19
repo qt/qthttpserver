@@ -1,7 +1,7 @@
 dependencies:
   ../qtbase:
-    ref: 394b4c9e4994a9bdde89bd09eb0f663da44e0048
+    ref: 3d6f5e95f0cdf6bc36b5f8483da0c14f3535bce2
     required: true
   ../qtwebsockets:
-    ref: 14a66dd28de00efb0b636f5077bdbf7baf067115
+    ref: 1aa823d2242041d394bb0554532908375cae77a9
     required: false
