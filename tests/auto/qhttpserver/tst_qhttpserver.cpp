@@ -167,6 +167,7 @@ private slots:
     void pipelinedRequests();
     void missingHandler();
     void pipelinedFutureRequests();
+    void multipleResponses();
 
 private:
     void checkReply(QNetworkReply *reply, const QString &response);
@@ -329,6 +330,11 @@ void tst_QHttpServer::initTestCase()
         resp.setHeader("Content-Type", "application/x-empty");
         resp.setHeader("Server", "test server");
         return resp;
+    });
+
+    httpserver.route("/processing", [](QHttpServerResponder &&responder) {
+        responder.sendResponse(QHttpServerResponse(QHttpServerResponder::StatusCode::Processing));
+        responder.sendResponse(QHttpServerResponse("done"));
     });
 
     httpserver.afterRequest([] (QHttpServerResponse &&resp) {
@@ -1058,6 +1064,20 @@ void tst_QHttpServer::pipelinedFutureRequests()
         checkReply(replies[i], QString::number(i));
 }
 #endif // QT_CONFIG(concurrent)
+
+void tst_QHttpServer::multipleResponses()
+{
+    const QUrl requestUrl(urlBase.arg("/processing"));
+    auto reply = networkAccessManager.get(QNetworkRequest(requestUrl));
+
+    QTRY_VERIFY(reply->isFinished());
+
+    QEXPECT_FAIL("", "QTBUG-108068: QNetworkAccessManager should ignore informational replies",
+                 Abort);
+    QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 200);
+    QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader), "text/plain");
+    QCOMPARE(reply->readAll(), "done");
+}
 
 QT_END_NAMESPACE
 

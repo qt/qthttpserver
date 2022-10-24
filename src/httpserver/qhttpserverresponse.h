@@ -17,6 +17,8 @@ class Q_HTTPSERVER_EXPORT QHttpServerResponse final
 {
     Q_DECLARE_PRIVATE(QHttpServerResponse)
     Q_DISABLE_COPY(QHttpServerResponse)
+
+    friend class QHttpServerResponder;
 public:
     using StatusCode = QHttpServerResponder::StatusCode;
 
@@ -85,8 +87,6 @@ public:
     bool hasHeader(const QByteArray &name, const QByteArray &value) const;
 
     QList<QByteArray> headers(const QByteArray &name) const;
-
-    void write(QHttpServerResponder &&responder) const;
 
 private:
     std::unique_ptr<QHttpServerResponsePrivate> d_ptr;

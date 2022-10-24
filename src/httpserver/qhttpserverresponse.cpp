@@ -422,22 +422,4 @@ QList<QByteArray> QHttpServerResponse::headers(const QByteArray &name) const
     return results;
 }
 
-/*!
-    Writes HTTP response into QHttpServerResponder \a responder.
-*/
-void QHttpServerResponse::write(QHttpServerResponder &&responder) const
-{
-    Q_D(const QHttpServerResponse);
-
-    responder.writeStatusLine(d->statusCode);
-
-    for (auto &&header : d->headers)
-        responder.writeHeader(header.first, header.second);
-
-    responder.writeHeader(QHttpServerLiterals::contentLengthHeader(),
-                          QByteArray::number(d->data.size()));
-
-    responder.writeBody(d->data);
-}
-
 QT_END_NAMESPACE

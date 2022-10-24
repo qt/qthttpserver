@@ -199,7 +199,7 @@ void QHttpServer::sendResponse(QHttpServerResponse &&response, const QHttpServer
     Q_D(QHttpServer);
     for (auto afterRequestHandler : d->afterRequestHandlers)
         response = afterRequestHandler(std::move(response), request);
-    response.write(std::move(responder));
+    responder.sendResponse(response);
 }
 
 #if QT_CONFIG(future)

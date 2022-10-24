@@ -3,9 +3,11 @@
 
 #include <QtHttpServer/qhttpserverresponder.h>
 #include <QtHttpServer/qhttpserverrequest.h>
+#include <QtHttpServer/qhttpserverresponse.h>
 #include <private/qhttpserverresponder_p.h>
 #include <private/qhttpserverliterals_p.h>
 #include <private/qhttpserverrequest_p.h>
+#include <private/qhttpserverresponse_p.h>
 #include <private/qhttpserverstream_p.h>
 #include <QtCore/qjsondocument.h>
 #include <QtCore/qloggingcategory.h>
@@ -462,8 +464,9 @@ void QHttpServerResponder::write(HeaderList headers, StatusCode status)
 */
 void QHttpServerResponder::writeStatusLine(StatusCode status)
 {
-    Q_D(const QHttpServerResponder);
+    Q_D(QHttpServerResponder);
     Q_ASSERT(d->stream);
+    d->bodyStarted = false;
     d->stream->write("HTTP/1.1 ");
     d->stream->write(QByteArray::number(quint32(status)));
     const auto it = statusString.find(status);
@@ -529,6 +532,26 @@ void QHttpServerResponder::writeBody(const char *body)
 void QHttpServerResponder::writeBody(const QByteArray &body)
 {
     writeBody(body.constData(), body.size());
+}
+
+/*!
+    Sends a HTTP \a response to the client.
+
+    \since 6.5
+*/
+void QHttpServerResponder::sendResponse(const QHttpServerResponse &response)
+{
+    const auto &d = response.d_ptr;
+
+    writeStatusLine(d->statusCode);
+
+    for (auto &&header : d->headers)
+        writeHeader(header.first, header.second);
+
+    writeHeader(QHttpServerLiterals::contentLengthHeader(),
+                QByteArray::number(d->data.size()));
+
+    writeBody(d->data);
 }
 
 QT_END_NAMESPACE

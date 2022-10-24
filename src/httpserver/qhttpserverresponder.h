@@ -17,6 +17,7 @@ QT_BEGIN_NAMESPACE
 
 class QHttpServerStream;
 class QHttpServerRequest;
+class QHttpServerResponse;
 
 class QHttpServerResponderPrivate;
 class Q_HTTPSERVER_EXPORT QHttpServerResponder final
@@ -138,6 +139,8 @@ public:
     void writeBody(const char *body, qint64 size);
     void writeBody(const char *body);
     void writeBody(const QByteArray &body);
+
+    void sendResponse(const QHttpServerResponse &response);
 
 private:
     QHttpServerResponder(QHttpServerStream *stream);
