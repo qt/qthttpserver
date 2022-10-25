@@ -31,6 +31,7 @@ public:
         NothingDone,
         ReadingRequestLine,
         ReadingHeader,
+        ExpectContinue,
         ReadingData,
         AllDone,
     } state = State::NothingDone;
@@ -42,6 +43,7 @@ public:
     bool parseRequestLine(QByteArrayView line);
     qsizetype readRequestLine(QAbstractSocket *socket);
     qsizetype readHeader(QAbstractSocket *socket);
+    qsizetype sendContinue(QAbstractSocket *socket);
     qsizetype readBodyFast(QAbstractSocket *socket);
     qsizetype readRequestBodyRaw(QAbstractSocket *socket, qsizetype size);
     qsizetype readRequestBodyChunked(QAbstractSocket *socket);

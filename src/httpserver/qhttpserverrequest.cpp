@@ -252,9 +252,26 @@ qsizetype QHttpServerRequestPrivate::readHeader(QAbstractSocket *socket)
         QByteArray connectionHeaderField = headerField("connection");
         upgrade = connectionHeaderField.toLower().contains("upgrade");
 
-        state = (chunkedTransferEncoding || bodyLength > 0) ? State::ReadingData : State::AllDone;
+        if (chunkedTransferEncoding || bodyLength > 0) {
+            if (headerField("expect").compare("100-continue", Qt::CaseInsensitive) == 0)
+                state = State::ExpectContinue;
+            else
+                state = State::ReadingData;
+         } else {
+            state = State::AllDone;
+         }
     }
     return bytes;
+}
+
+/*!
+    \internal
+*/
+qsizetype QHttpServerRequestPrivate::sendContinue(QAbstractSocket *socket)
+{
+    qsizetype ret = socket->write("HTTP/1.1 100 Continue\r\n\r\n");
+    state = State::ReadingData;
+    return ret;
 }
 
 /*!
@@ -286,6 +303,9 @@ bool QHttpServerRequestPrivate::parse(QAbstractSocket *socket)
             continue;
         case State::ReadingHeader:
             read = readHeader(socket);
+            continue;
+        case State::ExpectContinue:
+            read = sendContinue(socket);
             continue;
         case State::ReadingData:
             if (chunkedTransferEncoding)
