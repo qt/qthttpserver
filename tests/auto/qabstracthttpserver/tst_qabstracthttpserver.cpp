@@ -152,7 +152,7 @@ void tst_QAbstractHttpServer::websocket()
     auto s2 = makeWebSocket();
 
     QSignalSpy newConnectionSpy(&server, &HttpServer::newWebSocketConnection);
-    QTRY_COMPARE(newConnectionSpy.count(), 2);
+    QTRY_COMPARE(newConnectionSpy.size(), 2);
     server.nextPendingWebSocketConnection();
     server.nextPendingWebSocketConnection();
     delete s1;
@@ -176,8 +176,8 @@ void tst_QAbstractHttpServer::servers()
     auto tcpServer2 = new QTcpServer;
     tcpServer2->listen();
     server.bind(tcpServer2);
-    QTRY_COMPARE(server.servers().count(), 2);
-    QTRY_COMPARE(server.serverPorts().count(), 2);
+    QTRY_COMPARE(server.servers().size(), 2);
+    QTRY_COMPARE(server.serverPorts().size(), 2);
     QTRY_COMPARE(server.servers().first(), tcpServer);
     QTRY_COMPARE(server.serverPorts().first(), tcpServer->serverPort());
     QTRY_COMPARE(server.servers().last(), tcpServer2);
@@ -236,7 +236,7 @@ void tst_QAbstractHttpServer::fork()
     const QUrl url(QString::fromLatin1("http://localhost:%1").arg(tcpServer->serverPort()));
     auto reply = networkAccessManager.get(QNetworkRequest(url));
     QSignalSpy finishedSpy(reply, &QNetworkReply::finished);
-    QTRY_VERIFY(finishedSpy.count());
+    QTRY_VERIFY(finishedSpy.size());
     QCOMPARE(reply->readAll(), message);
     reply->close();
     reply->deleteLater();
