@@ -277,8 +277,9 @@ qsizetype QHttpServerRequestPrivate::sendContinue(QAbstractSocket *socket)
 /*!
     \internal
 */
-QHttpServerRequestPrivate::QHttpServerRequestPrivate(const QHostAddress &remoteAddress)
-    : remoteAddress(remoteAddress)
+QHttpServerRequestPrivate::QHttpServerRequestPrivate(const QHostAddress &remoteAddress,
+                                                     quint16 remotePort)
+    : remoteAddress(remoteAddress), remotePort(remotePort)
 {
     clear();
 }
@@ -554,8 +555,8 @@ qsizetype QHttpServerRequestPrivate::getChunkSize(QAbstractSocket *socket, qsize
 /*!
     \internal
 */
-QHttpServerRequest::QHttpServerRequest(const QHostAddress &remoteAddress) :
-    d(new QHttpServerRequestPrivate(remoteAddress))
+QHttpServerRequest::QHttpServerRequest(const QHostAddress &remoteAddress, quint16 remotePort)
+    : d(new QHttpServerRequestPrivate(remoteAddress, remotePort))
 {}
 
 /*!
@@ -618,6 +619,16 @@ QByteArray QHttpServerRequest::body() const
 QHostAddress QHttpServerRequest::remoteAddress() const
 {
     return d->remoteAddress;
+}
+
+/*!
+    Returns the port of the origin host of the request.
+
+    \since 6.5
+*/
+quint16 QHttpServerRequest::remotePort() const
+{
+    return d->remotePort;
 }
 
 QT_END_NAMESPACE

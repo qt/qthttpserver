@@ -80,7 +80,10 @@ void QHttpServerStream::socketDisconnected()
 }
 
 QHttpServerStream::QHttpServerStream(QAbstractHttpServer *server, QTcpSocket *socket)
-    : QObject(server), server(server), socket(socket), request(socket->peerAddress())
+    : QObject(server),
+      server(server),
+      socket(socket),
+      request(socket->peerAddress(), socket->peerPort())
 {
     socket->setParent(this);
 

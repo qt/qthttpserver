@@ -23,7 +23,7 @@ QT_BEGIN_NAMESPACE
 class QHttpServerRequestPrivate
 {
 public:
-    QHttpServerRequestPrivate(const QHostAddress &remoteAddress);
+    QHttpServerRequestPrivate(const QHostAddress &remoteAddress, quint16 remotePort);
 
     quint16 port = 0;
 
@@ -58,6 +58,7 @@ public:
     { return parser.combinedHeaderValue(name); }
 
     QHostAddress remoteAddress;
+    quint16 remotePort;
     bool handling{false};
     qsizetype bodyLength;
     qsizetype contentRead;
