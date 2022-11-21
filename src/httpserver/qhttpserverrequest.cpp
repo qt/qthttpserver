@@ -278,8 +278,13 @@ qsizetype QHttpServerRequestPrivate::sendContinue(QAbstractSocket *socket)
     \internal
 */
 QHttpServerRequestPrivate::QHttpServerRequestPrivate(const QHostAddress &remoteAddress,
-                                                     quint16 remotePort)
-    : remoteAddress(remoteAddress), remotePort(remotePort)
+                                                     quint16 remotePort,
+                                                     const QHostAddress &localAddress,
+                                                     quint16 localPort)
+    : remoteAddress(remoteAddress),
+      remotePort(remotePort),
+      localAddress(localAddress),
+      localPort(localPort)
 {
     clear();
 }
@@ -555,8 +560,9 @@ qsizetype QHttpServerRequestPrivate::getChunkSize(QAbstractSocket *socket, qsize
 /*!
     \internal
 */
-QHttpServerRequest::QHttpServerRequest(const QHostAddress &remoteAddress, quint16 remotePort)
-    : d(new QHttpServerRequestPrivate(remoteAddress, remotePort))
+QHttpServerRequest::QHttpServerRequest(const QHostAddress &remoteAddress, quint16 remotePort,
+                                       const QHostAddress &localAddress, quint16 localPort)
+    : d(new QHttpServerRequestPrivate(remoteAddress, remotePort, localAddress, localPort))
 {}
 
 /*!
@@ -629,6 +635,26 @@ QHostAddress QHttpServerRequest::remoteAddress() const
 quint16 QHttpServerRequest::remotePort() const
 {
     return d->remotePort;
+}
+
+/*!
+    Returns the host address of the local socket which received the request.
+
+    \since 6.5
+*/
+QHostAddress QHttpServerRequest::localAddress() const
+{
+    return d->localAddress;
+}
+
+/*!
+    Returns the port of the local socket which received the request.
+
+    \since 6.5
+*/
+quint16 QHttpServerRequest::localPort() const
+{
+    return d->localPort;
 }
 
 QT_END_NAMESPACE

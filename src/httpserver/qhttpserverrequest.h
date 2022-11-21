@@ -56,6 +56,8 @@ public:
     Q_HTTPSERVER_EXPORT QByteArray body() const;
     Q_HTTPSERVER_EXPORT QHostAddress remoteAddress() const;
     Q_HTTPSERVER_EXPORT quint16 remotePort() const;
+    Q_HTTPSERVER_EXPORT QHostAddress localAddress() const;
+    Q_HTTPSERVER_EXPORT quint16 localPort() const;
 
 private:
     Q_DISABLE_COPY(QHttpServerRequest)
@@ -65,7 +67,9 @@ private:
 #endif
 
     Q_HTTPSERVER_EXPORT explicit QHttpServerRequest(const QHostAddress &remoteAddress,
-                                                    quint16 remotePort);
+                                                    quint16 remotePort,
+                                                    const QHostAddress &localAddress,
+                                                    quint16 localPort);
 
     std::unique_ptr<QHttpServerRequestPrivate> d;
 };

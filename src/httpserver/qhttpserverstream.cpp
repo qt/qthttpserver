@@ -83,7 +83,8 @@ QHttpServerStream::QHttpServerStream(QAbstractHttpServer *server, QTcpSocket *so
     : QObject(server),
       server(server),
       socket(socket),
-      request(socket->peerAddress(), socket->peerPort())
+      request(socket->peerAddress(), socket->peerPort(), socket->localAddress(),
+              socket->localPort())
 {
     socket->setParent(this);
 
