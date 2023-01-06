@@ -35,7 +35,7 @@ qint64 ContactEntry::nextId()
 static bool checkApiKeyHeader(const QList<QPair<QByteArray, QByteArray>> &headers)
 {
     for (const auto &[key, value] : headers) {
-        if (key == "api_key" && value == API_KEY) {
+        if (key.compare("X-API-Key", Qt::CaseInsensitive) == 0 && value == API_KEY) {
             return true;
         }
     }

@@ -29,12 +29,22 @@ to send a JSON object and corresponding HTTP status code.
 
 To create an entry the request body must be a JSON object with
 \c address and \c name fields. For example:
-    \code
+    \badcode
     {
-        "address": "Example Street 1, Big City"
+        "address": "Example Street 1, Big City",
         "name": "John Smith"
     }
     \endcode
+
+To use the API one needs to supply an \c{X-API-Key} header. To create an entry
+one can use \tt curl as follows (replace the port number with the value printed
+on startup):
+
+\badcode
+curl -v -H 'X-API-key: SecretKey' -H 'Content-Type: application/json' \
+    --data-raw '{"address": "Example Street 1, Big City", "name": "John Smith"}' \
+    http://127.0.0.1:51106/v2/contact
+\endcode
 
 \sa {Qt Quick Demo - RESTful API client Address Book}
 */
