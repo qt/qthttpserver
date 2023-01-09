@@ -10,9 +10,15 @@
 #include <QtCore/qnamespace.h>
 #include <QtCore/qobjectdefs.h>
 
+#if !__has_include(<QtCore/q20type_traits.h>)
 #include <QtCore/q20functional.h>
+#endif
 #include <tuple>
+#if __has_include(<QtCore/q20type_traits.h>)
+#include <QtCore/q20type_traits.h>
+#else
 #include <type_traits>
+#endif
 
 QT_BEGIN_NAMESPACE
 
