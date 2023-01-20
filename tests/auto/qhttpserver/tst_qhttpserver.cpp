@@ -30,6 +30,8 @@
 
 #include <array>
 
+#if QT_CONFIG(ssl)
+
 static const char g_privateKey[] = R"(-----BEGIN RSA PRIVATE KEY-----
 MIIJKAIBAAKCAgEAvdrtZtVquwiG12+vd3OjRVibdK2Ob73DOOWgb5rIgQ+B2Uzc
 OFa0xsiRyc/bam9CEEqgn5YHSn95LJHvN3dbsA8vrFqIXTkisFAuHJqsmsYZbAIi
@@ -115,6 +117,8 @@ K/uVHlJZNF4Y0eXVlq9DUhpvKOjGc8A208wQlsTUgPxljgJ2+4F3D+t0luc3h65m
 ignL7f4e1m2jh0oWTLhuP1hnVFN4KAKpVIJXhbEkH59cLCN6ARXiEHCM9rmK5Rgk
 NQZlAZc2w1Ha9lqisaWWpt42QVhQM64=
 -----END CERTIFICATE-----)";
+
+#endif // QT_CONFIG(ssl)
 
 QT_BEGIN_NAMESPACE
 
