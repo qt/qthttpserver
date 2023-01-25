@@ -12,6 +12,10 @@ set(INSTALL_EXAMPLEDIR "${INSTALL_EXAMPLESDIR}/httpserver/${PROJECT_NAME}")
 
 find_package(Qt6 REQUIRED COMPONENTS HttpServer)
 
+if(ANDROID)
+    find_package(Qt6 REQUIRED COMPONENTS Gui)
+endif()
+
 qt_add_executable(simple
     main.cpp
 )
@@ -19,6 +23,12 @@ qt_add_executable(simple
 target_link_libraries(simple PRIVATE
     Qt6::HttpServer
 )
+
+if(ANDROID)
+    target_link_libraries(simple PRIVATE
+        Qt::Gui
+    )
+endif()
 
 set(assets_resource_files
     "assets/certificate.crt"

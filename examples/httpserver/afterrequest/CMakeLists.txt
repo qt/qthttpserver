@@ -11,6 +11,9 @@ endif()
 set(INSTALL_EXAMPLEDIR "${INSTALL_EXAMPLESDIR}/httpserver/${PROJECT_NAME}")
 
 find_package(Qt6 REQUIRED COMPONENTS HttpServer)
+if(ANDROID)
+    find_package(Qt6 REQUIRED COMPONENTS Gui)
+endif()
 
 qt_add_executable(afterrequest
     main.cpp
@@ -19,6 +22,12 @@ qt_add_executable(afterrequest
 target_link_libraries(afterrequest PRIVATE
     Qt6::HttpServer
 )
+
+if(ANDROID)
+    target_link_libraries(afterrequest PRIVATE
+        Qt::Gui
+    )
+endif()
 
 install(TARGETS afterrequest
     RUNTIME DESTINATION "${INSTALL_EXAMPLEDIR}"
