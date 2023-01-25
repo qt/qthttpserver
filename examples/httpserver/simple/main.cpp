@@ -94,6 +94,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+#if QT_CONFIG(ssl)
     //! [HTTPS Configuration example]
     const auto sslCertificateChain =
             QSslCertificate::fromPath(QStringLiteral(":/assets/certificate.crt"));
@@ -124,6 +125,10 @@ int main(int argc, char *argv[])
                                             "https://127.0.0.1:%2/ (Press CTRL+C to quit)")
                         .arg(port)
                         .arg(sslPort);
-
+#else
+    qDebug() << QCoreApplication::translate("QHttpServerExample",
+                                            "Running on http://127.0.0.1:%1/"
+                                            "(Press CTRL+C to quit)").arg(port);
+#endif
     return app.exec();
 }
