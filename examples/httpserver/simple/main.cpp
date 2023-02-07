@@ -87,6 +87,13 @@ int main(int argc, char *argv[])
         return response;
     });
 
+    //! [Using afterRequest()]
+    httpServer.afterRequest([](QHttpServerResponse &&resp) {
+        resp.setHeader("Server", "Qt HTTP Server");
+        return std::move(resp);
+    });
+    //! [Using afterRequest()]
+
     const auto port = httpServer.listen(QHostAddress::Any);
     if (!port) {
         qDebug() << QCoreApplication::translate("QHttpServerExample",
