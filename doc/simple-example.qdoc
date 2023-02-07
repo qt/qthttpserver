@@ -17,5 +17,11 @@ Authentication} is used.
 In the above example \c QSslConfiguration is used to show how to create
 an SSL configuration for a QHttpServer to serve HTTPS traffic.
 
+\snippet simple/main.cpp Using afterRequest()
+The above example shows how to use the \c afterRequest() function of the
+QHttpServer to change the QHttpServerResponse object after it has been handled
+by the \c route() function. It demonstrates how HTTP headers can be added to the
+response.
+
 \example simple
 */
