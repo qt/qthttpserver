@@ -1,7 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>assets/certificate.crt</file>
-        <file>assets/private.key</file>
-        <file>assets/qt-logo.png</file>
-    </qresource>
-</RCC>
