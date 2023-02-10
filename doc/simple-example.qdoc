@@ -3,7 +3,7 @@
 
 /*!
 \ingroup qthttpserver-examples
-\title Simple Example
+\title Simple HTTP Server
 \brief Simple example of how to set up an HTTP server.
 \image browserwindow.png
 
