@@ -16,6 +16,8 @@ if(ANDROID)
     find_package(Qt6 REQUIRED COMPONENTS Gui)
 endif()
 
+qt_standard_project_setup()
+
 qt_add_executable(simple
     main.cpp
 )

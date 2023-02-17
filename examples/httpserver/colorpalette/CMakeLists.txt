@@ -12,6 +12,8 @@ set(INSTALL_EXAMPLEDIR "${INSTALL_EXAMPLESDIR}/httpserver/${PROJECT_NAME}")
 
 find_package(Qt6 REQUIRED COMPONENTS HttpServer Gui Concurrent)
 
+qt_standard_project_setup()
+
 qt_add_executable(colorpaletteserver
     apibehavior.h
     types.h
