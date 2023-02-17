@@ -32,17 +32,13 @@ if(ANDROID)
     )
 endif()
 
-set(assets_resource_files
-    "assets/certificate.crt"
-    "assets/private.key"
-    "assets/qt-logo.png"
-)
-
 qt_add_resources(simple "assets"
     PREFIX
         "/"
     FILES
-        ${assets_resource_files}
+        assets/certificate.crt
+        assets/private.key
+        assets/qt-logo.png
 )
 
 install(TARGETS simple
