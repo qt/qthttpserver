@@ -2,6 +2,7 @@ requires(qtHaveModule(httpserver))
 
 TEMPLATE = app
 
+CONFIG += cmdline
 QT = httpserver
 android: QT += gui
 
