@@ -1,8 +1,20 @@
 // Copyright (C) 2018 The Qt Company Ltd.
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR BSD-3-Clause
 
-#include <QtCore>
-#include <QtHttpServer>
+#include <QHttpServer>
+#include <QHttpServerResponse>
+
+#if QT_CONFIG(ssl)
+#  include <QSslCertificate>
+#  include <QSslKey>
+#endif
+
+#include <QCoreApplication>
+#include <QFile>
+#include <QJsonObject>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 static inline QString host(const QHttpServerRequest &request)
 {
@@ -19,32 +31,32 @@ int main(int argc, char *argv[])
     });
 
     httpServer.route("/query", [] (const QHttpServerRequest &request) {
-        return QString("%1/query/").arg(host(request));
+        return host(request) + u"/query/"_s;
     });
 
     httpServer.route("/query/", [] (qint32 id, const QHttpServerRequest &request) {
-        return QString("%1/query/%2").arg(host(request)).arg(id);
+        return u"%1/query/%2"_s.arg(host(request)).arg(id);
     });
 
     httpServer.route("/query/<arg>/log", [] (qint32 id, const QHttpServerRequest &request) {
-        return QString("%1/query/%2/log").arg(host(request)).arg(id);
+        return u"%1/query/%2/log"_s.arg(host(request)).arg(id);
     });
 
     httpServer.route("/query/<arg>/log/", [] (qint32 id, float threshold,
                                               const QHttpServerRequest &request) {
-        return QString("%1/query/%2/log/%3").arg(host(request)).arg(id).arg(threshold);
+        return u"%1/query/%2/log/%3"_s.arg(host(request)).arg(id).arg(threshold);
     });
 
     httpServer.route("/user/", [] (const qint32 id) {
-        return QString("User %1").arg(id);
+        return u"User "_s + QString::number(id);
     });
 
     httpServer.route("/user/<arg>/detail", [] (const qint32 id) {
-        return QString("User %1 detail").arg(id);
+        return u"User %1 detail"_s.arg(id);
     });
 
     httpServer.route("/user/<arg>/detail/", [] (const qint32 id, const qint32 year) {
-        return QString("User %1 detail year - %2").arg(id).arg(year);
+        return u"User %1 detail year - %2"_s.arg(id).arg(year);
     });
 
     httpServer.route("/json/", [] {
@@ -58,7 +70,7 @@ int main(int argc, char *argv[])
     });
 
     httpServer.route("/assets/<arg>", [] (const QUrl &url) {
-        return QHttpServerResponse::fromFile(QStringLiteral(":/assets/%1").arg(url.path()));
+        return QHttpServerResponse::fromFile(u":/assets/"_s + url.path());
     });
 
     httpServer.route("/remote_address", [](const QHttpServerRequest &request) {
@@ -96,9 +108,9 @@ int main(int argc, char *argv[])
 
     const auto port = httpServer.listen(QHostAddress::Any);
     if (!port) {
-        qDebug() << QCoreApplication::translate("QHttpServerExample",
-                                                "Server failed to listen on a port.");
-        return 0;
+        qWarning() << QCoreApplication::translate("QHttpServerExample",
+                                                  "Server failed to listen on a port.");
+        return -1;
     }
 
 #if QT_CONFIG(ssl)
@@ -106,36 +118,38 @@ int main(int argc, char *argv[])
     const auto sslCertificateChain =
             QSslCertificate::fromPath(QStringLiteral(":/assets/certificate.crt"));
     if (sslCertificateChain.empty()) {
-        qDebug() << QCoreApplication::translate("QHttpServerExample",
-                                                "Couldn't retrive SSL certificate from file.");
-        return 0;
+        qWarning() << QCoreApplication::translate("QHttpServerExample",
+                                                  "Couldn't retrieve SSL certificate from file.");
+        return -1;
     }
     QFile privateKeyFile(QStringLiteral(":/assets/private.key"));
     if (!privateKeyFile.open(QIODevice::ReadOnly)) {
-        qDebug() << QCoreApplication::translate("QHttpServerExample",
-                                                "Couldn't open file for reading.");
-        return 0;
+        qWarning() << QCoreApplication::translate("QHttpServerExample",
+                                                  "Couldn't open file for reading: %1")
+                      .arg(privateKeyFile.errorString());
+        return -1;
     }
     httpServer.sslSetup(sslCertificateChain.front(), QSslKey(&privateKeyFile, QSsl::Rsa));
     privateKeyFile.close();
 
     const auto sslPort = httpServer.listen(QHostAddress::Any);
     if (!sslPort) {
-        qDebug() << QCoreApplication::translate("QHttpServerExample",
-                                                "Server failed to listen on a port.");
-        return 0;
+        qWarning() << QCoreApplication::translate("QHttpServerExample",
+                                                  "Server failed to listen on a port.");
+        return -1;
     }
     //! [HTTPS Configuration example]
 
-    qDebug() << QCoreApplication::translate("QHttpServerExample",
-                                            "Running on http://127.0.0.1:%1/ and "
-                                            "https://127.0.0.1:%2/ (Press CTRL+C to quit)")
-                        .arg(port)
-                        .arg(sslPort);
+    qInfo().noquote()
+        << QCoreApplication::translate("QHttpServerExample",
+                                       "Running on http://127.0.0.1:%1/ and "
+                                       "https://127.0.0.1:%2/ (Press CTRL+C to quit)")
+           .arg(port).arg(sslPort);
 #else
-    qDebug() << QCoreApplication::translate("QHttpServerExample",
-                                            "Running on http://127.0.0.1:%1/"
-                                            "(Press CTRL+C to quit)").arg(port);
+    qInfo().noquote()
+        << QCoreApplication::translate("QHttpServerExample",
+                                       "Running on http://127.0.0.1:%1/"
+                                       "(Press CTRL+C to quit)").arg(port);
 #endif
     return app.exec();
 }
