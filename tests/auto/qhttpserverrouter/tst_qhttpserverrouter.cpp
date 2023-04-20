@@ -27,8 +27,7 @@ struct HttpServer : QAbstractHttpServer {
                 [this, viewHandler = std::forward<ViewHandler>(viewHandler)](
                         const QRegularExpressionMatch &match, const QHttpServerRequest &,
                         QHttpServerResponder &&responder) mutable {
-                    auto boundViewHandler = router.bindCaptured<ViewHandler>(
-                            std::forward<ViewHandler>(viewHandler), match);
+                    auto boundViewHandler = router.bindCaptured(viewHandler, match);
                     boundViewHandler(std::move(responder));
                 });
 
