@@ -71,6 +71,11 @@ private:
     QString urlBase;
 };
 
+static void getTest(QHttpServerResponder &&responder)
+{
+    responder.write(QString("get-test").toUtf8(), "text/plain");
+}
+
 void tst_QHttpServerRouter::initTestCase()
 {
     auto pageHandler = [] (const quint64 &page, QHttpServerResponder &&responder) {
@@ -84,10 +89,7 @@ void tst_QHttpServerRouter::initTestCase()
         responder.write(QString("post-test").toUtf8(), "text/plain");
     });
 
-    httpserver.route("/get-only", QHttpServerRequest::Method::Get,
-                     [] (QHttpServerResponder &&responder) {
-        responder.write(QString("get-test").toUtf8(), "text/plain");
-    });
+    httpserver.route("/get-only", QHttpServerRequest::Method::Get, getTest);
 
     urlBase = QStringLiteral("http://localhost:%1%2").arg(httpserver.listen());
 }
