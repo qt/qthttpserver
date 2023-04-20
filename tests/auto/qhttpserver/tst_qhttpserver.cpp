@@ -190,30 +190,44 @@ struct CustomArg {
     CustomArg(const QString &urlArg) : data(urlArg.toInt()) {}
 };
 
+static void reqAndRespHandler(QHttpServerResponder &&resp, const QHttpServerRequest &req)
+{
+    resp.write(req.body(), "text/html"_ba);
+}
+
+static void testHandler(QHttpServerResponder &&responder)
+{
+    responder.write("test msg", "text/html"_ba);
+}
+
+class MessageHandler {
+public:
+    explicit MessageHandler(const char *message) : message(message) {}
+
+    const char *operator()() const {
+        return message;
+    }
+private:
+    const char *message;
+};
+
 void tst_QHttpServer::initTestCase()
 {
-
-    httpserver.route("/req-and-resp", [] (QHttpServerResponder &&resp,
-                                          const QHttpServerRequest &req) {
-        resp.write(req.body(), "text/html"_ba);
-    });
+    httpserver.route("/req-and-resp", reqAndRespHandler);
 
     httpserver.route("/resp-and-req", [] (const QHttpServerRequest &req,
                                           QHttpServerResponder &&resp) {
         resp.write(req.body(), "text/html"_ba);
     });
 
-    httpserver.route("/test", [] (QHttpServerResponder &&responder) {
-        responder.write("test msg", "text/html"_ba);
-    });
+    auto testHandlerPtr = testHandler;
+    httpserver.route("/test", testHandlerPtr);
 
-    httpserver.route("/", QHttpServerRequest::Method::Get, [] () {
-        return "Hello world get";
-    });
+    auto l = []() { return "Hello world get"; };
 
-    httpserver.route("/", QHttpServerRequest::Method::Post, [] () {
-        return "Hello world post";
-    });
+    httpserver.route("/", QHttpServerRequest::Method::Get, l);
+
+    httpserver.route("/", QHttpServerRequest::Method::Post, MessageHandler("Hello world post"));
 
     httpserver.route("/post-and-get",
                      QHttpServerRequest::Method::Get | QHttpServerRequest::Method::Post,
