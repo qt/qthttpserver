@@ -114,7 +114,7 @@ bool QHttpServerRequestPrivate::parseRequestLine(QByteArrayView line)
 /*!
     \internal
 */
-qsizetype QHttpServerRequestPrivate::readRequestLine(QAbstractSocket *socket)
+qsizetype QHttpServerRequestPrivate::readRequestLine(QIODevice *socket)
 {
     if (fragment.isEmpty()) {
         // reserve bytes for the request line. This is better than always append() which reallocs
@@ -176,7 +176,7 @@ qint64 QHttpServerRequestPrivate::contentLength() const
 /*!
     \internal
 */
-qsizetype QHttpServerRequestPrivate::readHeader(QAbstractSocket *socket)
+qsizetype QHttpServerRequestPrivate::readHeader(QIODevice *socket)
 {
     if (fragment.isEmpty()) {
         // according to
@@ -267,7 +267,7 @@ qsizetype QHttpServerRequestPrivate::readHeader(QAbstractSocket *socket)
 /*!
     \internal
 */
-qsizetype QHttpServerRequestPrivate::sendContinue(QAbstractSocket *socket)
+qsizetype QHttpServerRequestPrivate::sendContinue(QIODevice *socket)
 {
     qsizetype ret = socket->write("HTTP/1.1 100 Continue\r\n\r\n");
     state = State::ReadingData;
@@ -292,7 +292,7 @@ QHttpServerRequestPrivate::QHttpServerRequestPrivate(const QHostAddress &remoteA
 /*!
     \internal
 */
-bool QHttpServerRequestPrivate::parse(QAbstractSocket *socket)
+bool QHttpServerRequestPrivate::parse(QIODevice *socket)
 {
     qsizetype read;
 
@@ -358,7 +358,7 @@ void QHttpServerRequestPrivate::clear()
 */
 // note this function can only be used for non-chunked, non-compressed with
 // known content length
-qsizetype QHttpServerRequestPrivate::readBodyFast(QAbstractSocket *socket)
+qsizetype QHttpServerRequestPrivate::readBodyFast(QIODevice *socket)
 {
 
     qsizetype toBeRead = qMin(socket->bytesAvailable(), bodyLength - contentRead);
@@ -387,7 +387,7 @@ qsizetype QHttpServerRequestPrivate::readBodyFast(QAbstractSocket *socket)
 /*!
     \internal
 */
-qsizetype QHttpServerRequestPrivate::readRequestBodyRaw(QAbstractSocket *socket, qsizetype size)
+qsizetype QHttpServerRequestPrivate::readRequestBodyRaw(QIODevice *socket, qsizetype size)
 {
     // FIXME get rid of this function and just use readBodyFast and give it socket->bytesAvailable()
     qsizetype bytes = 0;
@@ -418,7 +418,7 @@ qsizetype QHttpServerRequestPrivate::readRequestBodyRaw(QAbstractSocket *socket,
 /*!
     \internal
 */
-qsizetype QHttpServerRequestPrivate::readRequestBodyChunked(QAbstractSocket *socket)
+qsizetype QHttpServerRequestPrivate::readRequestBodyChunked(QIODevice *socket)
 {
     qsizetype bytes = 0;
     while (socket->bytesAvailable()) {
@@ -480,7 +480,7 @@ qsizetype QHttpServerRequestPrivate::readRequestBodyChunked(QAbstractSocket *soc
 /*!
     \internal
 */
-qsizetype QHttpServerRequestPrivate::getChunkSize(QAbstractSocket *socket, qsizetype *chunkSize)
+qsizetype QHttpServerRequestPrivate::getChunkSize(QIODevice *socket, qsizetype *chunkSize)
 {
     qsizetype bytes = 0;
     char crlf[2];

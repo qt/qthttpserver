@@ -42,15 +42,15 @@ public:
     QHttpHeaderParser parser;
 
     bool parseRequestLine(QByteArrayView line);
-    qsizetype readRequestLine(QAbstractSocket *socket);
-    qsizetype readHeader(QAbstractSocket *socket);
-    qsizetype sendContinue(QAbstractSocket *socket);
-    qsizetype readBodyFast(QAbstractSocket *socket);
-    qsizetype readRequestBodyRaw(QAbstractSocket *socket, qsizetype size);
-    qsizetype readRequestBodyChunked(QAbstractSocket *socket);
-    qsizetype getChunkSize(QAbstractSocket *socket, qsizetype *chunkSize);
+    qsizetype readRequestLine(QIODevice *socket);
+    qsizetype readHeader(QIODevice *socket);
+    qsizetype sendContinue(QIODevice *socket);
+    qsizetype readBodyFast(QIODevice *socket);
+    qsizetype readRequestBodyRaw(QIODevice *socket, qsizetype size);
+    qsizetype readRequestBodyChunked(QIODevice *socket);
+    qsizetype getChunkSize(QIODevice *socket, qsizetype *chunkSize);
 
-    bool parse(QAbstractSocket *socket);
+    bool parse(QIODevice *socket);
 
     void clear();
 
