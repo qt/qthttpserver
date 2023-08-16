@@ -4,6 +4,7 @@
 /*!
 \ingroup qthttpserver-examples
 \title RESTful Color Palette Server
+\examplecategory {Web Technologies}
 \brief Example of how to create a RESTful API server using the QHttpServer.
 
 \image restful-color-palette-server-example.png
