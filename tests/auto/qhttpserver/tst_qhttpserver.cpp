@@ -424,8 +424,7 @@ void tst_QHttpServer::initTestCase()
     };
 
     connect(&networkAccessManager, &QNetworkAccessManager::sslErrors,
-            [expectedSslErrors](QNetworkReply *reply,
-                                const QList<QSslError> &errors) {
+            this, [expectedSslErrors](QNetworkReply *reply, const QList<QSslError> &errors) {
         for (const auto &error: errors) {
             if (!expectedSslErrors.contains(error))
                 qCritical() << "Got unexpected ssl error:" << error << error.certificate();

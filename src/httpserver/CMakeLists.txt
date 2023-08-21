@@ -32,8 +32,6 @@ qt_internal_add_module(HttpServer
         Qt::CorePrivate
         Qt::NetworkPrivate
     GENERATE_CPP_EXPORTS
-    DEFINES
-        QT_NO_CONTEXTLESS_CONNECT
 )
 
 ## Scopes:
