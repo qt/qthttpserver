@@ -45,3 +45,5 @@ qhp.QtHttpServer.subprojects.examples.sortPages = true
 
 navigation.cppclassespage = "Qt HTTP Server C++ Classes"
 navigation.landingpage = "Qt HTTP Server"
+
+manifestmeta.highlighted.names = "QtHttpServer/Simple HTTP Server"
