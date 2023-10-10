@@ -63,4 +63,7 @@ For example:
     }
     \endcode
 
+\l {Qt Quick Demo - RESTful Color Palette API client} {RESTful Color Palette API client} is a
+possible client implementation that can be used to connect to the server.
+
 */
