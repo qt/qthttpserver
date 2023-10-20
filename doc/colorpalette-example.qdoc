@@ -3,19 +3,24 @@
 
 /*!
 \ingroup qthttpserver-examples
-\title RESTful Color Palette Server
+\title RESTful API Server
 \examplecategory {Web Technologies}
 \brief Example of how to create a RESTful API server using the QHttpServer.
 
 \image restful-color-palette-server-example.png
 \example colorpalette
 
-This example shows how to set up a RESTful API server using the QHttpServer class.
-The example is based on \l {https://reqres.in/}{Reqres API}.
-The Color Palette API allows create, read, update and delete operations of
-colors (unknown resource to be compatible with Reqres API) and users.
-API also provides login/logout functionality.
+This example shows how to create and host simple RESTful web APIs in a small
+application using the QHttpServer class. This server accepts calls in REST
+style and can be used with its counterpart example
+\l {Qt Quick Demo - RESTful API client} {RESTful Color Palette API client}
+on the client side.
 
+An application that obeys the REST constraints may be informally described as
+RESTful. The RESTful API Server allows create, read, update and delete
+operations of colors (unknown resource to be compatible with Reqres API) and
+users. The RESTful API Server also provides login/logout functionality.
+The example is based on \l {https://reqres.in/}{Reqres API}.
 
 To run the server application, execute server binary:
 \code
@@ -62,8 +67,4 @@ For example:
         "avatar": "/img/faces/1-image.jpg"
     }
     \endcode
-
-\l {Qt Quick Demo - RESTful Color Palette API client} {RESTful Color Palette API client} is a
-possible client implementation that can be used to connect to the server.
-
 */
