@@ -91,6 +91,13 @@ void QHttpServerStream::socketDisconnected()
 QHttpServerRequest QHttpServerStream::initRequestFromSocket(QTcpSocket *tcpSocket)
 {
     if (tcpSocket) {
+#if QT_CONFIG(ssl)
+        if (auto *ssl = qobject_cast<const QSslSocket *>(tcpSocket)) {
+            return QHttpServerRequest(ssl->peerAddress(), ssl->peerPort(),
+                                      ssl->localAddress(), ssl->localPort(),
+                                      ssl->sslConfiguration());
+        }
+#endif
         return QHttpServerRequest(tcpSocket->peerAddress(), tcpSocket->peerPort(),
                                   tcpSocket->localAddress(), tcpSocket->localPort());
     }

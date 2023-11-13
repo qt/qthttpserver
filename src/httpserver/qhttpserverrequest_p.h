@@ -25,6 +25,11 @@ class QHttpServerRequestPrivate
 public:
     QHttpServerRequestPrivate(const QHostAddress &remoteAddress, quint16 remotePort,
                               const QHostAddress &localAddress, quint16 localPort);
+#if QT_CONFIG(ssl)
+    QHttpServerRequestPrivate(const QHostAddress &remoteAddress, quint16 remotePort,
+                              const QHostAddress &localAddress, quint16 localPort,
+                              const QSslConfiguration &sslConfiguration);
+#endif
 
     quint16 port = 0;
 
@@ -62,6 +67,9 @@ public:
     quint16 remotePort;
     QHostAddress localAddress;
     quint16 localPort;
+#if QT_CONFIG(ssl)
+    QSslConfiguration sslConfiguration;
+#endif
     bool handling{false};
     qsizetype bodyLength;
     qsizetype contentRead;
