@@ -189,7 +189,7 @@ static const std::map<QHttpServerResponder::StatusCode, QByteArray> statusString
 /*!
     \internal
 */
-template <qint64 BUFFERSIZE = 512>
+template <qint64 BUFFERSIZE = 128 * 1024>
 struct IOChunkedTransfer
 {
     // TODO This is not the fastest implementation, as it does read & write
