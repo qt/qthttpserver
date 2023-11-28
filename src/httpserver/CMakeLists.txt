@@ -33,7 +33,6 @@ qt_internal_add_module(HttpServer
     PRIVATE_MODULE_INTERFACE
         Qt::CorePrivate
         Qt::NetworkPrivate
-    GENERATE_CPP_EXPORTS
 )
 
 ## Scopes:
