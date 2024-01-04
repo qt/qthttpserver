@@ -640,7 +640,7 @@ QHttpServerRequest::Method QHttpServerRequest::method() const
 */
 QList<QPair<QByteArray, QByteArray>> QHttpServerRequest::headers() const
 {
-    return d->parser.headers();
+    return d->parser.headers().toListOfPairs();
 }
 
 /*!
