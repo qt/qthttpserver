@@ -20,6 +20,7 @@ QT_BEGIN_NAMESPACE
 
 class QRegularExpression;
 class QString;
+class QHttpHeaders;
 
 class QHttpServerRequestPrivate;
 class QHttpServerRequest final
@@ -55,7 +56,7 @@ public:
     Q_HTTPSERVER_EXPORT QUrl url() const;
     Q_HTTPSERVER_EXPORT QUrlQuery query() const;
     Q_HTTPSERVER_EXPORT Method method() const;
-    Q_HTTPSERVER_EXPORT QList<QPair<QByteArray, QByteArray>> headers() const;
+    Q_HTTPSERVER_EXPORT const QHttpHeaders& headers() const;
     Q_HTTPSERVER_EXPORT QByteArray body() const;
     Q_HTTPSERVER_EXPORT QHostAddress remoteAddress() const;
     Q_HTTPSERVER_EXPORT quint16 remotePort() const;

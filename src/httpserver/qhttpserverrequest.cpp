@@ -4,6 +4,7 @@
 #include "qhttpserverrequest_p.h"
 
 #include <QtHttpServer/qhttpserverrequest.h>
+#include <QtNetwork/qhttpheaders.h>
 
 #include <QtCore/qdebug.h>
 #include <QtCore/qloggingcategory.h>
@@ -32,17 +33,7 @@ Q_HTTPSERVER_EXPORT QDebug operator<<(QDebug debug, const QHttpServerRequest &re
     QDebugStateSaver saver(debug);
     debug.nospace() << "QHttpServerRequest(";
     debug << "(Url: " << request.url() << ")";
-    debug << "(Headers: ";
-    auto headers = request.headers();
-    bool firstHeader = true;
-    for (auto i = headers.begin(); i != headers.end(); ++i) {
-        if (firstHeader)
-            firstHeader = false;
-        else
-            debug << ", ";
-        debug << "(" << i->first << ": " << i->second << ")";
-    }
-    debug << ")";
+    debug << "(Headers: " << request.headers() << ")";
     debug << "(RemoteHost: " << request.remoteAddress() << ")";
     debug << "(BodySize: " << request.body().size() << ")";
     debug << ')';
@@ -638,9 +629,9 @@ QHttpServerRequest::Method QHttpServerRequest::method() const
 /*!
     Returns all the request headers.
 */
-QList<QPair<QByteArray, QByteArray>> QHttpServerRequest::headers() const
+const QHttpHeaders& QHttpServerRequest::headers() const
 {
-    return d->parser.headers().toListOfPairs();
+    return d->parser.headers();
 }
 
 /*!
