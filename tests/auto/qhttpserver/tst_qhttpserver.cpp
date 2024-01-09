@@ -355,9 +355,15 @@ void tst_QHttpServer::initTestCase()
 
     httpserver.route("/extra-headers", [] () {
         QHttpServerResponse resp("");
-        resp.setHeader("Content-Type", "application/x-empty");
-        resp.setHeader("Server", "test server");
-        return resp;
+        auto h = resp.headers();
+
+        h.removeAll(QHttpHeaders::WellKnownHeader::ContentType);
+        h.append(QHttpHeaders::WellKnownHeader::ContentType, "application/x-empty");
+
+        h.removeAll(QHttpHeaders::WellKnownHeader::Server);
+        h.append(QHttpHeaders::WellKnownHeader::Server, "test server");
+
+        return std::move(resp.withHeaders(h));
     });
 
     httpserver.route("/processing", [](QHttpServerResponder &&responder) {
@@ -965,17 +971,24 @@ void tst_QHttpServer::afterRequest()
 {
     httpserver.afterRequest([] (QHttpServerResponse &&resp,
                                 const QHttpServerRequest &request) {
-        if (request.url().path() == "/test-after-request")
-            resp.setHeader("Arguments-Order-1", "resp, request");
+        if (request.url().path() == "/test-after-request") {
+            auto h = resp.headers();
+            h.removeAll("Arguments-Order-1");
+            h.append("Arguments-Order-1", "resp, request");
+            resp.withHeaders(std::move(h));
+        }
 
         return std::move(resp);
     });
 
     httpserver.afterRequest([] (const QHttpServerRequest &request,
                                 QHttpServerResponse &&resp) {
-        if (request.url().path() == "/test-after-request")
-            resp.setHeader("Arguments-Order-2", "request, resp");
-
+        if (request.url().path() == "/test-after-request") {
+            auto h = resp.headers();
+            h.removeAll("Arguments-Order-2");
+            h.append("Arguments-Order-2", "request, resp");
+            resp.withHeaders(std::move(h));
+        }
         return std::move(resp);
     });
 

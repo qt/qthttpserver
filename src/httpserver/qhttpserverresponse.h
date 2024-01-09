@@ -5,6 +5,7 @@
 #define QHTTPSERVERRESPONSE_H
 
 #include <QtHttpServer/qhttpserverresponder.h>
+#include <QtNetwork/qhttpheaders.h>
 
 #include <memory>
 
@@ -40,13 +41,7 @@ public:
     QHttpServerResponse(const QByteArray &mimeType,
                         const QByteArray &data,
                         const StatusCode status = StatusCode::Ok);
-    QHttpServerResponse(QByteArray &&mimeType,
-                        const QByteArray &data,
-                        const StatusCode status = StatusCode::Ok);
     QHttpServerResponse(const QByteArray &mimeType,
-                        QByteArray &&data,
-                        const StatusCode status = StatusCode::Ok);
-    QHttpServerResponse(QByteArray &&mimeType,
                         QByteArray &&data,
                         const StatusCode status = StatusCode::Ok);
 
@@ -59,33 +54,20 @@ public:
 
     StatusCode statusCode() const;
 
-    void addHeader(QByteArray &&name, QByteArray &&value);
-    void addHeader(QByteArray &&name, const QByteArray &value);
-    void addHeader(const QByteArray &name, QByteArray &&value);
     void addHeader(const QByteArray &name, const QByteArray &value);
-
-    void addHeaders(QHttpServerResponder::HeaderList headers);
-
-    template<typename Container>
-    void addHeaders(const Container &headerList)
-    {
-        for (const auto &header : headerList)
-            addHeader(header.first, header.second);
-    }
 
     void clearHeader(const QByteArray &name);
     void clearHeaders();
 
-    void setHeader(QByteArray &&name, QByteArray &&value);
-    void setHeader(QByteArray &&name, const QByteArray &value);
-    void setHeader(const QByteArray &name, QByteArray &&value);
     void setHeader(const QByteArray &name, const QByteArray &value);
 
-    void setHeaders(QHttpServerResponder::HeaderList headers);
+    QHttpServerResponse& withHeaders(const QHttpHeaders &headers);
+    QHttpServerResponse& withHeaders(QHttpHeaders &&headers);
 
     bool hasHeader(const QByteArray &name) const;
     bool hasHeader(const QByteArray &name, const QByteArray &value) const;
 
+    QHttpHeaders headers() const;
     QList<QByteArray> headers(const QByteArray &name) const;
 
 private:

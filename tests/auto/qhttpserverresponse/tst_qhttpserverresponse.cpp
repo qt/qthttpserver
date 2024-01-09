@@ -122,8 +122,11 @@ void tst_QHttpServerResponse::headers()
     QVERIFY(!resp.hasHeader(contentTypeHeader, test1));
     QVERIFY(!resp.hasHeader(contentTypeHeader, test2));
 
-    resp.addHeader(contentTypeHeader, test1);
-    resp.addHeader(contentLengthHeader, test2);
+    QHttpHeaders h = resp.headers();
+    h.append(contentTypeHeader, test1);
+    h.append(contentLengthHeader, test2);
+    resp.withHeaders(h);
+
     QVERIFY(resp.hasHeader(contentLengthHeader, test2));
     QVERIFY(resp.hasHeader(contentTypeHeader, zero));
     QVERIFY(resp.hasHeader(contentTypeHeader, test1));
@@ -138,45 +141,14 @@ void tst_QHttpServerResponse::headers()
     QCOMPARE(lengthHeaders.size(), 1);
     QVERIFY(lengthHeaders.contains(test2));
 
-    resp.setHeader(contentTypeHeader, test2);
+    h.removeAll(contentTypeHeader);
+    h.append(contentTypeHeader, test2);
+    resp.withHeaders(h);
 
     QVERIFY(resp.hasHeader(contentLengthHeader, test2));
     QVERIFY(!resp.hasHeader(contentTypeHeader, zero));
     QVERIFY(!resp.hasHeader(contentTypeHeader, test1));
     QVERIFY(resp.hasHeader(contentTypeHeader, test2));
-
-    resp.clearHeader(contentTypeHeader);
-
-    QVERIFY(resp.hasHeader(contentLengthHeader, test2));
-
-    resp.clearHeader(contentLengthHeader);
-
-    QVERIFY(!resp.hasHeader(contentLengthHeader));
-    QVERIFY(!resp.hasHeader(contentTypeHeader));
-
-    resp.addHeaders({ {contentTypeHeader, zero}, {contentLengthHeader, test1} });
-
-    QVERIFY(resp.hasHeader(contentTypeHeader, zero));
-    QVERIFY(resp.hasHeader(contentLengthHeader, test1));
-
-    resp.clearHeaders();
-
-    QVERIFY(!resp.hasHeader(contentLengthHeader));
-    QVERIFY(!resp.hasHeader(contentTypeHeader));
-
-    const QList<QPair<QByteArray, QByteArray>> headers = {
-      {contentTypeHeader, zero}, {contentLengthHeader, test2}
-    };
-
-    resp.addHeaders(headers);
-
-    QVERIFY(resp.hasHeader(contentTypeHeader, zero));
-    QVERIFY(resp.hasHeader(contentLengthHeader, test2));
-
-    resp.clearHeaders();
-
-    QVERIFY(!resp.hasHeader(contentLengthHeader));
-    QVERIFY(!resp.hasHeader(contentTypeHeader));
 }
 
 QT_END_NAMESPACE

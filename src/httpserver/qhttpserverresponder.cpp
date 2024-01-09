@@ -551,8 +551,11 @@ void QHttpServerResponder::sendResponse(const QHttpServerResponse &response)
 
     writeStatusLine(d->statusCode);
 
-    for (auto &&header : d->headers)
-        writeHeader(header.first, header.second);
+    for (qsizetype i = 0; i < d->headers.size(); ++i) {
+        const auto name = d->headers.nameAt(i);
+        const auto value = d->headers.valueAt(i);
+        writeHeader({name.data(), name.size()}, value.toByteArray());
+    }
 
     writeHeader(QHttpServerLiterals::contentLengthHeader(),
                 QByteArray::number(d->data.size()));

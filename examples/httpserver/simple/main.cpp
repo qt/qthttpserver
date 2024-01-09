@@ -95,14 +95,17 @@ int main(int argc, char *argv[])
         }
         QHttpServerResponse response("text/plain", "Authentication required\n",
                                      QHttpServerResponse::StatusCode::Unauthorized);
-        response.setHeader("WWW-Authenticate", R"(Basic realm="Simple example", charset="UTF-8")");
-        return response;
+        auto h = response.headers();
+        h.append(QHttpHeaders::WellKnownHeader::WWWAuthenticate,
+                 R"(Basic realm="Simple example", charset="UTF-8")");
+        return std::move(response.withHeaders(std::move(h)));
     });
 
     //! [Using afterRequest()]
     httpServer.afterRequest([](QHttpServerResponse &&resp) {
-        resp.setHeader("Server", "Qt HTTP Server");
-        return std::move(resp);
+        auto h = resp.headers();
+        h.append(QHttpHeaders::WellKnownHeader::Server, "Qt HTTP Server");
+        return std::move(resp.withHeaders(std::move(h)));
     });
     //! [Using afterRequest()]
 
