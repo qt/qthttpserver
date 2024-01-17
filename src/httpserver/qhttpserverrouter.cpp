@@ -51,6 +51,7 @@ static const QHash<QMetaType, QString> defaultConverters = {
 
     You can register \c ViewHandler as a callback for requests to a specific URL.
     Variable parts in the route can be specified by the arguments in ViewHandler.
+    A QHttpServerRouter instance must not be modifed by its rules.
 
     \note This is a low-level routing API for an HTTP server.
 
@@ -123,7 +124,8 @@ static const QHash<QMetaType, QString> defaultConverters = {
 
     Inside addRule, we determine ViewHandler arguments and generate a list of
     their QMetaType::Type ids. Then we parse the URL and replace each \c <arg>
-    with a regexp for its type from the list.
+    with a regexp for its type from the list. The \a rule must not modify the
+    QHttpServerRouter instance.
 
     \code
     QHttpServerRouter router;

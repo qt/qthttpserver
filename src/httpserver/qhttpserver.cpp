@@ -65,7 +65,8 @@ QHttpServer::QHttpServer(QObject *parent)
     callback (\c{ViewHandler}). The remaining arguments are used to create a
     new \c Rule (the default is QHttpServerRouterRule). This is in turn added
     to the QHttpServerRouter. It returns \c true if a new rule is created,
-    otherwise it returns \c false.
+    otherwise it returns \c false. This function must not be called from a
+    callback (\c{ViewHandler}).
 
     \c ViewHandler can be a function pointer, non-mutable lambda, or any
     other copiable callable with const call operator. The callable can take two
