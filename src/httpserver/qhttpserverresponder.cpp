@@ -237,6 +237,9 @@ struct IOChunkedTransfer
 
     void readFromInput()
     {
+        if (source.isNull())
+            return;
+
         if (!isBufferEmpty()) // We haven't consumed all the data yet.
             return;
         beginIndex = 0;
@@ -252,6 +255,9 @@ struct IOChunkedTransfer
 
     void writeToOutput()
     {
+        if (sink.isNull() || source.isNull())
+            return;
+
         if (isBufferEmpty())
             return;
 
