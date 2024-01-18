@@ -107,9 +107,9 @@ QHttpServer::QHttpServer(QObject *parent)
     \endcode
 
     The body of \c QFuture is executed asynchronously, but all the network
-    communication is executed sequentially.
-    \c {QHttpServerResponder&&} special argument is not available for routes
-    returning a \c {QFuture}.
+    communication is executed sequentially in the thread the \c {QHttpServer}
+    belongs to. The \c {QHttpServerResponder&&} special argument is not
+    available for routes returning a \c {QFuture}.
 
     \sa QHttpServerRouter::addRule
 */
