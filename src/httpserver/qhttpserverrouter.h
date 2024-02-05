@@ -33,7 +33,14 @@ public:
 
     template<typename Type>
     bool addConverter(QAnyStringView regexp) {
-        if (!QMetaType::registerConverter<QString, Type>())
+        // The QMetaType converter registry is shared by all parts of Qt which uses it.
+        // Only register a converter if it is not already registered. If registering fails,
+        // check that it has been registered by a different thread between the two calls
+        // or return false. The registerConverter function will output an warning if a
+        // converter is already registered.
+        if (!QMetaType::hasRegisteredConverterFunction<QString, Type>()
+            && !QMetaType::registerConverter<QString, Type>()
+            && !QMetaType::hasRegisteredConverterFunction<QString, Type>())
             return false;
 
         addConverter(QMetaType::fromType<Type>(), regexp);
