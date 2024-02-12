@@ -337,9 +337,11 @@ void tst_QHttpServer::initTestCase()
 
     httpserver.route("/chunked/", [] (QHttpServerResponder &&responder) {
         responder.writeStatusLine(QHttpServerResponder::StatusCode::Ok);
-        responder.writeHeaders({
-                {"Content-Type", "text/plain"},
-                {"Transfer-Encoding", "chunked"} });
+
+        QHttpHeaders headers;
+        headers.append(QHttpHeaders::WellKnownHeader::ContentType, "text/plain");
+        headers.append(QHttpHeaders::WellKnownHeader::TransferEncoding, "chunked");
+        responder.writeHeaders(headers);
 
         auto writeChunk = [&responder] (const char *message) {
             responder.writeBody(QByteArray::number(qstrlen(message), 16));
@@ -1146,7 +1148,7 @@ void tst_QHttpServer::localSocket()
                      "Accept: */*\r\n\r\n");
 
         const QByteArray expectedResult =
-                "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 8\r\n\r\ntest msg";
+                "HTTP/1.1 200 OK\r\ncontent-type: text/html\r\ncontent-length: 8\r\n\r\ntest msg";
 
         // We need to call process events a couple of times for the write/read to go through
         QTRY_COMPARE_GE(socket.bytesAvailable(), expectedResult.size());

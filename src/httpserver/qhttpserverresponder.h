@@ -5,6 +5,7 @@
 #define QHTTPSERVERRESPONDER_H
 
 #include <QtHttpServer/qthttpserverglobal.h>
+#include <QtNetwork/qhttpheaders.h>
 
 #include <QtCore/qstringfwd.h>
 #include <QtCore/qmetatype.h>
@@ -103,38 +104,36 @@ public:
     };
     Q_ENUM(StatusCode)
 
-    using HeaderList = std::initializer_list<std::pair<QByteArray, QByteArray>>;
-
     QHttpServerResponder(QHttpServerResponder &&other);
     ~QHttpServerResponder();
 
-    void write(QIODevice *data, HeaderList headers, StatusCode status = StatusCode::Ok);
+    void write(QIODevice *data, const QHttpHeaders &headers, StatusCode status = StatusCode::Ok);
 
     void write(QIODevice *data, const QByteArray &mimeType, StatusCode status = StatusCode::Ok);
 
     void write(const QJsonDocument &document,
-               HeaderList headers,
+               const QHttpHeaders &headers,
                StatusCode status = StatusCode::Ok);
 
     void write(const QJsonDocument &document,
                StatusCode status = StatusCode::Ok);
 
     void write(const QByteArray &data,
-               HeaderList headers,
+               const QHttpHeaders &headers,
                StatusCode status = StatusCode::Ok);
 
     void write(const QByteArray &data,
                const QByteArray &mimeType,
                StatusCode status = StatusCode::Ok);
 
-    void write(HeaderList headers, StatusCode status = StatusCode::Ok);
+    void write(const QHttpHeaders &headers, StatusCode status = StatusCode::Ok);
     void write(StatusCode status = StatusCode::Ok);
 
 
     void writeStatusLine(StatusCode status = StatusCode::Ok);
 
     void writeHeader(const QByteArray &key, const QByteArray &value);
-    void writeHeaders(HeaderList headers);
+    void writeHeaders(const QHttpHeaders &headers);
 
     void writeBody(const char *body, qint64 size);
     void writeBody(const char *body);

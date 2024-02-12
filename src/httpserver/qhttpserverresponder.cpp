@@ -32,12 +32,6 @@ QT_IMPL_METATYPE_EXTERN_TAGGED(QHttpServerResponder::StatusCode, QHttpServerResp
 */
 
 /*!
-    \typealias QHttpServerResponder::HeaderList
-
-    Type alias for std::initializer_list<std::pair<QByteArray, QByteArray>>
-*/
-
-/*!
     \enum QHttpServerResponder::StatusCode
 
     HTTP status codes
@@ -318,7 +312,7 @@ QHttpServerResponder::~QHttpServerResponder()
     \note This function takes the ownership of \a data.
 */
 void QHttpServerResponder::write(QIODevice *data,
-                                 HeaderList headers,
+                                 const QHttpHeaders &headers,
                                  StatusCode status)
 {
     Q_D(QHttpServerResponder);
@@ -343,12 +337,15 @@ void QHttpServerResponder::write(QIODevice *data,
     writeStatusLine(status);
 
     if (!input->isSequential()) { // Non-sequential QIODevice should know its data size
-        writeHeader(QHttpServerLiterals::contentLengthHeader(),
+        writeHeader(QHttpHeaders::wellKnownHeaderName(
+                            QHttpHeaders::WellKnownHeader::ContentLength).toByteArray(),
                     QByteArray::number(input->size()));
     }
 
-    for (auto &&header : headers)
-        writeHeader(header.first, header.second);
+    for (qsizetype i = 0; i < headers.size(); ++i) {
+        const auto name = headers.nameAt(i);
+        writeHeader(QByteArray(name.data(), name.size()), headers.valueAt(i).toByteArray());
+    }
 
     d->stream->write("\r\n");
 
@@ -375,9 +372,9 @@ void QHttpServerResponder::write(QIODevice *data,
                                  const QByteArray &mimeType,
                                  StatusCode status)
 {
-    write(data,
-          {{ QHttpServerLiterals::contentTypeHeader(), mimeType }},
-          status);
+    QHttpHeaders headers;
+    headers.append(QHttpHeaders::WellKnownHeader::ContentType, mimeType);
+    write(data, headers, status);
 }
 
 /*!
@@ -387,17 +384,19 @@ void QHttpServerResponder::write(QIODevice *data,
     Note: This function sets HTTP Content-Type header as "application/json".
 */
 void QHttpServerResponder::write(const QJsonDocument &document,
-                                 HeaderList headers,
+                                 const QHttpHeaders &headers,
                                  StatusCode status)
 {
     const QByteArray &json = document.toJson();
 
     writeStatusLine(status);
-    writeHeader(QHttpServerLiterals::contentTypeHeader(),
+    writeHeader(QHttpHeaders::wellKnownHeaderName(
+                        QHttpHeaders::WellKnownHeader::ContentType).toByteArray(),
                 QHttpServerLiterals::contentTypeJson());
-    writeHeader(QHttpServerLiterals::contentLengthHeader(),
+    writeHeader(QHttpHeaders::wellKnownHeaderName(
+                        QHttpHeaders::WellKnownHeader::ContentLength).toByteArray(),
                 QByteArray::number(json.size()));
-    writeHeaders(std::move(headers));
+    writeHeaders(headers);
     writeBody(document.toJson());
 }
 
@@ -420,15 +419,18 @@ void QHttpServerResponder::write(const QJsonDocument &document,
     Note: This function sets HTTP Content-Length header.
 */
 void QHttpServerResponder::write(const QByteArray &data,
-                                 HeaderList headers,
+                                 const QHttpHeaders &headers,
                                  StatusCode status)
 {
     writeStatusLine(status);
 
-    for (auto &&header : headers)
-        writeHeader(header.first, header.second);
+    for (qsizetype i = 0; i < headers.size(); ++i) {
+        const auto name = headers.nameAt(i);
+        writeHeader(QByteArray(name.data(), name.size()), headers.valueAt(i).toByteArray());
+    }
 
-    writeHeader(QHttpServerLiterals::contentLengthHeader(),
+    writeHeader(QHttpHeaders::wellKnownHeaderName(
+                        QHttpHeaders::WellKnownHeader::ContentLength).toByteArray(),
                 QByteArray::number(data.size()));
     writeBody(data);
 }
@@ -441,9 +443,9 @@ void QHttpServerResponder::write(const QByteArray &data,
                                  const QByteArray &mimeType,
                                  StatusCode status)
 {
-    write(data,
-          {{ QHttpServerLiterals::contentTypeHeader(), mimeType }},
-          status);
+    QHttpHeaders headers;
+    headers.append(QHttpHeaders::WellKnownHeader::ContentType, mimeType);
+    write(data, headers, status);
 }
 
 /*!
@@ -460,9 +462,9 @@ void QHttpServerResponder::write(StatusCode status)
     Answers a request with an HTTP status code \a status and
     HTTP Headers \a headers.
 */
-void QHttpServerResponder::write(HeaderList headers, StatusCode status)
+void QHttpServerResponder::write(const QHttpHeaders &headers, StatusCode status)
 {
-    write(QByteArray(), std::move(headers), status);
+    write(QByteArray(), headers, status);
 }
 
 /*!
@@ -501,10 +503,12 @@ void QHttpServerResponder::writeHeader(const QByteArray &header,
 /*!
     This function writes HTTP headers \a headers.
 */
-void QHttpServerResponder::writeHeaders(HeaderList headers)
+void QHttpServerResponder::writeHeaders(const QHttpHeaders &headers)
 {
-    for (auto &&header : headers)
-        writeHeader(header.first, header.second);
+    for (qsizetype i = 0; i < headers.size(); ++i) {
+        const auto name = headers.nameAt(i);
+        writeHeader(QByteArray(name.data(), name.size()), headers.valueAt(i).toByteArray());
+    }
 }
 
 /*!
@@ -557,7 +561,8 @@ void QHttpServerResponder::sendResponse(const QHttpServerResponse &response)
         writeHeader({name.data(), name.size()}, value.toByteArray());
     }
 
-    writeHeader(QHttpServerLiterals::contentLengthHeader(),
+    writeHeader(QHttpHeaders::wellKnownHeaderName(
+                        QHttpHeaders::WellKnownHeader::ContentLength).toByteArray(),
                 QByteArray::number(d->data.size()));
 
     writeBody(d->data);
