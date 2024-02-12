@@ -1110,8 +1110,6 @@ void tst_QHttpServer::multipleResponses()
 
     QTRY_VERIFY(reply->isFinished());
 
-    QEXPECT_FAIL("", "QTBUG-108068: QNetworkAccessManager should ignore informational replies",
-                 Abort);
     QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 200);
     QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader), "text/plain");
     QCOMPARE(reply->readAll(), "done");
