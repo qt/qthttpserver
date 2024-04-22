@@ -15,6 +15,7 @@
 #include <QtCore/qurl.h>
 #include <QtHttpServer/qhttpserverrequest.h>
 #include <QtHttpServer/qhttpserverresponder.h>
+#include <QtHttpServer/qhttpserverwebsocketupgraderesponse.h>
 #include <QtNetwork/qnetworkaccessmanager.h>
 #include <QtNetwork/qnetworkreply.h>
 #include <QtNetwork/qnetworkrequest.h>
@@ -29,11 +30,12 @@
 #include <QtNetwork/qhttp2configuration.h>
 #include <QtNetwork/qsslconfiguration.h>
 #include <QtNetwork/qsslkey.h>
+#include <QtNetwork/qsslserver.h>
 #endif
 
 #if QT_CONFIG(ssl)
 
-static const char g_privateKey[] = R"(-----BEGIN RSA PRIVATE KEY-----
+constexpr char g_privateKey[] = R"(-----BEGIN RSA PRIVATE KEY-----
 MIIJKAIBAAKCAgEAvdrtZtVquwiG12+vd3OjRVibdK2Ob73DOOWgb5rIgQ+B2Uzc
 OFa0xsiRyc/bam9CEEqgn5YHSn95LJHvN3dbsA8vrFqIXTkisFAuHJqsmsYZbAIi
 CX8t1tlcUmQsJmjZ1IKhk37lgGMKkc28Oh/CHbTrhJZWdQyoBbNb8KeqSHkePYu0
@@ -85,7 +87,7 @@ OCi7UuXYjRwDfnka2nAdB9lv4ExvU5lkrJVZXONYUwToArAxRtdKMqCfl36JILMA
 C4+9sOeTo6HtZRvPVNLMX/rkWIv+onFgblfb8guA2wz1JUT00fNxQPt1k8s=
 -----END RSA PRIVATE KEY-----)";
 
-static const char g_certificate[] = R"(-----BEGIN CERTIFICATE-----
+constexpr char g_certificate[] = R"(-----BEGIN CERTIFICATE-----
 MIIFszCCA5ugAwIBAgIUfpP54qSLfus/pFUIBDizbnrDjE4wDQYJKoZIhvcNAQEL
 BQAwaDELMAkGA1UEBhMCRlIxDzANBgNVBAgMBkZyYW5jZTERMA8GA1UEBwwIR3Jl
 bm9ibGUxFjAUBgNVBAoMDVF0Q29udHJpYnV0b3IxHTAbBgNVBAMMFHFodHRwc3Nl
@@ -128,6 +130,7 @@ typedef std::unique_ptr<QSslSocket> QSslSocketPtr;
 #endif
 
 using namespace Qt::StringLiterals;
+using namespace std::chrono_literals;
 
 class tst_QAbstractHttpServer : public QObject
 {
@@ -139,6 +142,8 @@ private slots:
     void request();
     void checkListenWarns();
     void websocket();
+    void verifyWebSocketUpgrades_data();
+    void verifyWebSocketUpgrades();
     void servers();
     void qtbug82053();
     void http2handshake();
@@ -261,6 +266,11 @@ void tst_QAbstractHttpServer::websocket()
             Q_ASSERT(false);
         }
     } server;
+    server.registerWebSocketUpgradeVerifier( // Accept all websocket connections
+            [](const QHttpServerRequest &request) {
+                Q_UNUSED(request);
+                return QHttpServerWebSocketUpgradeResponse::accept();
+            });
     auto tcpServer = new QTcpServer;
     tcpServer->listen();
     server.bind(tcpServer);
@@ -281,6 +291,134 @@ void tst_QAbstractHttpServer::websocket()
     QTRY_COMPARE(newConnectionSpy.size(), 2);
     server.nextPendingWebSocketConnection();
     server.nextPendingWebSocketConnection();
+#endif // defined(QT_WEBSOCKETS_LIB)
+}
+
+void tst_QAbstractHttpServer::verifyWebSocketUpgrades_data()
+{
+#if !defined(QT_WEBSOCKETS_LIB)
+    QSKIP("This test requires WebSocket support");
+#endif
+    QTest::addColumn<QString>("url");
+    QTest::addColumn<bool>("useSslPort");
+    QTest::addColumn<bool>("shouldSucceed");
+    QTest::addColumn<bool>("missingHandlerExpected");
+
+    QTest::addRow("allowed") << "ws://localhost:%1/allowed" << false << true << false;
+    QTest::addRow("denied") << "ws://localhost:%1/denied" << false << false << false;
+    QTest::addRow("no match") << "ws://localhost:%1/nomatch" << false << false << true;
+#if QT_CONFIG(ssl)
+    if (QSslSocket::supportsSsl()) {
+        QTest::addRow("sslonly-without") << "ws://localhost:%1/ssl" << false << false << false;
+        QTest::addRow("sslonly-with") << "wss://localhost:%1/ssl" << true << true << false;
+    }
+#endif
+}
+
+void tst_QAbstractHttpServer::verifyWebSocketUpgrades()
+{
+#if defined(QT_WEBSOCKETS_LIB)
+    QFETCH(const QString, url);
+    QFETCH(const bool, useSslPort);
+    QFETCH(const bool, shouldSucceed);
+    QFETCH(const bool, missingHandlerExpected);
+    int port = 0;
+
+    struct HttpServer : QAbstractHttpServer
+    {
+        HttpServer(bool missingExpected) : missingHandlerExpected(missingExpected) { }
+
+        bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &responder) override
+        {
+            auto _responder = std::move(responder);
+            return true;
+        }
+
+        bool missingHandlerExpected = false;
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&) override
+        {
+            Q_ASSERT(missingHandlerExpected);
+        }
+    } server(missingHandlerExpected);
+
+    server.registerWebSocketUpgradeVerifier([](const QHttpServerRequest &request) {
+        if (request.url().path() == "/allowed"_L1)
+            return QHttpServerWebSocketUpgradeResponse::accept();
+        else
+            return QHttpServerWebSocketUpgradeResponse::passToNext();
+    });
+    server.registerWebSocketUpgradeVerifier([](const QHttpServerRequest &request) {
+        // Explicitly deny
+        if (request.url().path() == "/denied"_L1)
+            return QHttpServerWebSocketUpgradeResponse::deny();
+        else
+            return QHttpServerWebSocketUpgradeResponse::passToNext();
+    });
+#if QT_CONFIG(ssl)
+    server.registerWebSocketUpgradeVerifier([](const QHttpServerRequest &request) {
+        if (request.url().path() == "/ssl"_L1) {
+            // The QSslConfiguration of a request is null if connection is not using SSL
+            if (request.sslConfiguration().isNull())
+                return QHttpServerWebSocketUpgradeResponse::deny();
+            else
+                return QHttpServerWebSocketUpgradeResponse::accept();
+        }
+        return QHttpServerWebSocketUpgradeResponse::passToNext();
+    });
+#endif // QT_CONFIG(ssl)
+    QTcpServer tcpServer;
+    tcpServer.listen();
+    server.bind(&tcpServer);
+#if QT_CONFIG(ssl)
+    QSslServer sslServer;
+    QSslConfiguration sslConfiguration;
+    sslConfiguration.setLocalCertificate(QSslCertificate(QByteArray(g_certificate)));
+    sslConfiguration.setPrivateKey(QSslKey(g_privateKey, QSsl::Rsa));
+    sslServer.setSslConfiguration(sslConfiguration);
+    sslServer.listen();
+    server.bind(&sslServer);
+    if (useSslPort) {
+        port = sslServer.serverPort();
+    } else {
+        port = tcpServer.serverPort();
+    }
+#else
+    QVERIFY(!useSslPort)
+    port = tcpServer.serverPort();
+#endif
+
+    auto makeWebSocket = [&, this]() mutable {
+        auto s = std::make_unique<QWebSocket>(QString::fromUtf8(""),
+                                              QWebSocketProtocol::VersionLatest, this);
+        const QUrl qurl(url.arg(port));
+#if QT_CONFIG(ssl)
+        if (useSslPort) {
+            const QList<QSslError> expectedSslErrors = {
+                QSslError(QSslError::SelfSignedCertificate, QSslCertificate(g_certificate)),
+                // Non-OpenSSL backends are not able to report a specific error code
+                // for self-signed certificates.
+                QSslError(QSslError::CertificateUntrusted, QSslCertificate(g_certificate)),
+                QSslError(QSslError::HostNameMismatch, QSslCertificate(g_certificate)),
+            };
+            s->ignoreSslErrors(expectedSslErrors);
+        }
+#endif // QT_CONFIG(ssl)
+        s->open(qurl);
+        return s;
+    };
+
+    auto s1 = makeWebSocket();
+    auto s2 = makeWebSocket();
+
+    QSignalSpy newConnectionSpy(&server, &HttpServer::newWebSocketConnection);
+    if (shouldSucceed) {
+        QTRY_COMPARE(newConnectionSpy.size(), 2);
+        server.nextPendingWebSocketConnection();
+        server.nextPendingWebSocketConnection();
+    } else {
+        QTest::qWait(useSslPort ? 2s : 1s);
+        QCOMPARE(newConnectionSpy.size(), 0);
+    }
 #endif // defined(QT_WEBSOCKETS_LIB)
 }
 

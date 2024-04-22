@@ -21,6 +21,8 @@
 
 #include <QtCore/qcoreapplication.h>
 
+#include <vector>
+
 #if defined(QT_WEBSOCKETS_LIB)
 #include <QtWebSockets/qwebsocketserver.h>
 #endif // defined(QT_WEBSOCKETS_LIB)
@@ -54,6 +56,10 @@ public:
     void handleNewLocalConnections();
 #endif
 
+#if defined(QT_WEBSOCKETS_LIB)
+    mutable bool handlingWebSocketUpgrade = false;
+    std::vector<QtPrivate::SlotObjUniquePtr> webSocketUpgradeVerifiers;
+#endif // defined(QT_WEBSOCKETS_LIB)
 #if QT_CONFIG(ssl)
     QSslConfiguration sslConfiguration;
     QHttp2Configuration h2Configuration;

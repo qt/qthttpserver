@@ -7,6 +7,7 @@
 #include <QtCore/qobject.h>
 
 #include <QtHttpServer/qthttpserverglobal.h>
+#include <QtHttpServer/qhttpserverwebsocketupgraderesponse.h>
 
 #include <QtNetwork/qhostaddress.h>
 
@@ -23,6 +24,7 @@
 #include <QtNetwork/qlocalserver.h>
 #endif
 
+#include <functional>
 #include <memory>
 
 QT_BEGIN_NAMESPACE
@@ -68,9 +70,31 @@ public:
 Q_SIGNALS:
     void newWebSocketConnection();
 
+private:
+    using WebSocketUpgradeVerifierPrototype =
+            QHttpServerWebSocketUpgradeResponse (*)(const QHttpServerRequest &request);
+    template <typename T>
+    using if_compatible_callable = typename std::enable_if<
+            QtPrivate::AreFunctionsCompatible<WebSocketUpgradeVerifierPrototype, T>::value,
+            bool>::type;
+
+    void registerWebSocketUpgradeVerifierImpl(QtPrivate::QSlotObjectBase *slotObjRaw);
+
 public:
     bool hasPendingWebSocketConnections() const;
     std::unique_ptr<QWebSocket> nextPendingWebSocketConnection();
+
+    template <typename Functor, if_compatible_callable<Functor> = true>
+    void registerWebSocketUpgradeVerifier(Functor &&func)
+    {
+        registerWebSocketUpgradeVerifierImpl(
+                QtPrivate::makeCallableObject<WebSocketUpgradeVerifierPrototype>(
+                        std::forward<Functor>(func)));
+    }
+
+private:
+    QHttpServerWebSocketUpgradeResponse
+    verifyWebSocketUpgrade(const QHttpServerRequest &request) const;
 #endif // defined(QT_WEBSOCKETS_LIB)
 
 protected:

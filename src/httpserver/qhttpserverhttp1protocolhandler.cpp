@@ -282,19 +282,36 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
         if (request.d->upgrade) { // Upgrade
             const auto &upgradeValue = request.value(QByteArrayLiteral("upgrade"));
             if (upgradeValue.compare(QByteArrayLiteral("websocket"), Qt::CaseInsensitive) == 0) {
+                const auto upgradeResponse = server->verifyWebSocketUpgrade(request);
                 static const auto signal =
                         QMetaMethod::fromSignal(&QAbstractHttpServer::newWebSocketConnection);
                 if (server->isSignalConnected(signal)
-                    && server->handleRequest(request, responder)) {
-                    // Socket will now be managed by websocketServer
-                    socket->disconnect();
-                    socket->rollbackTransaction();
-                    server->d_func()->websocketServer.handleConnection(tcpSocket);
-                    Q_EMIT socket->readyRead();
+                    && upgradeResponse.type()
+                            != QHttpServerWebSocketUpgradeResponse::ResponseType::PassToNext) {
+                    if (upgradeResponse.type()
+                        == QHttpServerWebSocketUpgradeResponse::ResponseType::Accept) {
+                        // Socket will now be managed by websocketServer
+                        socket->disconnect();
+                        socket->rollbackTransaction();
+                        server->d_func()->websocketServer.handleConnection(tcpSocket);
+                        Q_EMIT socket->readyRead();
+                    } else {
+                        qCDebug(lcHttpServerHttp1Handler, "WebSocket upgrade denied: %ls",
+                                qUtf16Printable(QLatin1StringView(upgradeResponse.denyMessage())));
+                        QByteArray buffer;
+                        buffer.append("HTTP/1.1 ");
+                        buffer.append(QByteArray::number(quint32(upgradeResponse.denyStatus())));
+                        buffer.append(" ");
+                        buffer.append(upgradeResponse.denyMessage());
+                        buffer.append("\r\n\r\n");
+                        tcpSocket->write(buffer);
+                    }
                 } else {
-                    qWarning(lcHttpServerHttp1Handler,
-                             "WebSocket received but no slots connected to "
-                             "QWebSocketServer::newConnection or request not handled");
+                    if (!server->isSignalConnected(signal)) {
+                        qCWarning(lcHttpServerHttp1Handler,
+                                  "WebSocket received but no slots connected to "
+                                  "QWebSocketServer::newConnection");
+                    }
                     server->missingHandler(request, std::move(responder));
                     tcpSocket->disconnectFromHost();
                 }

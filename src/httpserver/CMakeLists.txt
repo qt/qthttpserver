@@ -22,6 +22,7 @@ qt_internal_add_module(HttpServer
         qhttpserverstream.cpp qhttpserverstream_p.h
         qhttpserverviewtraits.h
         qhttpserverviewtraits_impl.h
+        qhttpserverwebsocketupgraderesponse.cpp qhttpserverwebsocketupgraderesponse.h
         qthttpserverglobal.h
     LIBRARIES
         Qt::CorePrivate

@@ -87,9 +87,9 @@ void QAbstractHttpServerPrivate::handleNewLocalConnections()
     \inmodule QtHttpServer
     \brief API to subclass to implement an HTTP server.
 
-    Subclass this class and override \c handleRequest() to create an HTTP
-    server. Use \c listen() or \c bind() to start listening to incoming
-    connections.
+    Subclass this class and override handleRequest() and missingHandler() to
+    create an HTTP server. Use listen() or bind() to start listening to
+    incoming connections.
 */
 
 /*!
@@ -253,14 +253,16 @@ QList<QLocalServer *> QAbstractHttpServer::localServers() const
     This signal is emitted every time a new WebSocket connection is
     available.
 
-    \sa hasPendingWebSocketConnections(), nextPendingWebSocketConnection()
+    \sa hasPendingWebSocketConnections(), nextPendingWebSocketConnection(),
+    registerWebSocketUpgradeVerifier()
 */
 
 /*!
     Returns \c true if the server has pending WebSocket connections;
     otherwise returns \c false.
 
-    \sa newWebSocketConnection(), nextPendingWebSocketConnection()
+    \sa newWebSocketConnection(), nextPendingWebSocketConnection(),
+    registerWebSocketUpgradeVerifier()
 */
 bool QAbstractHttpServer::hasPendingWebSocketConnections() const
 {
@@ -276,13 +278,79 @@ bool QAbstractHttpServer::hasPendingWebSocketConnections() const
     \note The returned QWebSocket object cannot be used from another
     thread.
 
-    \sa newWebSocketConnection(), hasPendingWebSocketConnections()
+    \sa newWebSocketConnection(), hasPendingWebSocketConnections(),
+    registerWebSocketUpgradeVerifier()
 */
 std::unique_ptr<QWebSocket> QAbstractHttpServer::nextPendingWebSocketConnection()
 {
     Q_D(QAbstractHttpServer);
     return std::unique_ptr<QWebSocket>(d->websocketServer.nextPendingConnection());
 }
+
+/*!
+    \internal
+*/
+QHttpServerWebSocketUpgradeResponse
+QAbstractHttpServer::verifyWebSocketUpgrade(const QHttpServerRequest &request) const
+{
+    Q_D(const QAbstractHttpServer);
+    QScopedValueRollback guard(d->handlingWebSocketUpgrade, true);
+    for (auto &verifier : d->webSocketUpgradeVerifiers) {
+        auto response = QHttpServerWebSocketUpgradeResponse::passToNext();
+        void *args[] = { &response, const_cast<QHttpServerRequest *>(&request) };
+        verifier->call(nullptr, args);
+        if (response.type() != QHttpServerWebSocketUpgradeResponse::ResponseType::PassToNext)
+            return response;
+    }
+    return QHttpServerWebSocketUpgradeResponse::passToNext();
+}
+
+/*!
+    \fn template <typename Functor, QAbstractHttpServer::if_compatible_callable<Functor>> void QAbstractHttpServer::registerWebSocketUpgradeVerifier(Functor &&func)
+
+    Register a callback function \a func that verifies incoming
+    WebSocket upgrades. Upgrade attempts succeed if at least one of the
+    registered callback functions returns \c Accept and a handler returning
+    \c Deny has not been executed before it. If no handlers are registered
+    or all return \c PassToNext, missingHandler() is called. The callback
+    functions are executed in the order they are registered. The callbacks
+    cannot call registerWebSocketUpgradeVerifier().
+
+    \note The WebSocket upgrades fail if no callbacks has been registered.
+    \note This overload participates in overload resolution only if the
+    callback function takes a \c const QHttpServerRequest & as an argument
+    and returns a QHttpServerWebSocketUpgradeResponse.
+
+    \code
+    server.registerWebSocketUpgradeVerifier(
+            [](const QHttpServerRequest &request) {
+                if (request.url().path() == "/allowed"_L1)
+                    return QHttpServerWebSocketUpgradeResponse::accept();
+                else
+                    return QHttpServerWebSocketUpgradeResponse::passToNext();
+            });
+    \endcode
+
+    \sa QHttpServerRequest, QHttpServerWebSocketUpgradeResponse, hasPendingWebSocketConnections(),
+    nextPendingWebSocketConnection(), newWebSocketConnection(), missingHandler()
+*/
+
+/*!
+    \internal
+*/
+void QAbstractHttpServer::registerWebSocketUpgradeVerifierImpl(
+        QtPrivate::QSlotObjectBase *slotObjRaw)
+{
+    QtPrivate::SlotObjUniquePtr slotObj{slotObjRaw}; // adopts
+    Q_ASSERT(slotObj);
+    Q_D(QAbstractHttpServer);
+    if (d->handlingWebSocketUpgrade) {
+        qWarning("Registering WebSocket upgrade verifiers while handling them is not allowed");
+        return;
+    }
+    d->webSocketUpgradeVerifiers.push_back(std::move(slotObj));
+}
+
 #endif
 
 /*!
@@ -291,7 +359,7 @@ std::unique_ptr<QWebSocket> QAbstractHttpServer::nextPendingWebSocketConnection(
     Overload this function to handle each incoming \a request, by examining
     the \a request and sending the appropriate response back to \a responder.
     Return \c true if the \a request was handled successfully. If this method
-    returns \c false, \c missingHandler() will be called afterwards.
+    returns \c false, missingHandler() will be called afterwards.
 
     This function must move out of \a responder before returning \c true.
 */
@@ -300,9 +368,13 @@ std::unique_ptr<QWebSocket> QAbstractHttpServer::nextPendingWebSocketConnection(
     \fn QAbstractHttpServer::missingHandler(const QHttpServerRequest &request,
                                             QHttpServerResponder &&responder)
 
-    This function is called whenever \c handleRequest() returns \c false.
+    This function is called whenever handleRequest() returns \c false, or if
+    there is a WebSocket upgrade attempt and either there are no connections
+    to newWebSocketConnection() or there are no matching WebSocket verifiers.
     The \a request and \a responder parameters are the same as
-    \c handleRequest() was called with.
+    handleRequest() was called with.
+
+    \sa handleRequest(), registerWebSocketUpgradeVerifier()
 */
 
 #if QT_CONFIG(ssl)
