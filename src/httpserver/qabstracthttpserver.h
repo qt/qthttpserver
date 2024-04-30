@@ -37,7 +37,7 @@ class QAbstractHttpServerPrivate;
 class Q_HTTPSERVER_EXPORT QAbstractHttpServer : public QObject
 {
     Q_OBJECT
-    friend class QHttpServerStream;
+    friend class QHttpServerHttp1ProtocolHandler;
 
 public:
     explicit QAbstractHttpServer(QObject *parent = nullptr);

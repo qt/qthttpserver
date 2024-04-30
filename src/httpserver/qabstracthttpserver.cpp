@@ -7,8 +7,8 @@
 #include <QtHttpServer/qhttpserverresponder.h>
 
 #include <private/qabstracthttpserver_p.h>
+#include <private/qhttpserverhttp1protocolhandler_p.h>
 #include <private/qhttpserverrequest_p.h>
-#include <private/qhttpserverstream_p.h>
 
 #include <QtCore/qloggingcategory.h>
 #include <QtNetwork/qtcpserver.h>
@@ -18,6 +18,10 @@
 
 #if QT_CONFIG(ssl)
 #include <QtNetwork/qsslserver.h>
+#endif
+
+#if QT_CONFIG(http)
+#include <private/qhttpserverhttp2protocolhandler_p.h>
 #endif
 
 #include <algorithm>
@@ -39,11 +43,26 @@ QAbstractHttpServerPrivate::QAbstractHttpServerPrivate()
 void QAbstractHttpServerPrivate::handleNewConnections()
 {
     Q_Q(QAbstractHttpServer);
+
+#if QT_CONFIG(ssl) && QT_CONFIG(http)
+    if (auto *sslServer = qobject_cast<QSslServer *>(q->sender())) {
+        while (auto socket = qobject_cast<QSslSocket *>(sslServer->nextPendingConnection())) {
+            if (socket->sslConfiguration().nextNegotiatedProtocol()
+                            == QSslConfiguration::ALPNProtocolHTTP2) {
+                new QHttpServerHttp2ProtocolHandler(q, socket);
+            } else {
+                new QHttpServerHttp1ProtocolHandler(q, socket);
+            }
+        }
+        return;
+    }
+#endif
+
     auto tcpServer = qobject_cast<QTcpServer *>(q->sender());
     Q_ASSERT(tcpServer);
 
     while (auto socket = tcpServer->nextPendingConnection())
-        new QHttpServerStream(q, socket);
+        new QHttpServerHttp1ProtocolHandler(q, socket);
 }
 
 
@@ -58,7 +77,7 @@ void QAbstractHttpServerPrivate::handleNewLocalConnections()
     Q_ASSERT(localServer);
 
     while (auto socket = localServer->nextPendingConnection())
-        new QHttpServerStream(q, socket);
+        new QHttpServerHttp1ProtocolHandler(q, socket);
 }
 #endif
 

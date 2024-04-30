@@ -34,8 +34,7 @@ class QHttpServerResponderPrivate
 public:
     QHttpServerResponderPrivate(QHttpServerStream *stream);
     ~QHttpServerResponderPrivate();
-    void writeStatusAndHeaders(QHttpServerResponder::StatusCode status,
-                               const QHttpHeaders &headers);
+
     void write(const QByteArray &body, const QHttpHeaders &headers,
                QHttpServerResponder::StatusCode status);
     void write(QHttpServerResponder::StatusCode status);
@@ -45,20 +44,11 @@ public:
     void writeChunk(const QByteArray &body);
     void writeEndChunked(const QByteArray &data, const QHttpHeaders &trailers);
 
-    enum class TransferState {
-        Ready,
-        HeadersSent,
-        ChunkedTransferBegun
-    } state = TransferState::Ready;
-
 #if defined(QT_DEBUG)
     const QPointer<QHttpServerStream> stream;
 #else
     QHttpServerStream *const stream;
 #endif
-
-private:
-    void writeHeader(const QByteArray &key, const QByteArray &value);
 };
 
 QT_END_NAMESPACE

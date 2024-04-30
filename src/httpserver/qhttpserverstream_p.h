@@ -7,7 +7,7 @@
 #include <QtCore/qobject.h>
 
 #include <QtHttpServer/qthttpserverglobal.h>
-#include <QtHttpServer/qhttpserverrequest.h>
+#include <QtHttpServer/qhttpserverresponder.h>
 
 //
 //  W A R N I N G
@@ -21,44 +21,29 @@
 
 QT_BEGIN_NAMESPACE
 
-class QTcpSocket;
-class QAbstractHttpServer;
-#if QT_CONFIG(localserver)
-class QLocalSocket;
-#endif
-
 class QHttpServerStream : public QObject
 {
     Q_OBJECT
 
-    friend class QAbstractHttpServerPrivate;
     friend class QHttpServerResponderPrivate;
 
-private:
-    QHttpServerStream(QAbstractHttpServer *server, QIODevice *socket);
+protected:
+    QHttpServerStream(QObject *parent = nullptr);
 
-    void write(const QByteArray &data);
-    void write(const char *body, qint64 size);
+    virtual void responderDestroyed() = 0;
+    virtual void startHandlingRequest() = 0;
+    virtual void socketDisconnected() = 0;
 
-    void responderDestroyed();
+    virtual void write(const QByteArray &body, const QHttpHeaders &headers,
+                       QHttpServerResponder::StatusCode status) = 0;
+    virtual void write(QHttpServerResponder::StatusCode status) = 0;
+    virtual void write(QIODevice *data, const QHttpHeaders &headers,
+                       QHttpServerResponder::StatusCode status) = 0;
 
-    void handleReadyRead();
-    void socketDisconnected();
-
-    QAbstractHttpServer *server;
-    QIODevice *socket;
-    QTcpSocket *tcpSocket;
-#if QT_CONFIG(localserver)
-    QLocalSocket *localSocket;
-#endif
-
-    static QHttpServerRequest initRequestFromSocket(QTcpSocket *socket);
-
-    QHttpServerRequest request;
-
-    // To avoid destroying the object when socket object is destroyed while
-    // a request is still being handled.
-    bool handlingRequest = false;
+    virtual void writeBeginChunked(const QHttpHeaders &headers,
+                                   QHttpServerResponder::StatusCode status) = 0;
+    virtual void writeChunk(const QByteArray &body) = 0;
+    virtual void writeEndChunked(const QByteArray &data, const QHttpHeaders &trailers) = 0;
 };
 
 QT_END_NAMESPACE

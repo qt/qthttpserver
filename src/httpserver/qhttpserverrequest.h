@@ -26,7 +26,7 @@ class QHttpServerRequestPrivate;
 class QHttpServerRequest final
 {
     friend class QHttpServerResponse;
-    friend class QHttpServerStream;
+    friend class QHttpServerHttp1ProtocolHandler;
 
     Q_GADGET_EXPORT(Q_HTTPSERVER_EXPORT)
 

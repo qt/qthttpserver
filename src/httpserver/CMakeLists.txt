@@ -11,6 +11,7 @@ qt_internal_add_module(HttpServer
     SOURCES
         qabstracthttpserver.cpp qabstracthttpserver.h qabstracthttpserver_p.h
         qhttpserver.cpp qhttpserver.h qhttpserver_p.h
+        qhttpserverhttp1protocolhandler.cpp qhttpserverhttp1protocolhandler_p.h
         qhttpserverliterals.cpp qhttpserverliterals_p.h
         qhttpserverrequest.cpp qhttpserverrequest.h qhttpserverrequest_p.h
         qhttpserverresponder.cpp qhttpserverresponder.h qhttpserverresponder_p.h
@@ -36,6 +37,11 @@ qt_internal_add_module(HttpServer
 
 ## Scopes:
 #####################################################################
+
+qt_internal_extend_target(HttpServer CONDITION QT_FEATURE_http
+    SOURCES
+        qhttpserverhttp2protocolhandler.cpp qhttpserverhttp2protocolhandler_p.h
+)
 
 qt_internal_extend_target(HttpServer CONDITION TARGET Qt::WebSockets
     LIBRARIES

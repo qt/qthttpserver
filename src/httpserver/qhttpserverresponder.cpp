@@ -11,9 +11,6 @@
 #include <private/qhttpserverstream_p.h>
 #include <QtCore/qjsondocument.h>
 #include <QtCore/qloggingcategory.h>
-#include <QtCore/qtimer.h>
-#include <QtNetwork/qtcpsocket.h>
-#include <map>
 #include <memory>
 
 QT_BEGIN_NAMESPACE
@@ -107,177 +104,10 @@ QT_IMPL_METATYPE_EXTERN_TAGGED(QHttpServerResponder::StatusCode, QHttpServerResp
 /*!
     \internal
 */
-static const QLoggingCategory &rspLc()
-{
-    static const QLoggingCategory category("qt.httpserver.response");
-    return category;
-}
-
-// https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
-static const std::map<QHttpServerResponder::StatusCode, QByteArray> statusString{
-#define XX(name, string) { QHttpServerResponder::StatusCode::name, QByteArrayLiteral(string) }
-    XX(Continue, "Continue"),
-    XX(SwitchingProtocols, "Switching Protocols"),
-    XX(Processing, "Processing"),
-    XX(Ok, "OK"),
-    XX(Created, "Created"),
-    XX(Accepted, "Accepted"),
-    XX(NonAuthoritativeInformation, "Non-Authoritative Information"),
-    XX(NoContent, "No Content"),
-    XX(ResetContent, "Reset Content"),
-    XX(PartialContent, "Partial Content"),
-    XX(MultiStatus, "Multi-Status"),
-    XX(AlreadyReported, "Already Reported"),
-    XX(IMUsed, "I'm Used"),
-    XX(MultipleChoices, "Multiple Choices"),
-    XX(MovedPermanently, "Moved Permanently"),
-    XX(Found, "Found"),
-    XX(SeeOther, "See Other"),
-    XX(NotModified, "Not Modified"),
-    XX(UseProxy, "Use Proxy"),
-    XX(TemporaryRedirect, "Temporary Redirect"),
-    XX(PermanentRedirect, "Permanent Redirect"),
-    XX(BadRequest, "Bad Request"),
-    XX(Unauthorized, "Unauthorized"),
-    XX(PaymentRequired, "Payment Required"),
-    XX(Forbidden, "Forbidden"),
-    XX(NotFound, "Not Found"),
-    XX(MethodNotAllowed, "Method Not Allowed"),
-    XX(NotAcceptable, "Not Acceptable"),
-    XX(ProxyAuthenticationRequired, "Proxy Authentication Required"),
-    XX(RequestTimeout, "Request Timeout"),
-    XX(Conflict, "Conflict"),
-    XX(Gone, "Gone"),
-    XX(LengthRequired, "Length Required"),
-    XX(PreconditionFailed, "Precondition Failed"),
-    XX(PayloadTooLarge, "Request Entity Too Large"),
-    XX(UriTooLong, "Request-URI Too Long"),
-    XX(UnsupportedMediaType, "Unsupported Media Type"),
-    XX(RequestRangeNotSatisfiable, "Requested Range Not Satisfiable"),
-    XX(ExpectationFailed, "Expectation Failed"),
-    XX(ImATeapot, "I'm a teapot"),
-    XX(MisdirectedRequest, "Misdirected Request"),
-    XX(UnprocessableEntity, "Unprocessable Entity"),
-    XX(Locked, "Locked"),
-    XX(FailedDependency, "Failed Dependency"),
-    XX(UpgradeRequired, "Upgrade Required"),
-    XX(PreconditionRequired, "Precondition Required"),
-    XX(TooManyRequests, "Too Many Requests"),
-    XX(RequestHeaderFieldsTooLarge, "Request Header Fields Too Large"),
-    XX(UnavailableForLegalReasons, "Unavailable For Legal Reasons"),
-    XX(InternalServerError, "Internal Server Error"),
-    XX(NotImplemented, "Not Implemented"),
-    XX(BadGateway, "Bad Gateway"),
-    XX(ServiceUnavailable, "Service Unavailable"),
-    XX(GatewayTimeout, "Gateway Timeout"),
-    XX(HttpVersionNotSupported, "HTTP Version Not Supported"),
-    XX(VariantAlsoNegotiates, "Variant Also Negotiates"),
-    XX(InsufficientStorage, "Insufficient Storage"),
-    XX(LoopDetected, "Loop Detected"),
-    XX(NotExtended, "Not Extended"),
-    XX(NetworkAuthenticationRequired, "Network Authentication Required"),
-    XX(NetworkConnectTimeoutError, "Network Connect Timeout Error"),
-#undef XX
-};
-
-/*!
-    \internal
-*/
-template <qint64 BUFFERSIZE = 128 * 1024>
-struct IOChunkedTransfer
-{
-    // TODO This is not the fastest implementation, as it does read & write
-    // in a sequential fashion, but these operation could potentially overlap.
-    // TODO Can we implement it without the buffer? Direct write to the target buffer
-    // would be great.
-
-    const qint64 bufferSize = BUFFERSIZE;
-    char buffer[BUFFERSIZE];
-    qint64 beginIndex = -1;
-    qint64 endIndex = -1;
-    QPointer<QIODevice> source;
-    const QPointer<QIODevice> sink;
-    const QMetaObject::Connection bytesWrittenConnection;
-    const QMetaObject::Connection readyReadConnection;
-    IOChunkedTransfer(QIODevice *input, QIODevice *output) :
-        source(input),
-        sink(output),
-        bytesWrittenConnection(QObject::connect(sink.data(), &QIODevice::bytesWritten, sink.data(), [this]() {
-              writeToOutput();
-        })),
-        readyReadConnection(QObject::connect(source.data(), &QIODevice::readyRead, source.data(), [this]() {
-            readFromInput();
-        }))
-    {
-        Q_ASSERT(!source->atEnd());  // TODO error out
-        QObject::connect(sink.data(), &QObject::destroyed, source.data(), &QObject::deleteLater);
-        QObject::connect(source.data(), &QObject::destroyed, source.data(), [this]() {
-            delete this;
-        });
-        readFromInput();
-    }
-
-    ~IOChunkedTransfer()
-    {
-        QObject::disconnect(bytesWrittenConnection);
-        QObject::disconnect(readyReadConnection);
-    }
-
-    inline bool isBufferEmpty()
-    {
-        Q_ASSERT(beginIndex <= endIndex);
-        return beginIndex == endIndex;
-    }
-
-    void readFromInput()
-    {
-        if (source.isNull())
-            return;
-
-        if (!isBufferEmpty()) // We haven't consumed all the data yet.
-            return;
-        beginIndex = 0;
-        endIndex = source->read(buffer, bufferSize);
-        if (endIndex < 0) {
-            endIndex = beginIndex; // Mark the buffer as empty
-            qCWarning(rspLc, "Error reading chunk: %ls", qUtf16Printable(source->errorString()));
-        } else if (endIndex) {
-            memset(buffer + endIndex, 0, sizeof(buffer) - std::size_t(endIndex));
-            writeToOutput();
-        }
-    }
-
-    void writeToOutput()
-    {
-        if (sink.isNull() || source.isNull())
-            return;
-
-        if (isBufferEmpty())
-            return;
-
-        const auto writtenBytes = sink->write(buffer + beginIndex, endIndex);
-        if (writtenBytes < 0) {
-            qCWarning(rspLc, "Error writing chunk: %ls", qUtf16Printable(sink->errorString()));
-            return;
-        }
-        beginIndex += writtenBytes;
-        if (isBufferEmpty()) {
-            if (source->bytesAvailable())
-                QTimer::singleShot(0, source.data(), [this]() { readFromInput(); });
-            else if (source->atEnd()) // Finishing
-                source->deleteLater();
-        }
-    }
-};
-
-/*!
-    \internal
-*/
 QHttpServerResponderPrivate::QHttpServerResponderPrivate(QHttpServerStream *stream) : stream(stream)
 {
     Q_ASSERT(stream);
-    Q_ASSERT(!stream->handlingRequest);
-    stream->handlingRequest = true;
+    stream->startHandlingRequest();
 }
 
 /*!
@@ -292,53 +122,10 @@ QHttpServerResponderPrivate::~QHttpServerResponderPrivate()
 /*!
     \internal
 */
-void QHttpServerResponderPrivate::writeStatusAndHeaders(QHttpServerResponder::StatusCode status,
-                                                        const QHttpHeaders &headers)
-{
-    Q_ASSERT(stream);
-    Q_ASSERT(state == TransferState::Ready);
-    stream->write("HTTP/1.1 ");
-    stream->write(QByteArray::number(quint32(status)));
-    const auto it = statusString.find(status);
-    if (it != statusString.end()) {
-        stream->write(" ");
-        stream->write(statusString.at(status));
-    }
-    stream->write("\r\n");
-
-    for (qsizetype i = 0; i < headers.size(); ++i) {
-        const auto name = headers.nameAt(i);
-        writeHeader(QByteArray(name.data(), name.size()), headers.valueAt(i).toByteArray());
-    }
-    stream->write("\r\n");
-    state = TransferState::HeadersSent;
-}
-
-/*!
-    \internal
-*/
 void QHttpServerResponderPrivate::write(QHttpServerResponder::StatusCode status)
 {
     Q_ASSERT(stream);
-    Q_ASSERT(state == TransferState::Ready);
-    QHttpHeaders headers;
-    headers.append(QHttpHeaders::WellKnownHeader::ContentType,
-                   QHttpServerLiterals::contentTypeXEmpty());
-    headers.append(QHttpHeaders::WellKnownHeader::ContentLength, "0");
-    writeStatusAndHeaders(status, headers);
-    state = TransferState::Ready;
-}
-
-/*!
-    \internal
-*/
-void QHttpServerResponderPrivate::writeHeader(const QByteArray &header, const QByteArray &value)
-{
-    Q_ASSERT(stream);
-    stream->write(header);
-    stream->write(": ");
-    stream->write(value);
-    stream->write("\r\n");
+    stream->write(status);
 }
 
 /*!
@@ -348,10 +135,7 @@ void QHttpServerResponderPrivate::write(const QByteArray &body, const QHttpHeade
                                         QHttpServerResponder::StatusCode status)
 {
     Q_ASSERT(stream);
-    Q_ASSERT(state == TransferState::Ready);
-    writeStatusAndHeaders(status, headers);
-    stream->write(body.constData(), body.size());
-    state = TransferState::Ready;
+    stream->write(body, headers, status);
 }
 
 /*!
@@ -361,40 +145,7 @@ void QHttpServerResponderPrivate::write(QIODevice *data, const QHttpHeaders &hea
                                         QHttpServerResponder::StatusCode status)
 {
     Q_ASSERT(stream);
-    Q_ASSERT(state == TransferState::Ready);
-    std::unique_ptr<QIODevice, QScopedPointerDeleteLater> input(data);
-
-    input->setParent(nullptr);
-    if (!input->isOpen()) {
-        if (!input->open(QIODevice::ReadOnly)) {
-            // TODO Add developer error handling
-            qCDebug(rspLc, "500: Could not open device %ls", qUtf16Printable(input->errorString()));
-            write(QHttpServerResponder::StatusCode::InternalServerError);
-            return;
-        }
-    } else if (!(input->openMode() & QIODevice::ReadOnly)) {
-        // TODO Add developer error handling
-        qCDebug(rspLc) << "500: Device is opened in a wrong mode" << input->openMode();
-        write(QHttpServerResponder::StatusCode::InternalServerError);
-        return;
-    }
-
-    QHttpHeaders allHeaders(headers);
-    if (!input->isSequential()) { // Non-sequential QIODevice should know its data size
-        allHeaders.append(QHttpHeaders::WellKnownHeader::ContentLength,
-                          QByteArray::number(input->size()));
-    }
-
-    writeStatusAndHeaders(status, allHeaders);
-
-    if (input->atEnd()) {
-        qCDebug(rspLc, "No more data available.");
-        return;
-    }
-
-    // input takes ownership of the IOChunkedTransfer pointer inside his constructor
-    new IOChunkedTransfer<>(input.release(), stream->socket);
-    state = TransferState::Ready;
+    stream->write(data, headers, status);
 }
 
 /*!
@@ -403,11 +154,8 @@ void QHttpServerResponderPrivate::write(QIODevice *data, const QHttpHeaders &hea
 void QHttpServerResponderPrivate::writeBeginChunked(const QHttpHeaders &headers,
                                                     QHttpServerResponder::StatusCode status)
 {
-    Q_ASSERT(state == TransferState::Ready);
-    QHttpHeaders allHeaders(headers);
-    allHeaders.append(QHttpHeaders::WellKnownHeader::TransferEncoding, "chunked");
-    writeStatusAndHeaders(status, allHeaders);
-    state = TransferState::ChunkedTransferBegun;
+    Q_ASSERT(stream);
+    stream->writeBeginChunked(headers, status);
 }
 
 /*!
@@ -415,16 +163,8 @@ void QHttpServerResponderPrivate::writeBeginChunked(const QHttpHeaders &headers,
 */
 void QHttpServerResponderPrivate::writeChunk(const QByteArray &data)
 {
-    Q_ASSERT(state == TransferState::ChunkedTransferBegun);
-    if (data.length() == 0) {
-        qCWarning(rspLc, "Chunk must have length > 0");
-        return;
-    }
-
-    stream->write(QByteArray::number(data.length(), 16));
-    stream->write("\r\n");
-    stream->write(data);
-    stream->write("\r\n");
+    Q_ASSERT(stream);
+    stream->writeChunk(data);
 }
 
 /*!
@@ -433,16 +173,8 @@ void QHttpServerResponderPrivate::writeChunk(const QByteArray &data)
 void QHttpServerResponderPrivate::writeEndChunked(const QByteArray &data,
                                                   const QHttpHeaders &trailers)
 {
-    Q_ASSERT(state == TransferState::ChunkedTransferBegun);
-    writeChunk(data);
-    stream->write("0\r\n");
-    for (qsizetype i = 0; i < trailers.size(); ++i) {
-        const auto name = trailers.nameAt(i);
-        const auto value = trailers.valueAt(i);
-        writeHeader({ name.data(), name.size() }, value.toByteArray());
-    }
-    stream->write("\r\n");
-    state = TransferState::Ready;
+    Q_ASSERT(stream);
+    stream->writeEndChunked(data, trailers);
 }
 
 /*!

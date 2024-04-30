@@ -26,7 +26,7 @@ class Q_HTTPSERVER_EXPORT QHttpServerResponder final
     Q_GADGET
     Q_DECLARE_PRIVATE(QHttpServerResponder)
 
-    friend class QHttpServerStream;
+    friend class QHttpServerHttp1ProtocolHandler;
 
 public:
     enum class StatusCode {
