@@ -32,7 +32,7 @@ class QHttpServerStream : public QObject
     Q_OBJECT
 
     friend class QAbstractHttpServerPrivate;
-    friend class QHttpServerResponder;
+    friend class QHttpServerResponderPrivate;
 
 private:
     QHttpServerStream(QAbstractHttpServer *server, QIODevice *socket);

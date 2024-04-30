@@ -335,24 +335,10 @@ void tst_QHttpServer::initTestCase()
                                    QHttpServerResponder::StatusCode::Accepted);
     });
 
-    httpserver.route("/chunked/", [] (QHttpServerResponder &&responder) {
-        responder.writeStatusLine(QHttpServerResponder::StatusCode::Ok);
-
-        QHttpHeaders headers;
-        headers.append(QHttpHeaders::WellKnownHeader::ContentType, "text/plain");
-        headers.append(QHttpHeaders::WellKnownHeader::TransferEncoding, "chunked");
-        responder.writeHeaders(headers);
-
-        auto writeChunk = [&responder] (const char *message) {
-            responder.writeBody(QByteArray::number(qstrlen(message), 16));
-            responder.writeBody("\r\n");
-            responder.writeBody(message);
-            responder.writeBody("\r\n");
-        };
-
-        writeChunk("part 1 of the message, ");
-        writeChunk("part 2 of the message");
-        writeChunk("");
+    httpserver.route("/chunked/", [](QHttpServerResponder &&responder) {
+        responder.writeBeginChunked("text/plain", QHttpServerResponder::StatusCode::Ok);
+        responder.writeChunk("part 1 of the message, ");
+        responder.writeEndChunked("part 2 of the message");
     });
 
     httpserver.route("/extra-headers", [] () {

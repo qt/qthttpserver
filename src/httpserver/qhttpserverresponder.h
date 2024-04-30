@@ -129,17 +129,16 @@ public:
     void write(const QHttpHeaders &headers, StatusCode status = StatusCode::Ok);
     void write(StatusCode status = StatusCode::Ok);
 
-
-    void writeStatusLine(StatusCode status = StatusCode::Ok);
-
-    void writeHeader(const QByteArray &key, const QByteArray &value);
-    void writeHeaders(const QHttpHeaders &headers);
-
-    void writeBody(const char *body, qint64 size);
-    void writeBody(const char *body);
-    void writeBody(const QByteArray &body);
-
     void sendResponse(const QHttpServerResponse &response);
+
+    void writeBeginChunked(const QHttpHeaders &headers, StatusCode status = StatusCode::Ok);
+    void writeBeginChunked(const QByteArray &mimeType, StatusCode status = StatusCode::Ok);
+    void writeBeginChunked(const QHttpHeaders &headers,
+                           QList<QHttpHeaders::WellKnownHeader> trailerNames,
+                           StatusCode status = StatusCode::Ok);
+    void writeChunk(const QByteArray &data);
+    void writeEndChunked(const QByteArray &data, const QHttpHeaders &trailers);
+    void writeEndChunked(const QByteArray &data);
 
 private:
     QHttpServerResponder(QHttpServerStream *stream);
