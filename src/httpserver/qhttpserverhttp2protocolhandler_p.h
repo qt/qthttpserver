@@ -18,6 +18,7 @@
 // We mean it.
 
 QT_REQUIRE_CONFIG(http);
+QT_REQUIRE_CONFIG(ssl);
 
 QT_BEGIN_NAMESPACE
 

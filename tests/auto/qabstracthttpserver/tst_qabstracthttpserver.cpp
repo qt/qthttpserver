@@ -419,6 +419,35 @@ void tst_QAbstractHttpServer::http2handshake()
     auto serverPrefaceExpected = QByteArrayView(reinterpret_cast<const char *>(&serverPreface[0]),
                                  serverPreface.size());
     QCOMPARE(serverPrefaceResult, serverPrefaceExpected);
+
+    // Check settings send in server's preface
+    QHttp2Configuration h2config;
+    constexpr quint32 MaxFrameSize = 16394;
+    constexpr bool ServerPushEnabled = true;
+    constexpr quint32 StreamReceiveWindowSize = 50000;
+    h2config.setMaxFrameSize(MaxFrameSize);
+    h2config.setServerPushEnabled(ServerPushEnabled);
+    h2config.setStreamReceiveWindowSize(StreamReceiveWindowSize);
+    server.setHttp2Configuration(h2config);
+
+    QSslSocketPtr client2 = createNewConnection(serverPtr);
+    QVERIFY(client2->isEncrypted());
+    QCOMPARE(client2->state(), QAbstractSocket::ConnectedState);
+
+    // HTTP/2 Client Preface
+    client2->write("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n");
+    client2->waitForBytesWritten();
+
+    connect(client2.get(), &QAbstractSocket::readyRead, &loop, &QTestEventLoop::exitLoop);
+    loop.enterLoop(5);
+
+    // HTTP/2 Server Preface
+    QVERIFY(client2->bytesAvailable() != 0);
+    serverPrefaceResult = client2->readAll();
+    serverPreface = Http2::configurationToSettingsFrame(h2config).buffer;
+    serverPrefaceExpected = QByteArrayView(reinterpret_cast<const char *>(&serverPreface[0]),
+                                                serverPreface.size());
+    QCOMPARE(serverPrefaceResult, serverPrefaceExpected);
 #endif // QT_BUILD_INTERNAL
 
 #else

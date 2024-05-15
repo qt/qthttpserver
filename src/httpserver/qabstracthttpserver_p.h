@@ -26,6 +26,7 @@
 #endif // defined(QT_WEBSOCKETS_LIB)
 
 #if QT_CONFIG(ssl)
+#include <QtNetwork/qhttp2configuration.h>
 #include <QtNetwork/qsslconfiguration.h>
 #endif
 
@@ -55,6 +56,7 @@ public:
 
 #if QT_CONFIG(ssl)
     QSslConfiguration sslConfiguration;
+    QHttp2Configuration h2Configuration;
     bool sslEnabled = false;
 #endif
 };

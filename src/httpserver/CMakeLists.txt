@@ -38,7 +38,7 @@ qt_internal_add_module(HttpServer
 ## Scopes:
 #####################################################################
 
-qt_internal_extend_target(HttpServer CONDITION QT_FEATURE_http
+qt_internal_extend_target(HttpServer CONDITION QT_FEATURE_http AND QT_FEATURE_ssl
     SOURCES
         qhttpserverhttp2protocolhandler.cpp qhttpserverhttp2protocolhandler_p.h
 )

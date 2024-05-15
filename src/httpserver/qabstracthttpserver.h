@@ -58,6 +58,9 @@ public:
     void sslSetup(const QSslCertificate &certificate, const QSslKey &privateKey,
                   QSsl::SslProtocol protocol = QSsl::SecureProtocols);
     void sslSetup(const QSslConfiguration &sslConfiguration);
+
+    QHttp2Configuration http2Configuration() const;
+    void setHttp2Configuration(const QHttp2Configuration &configuration);
 #endif
 
 #if defined(QT_WEBSOCKETS_LIB)

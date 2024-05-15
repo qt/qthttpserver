@@ -20,7 +20,7 @@
 #include <QtNetwork/qsslserver.h>
 #endif
 
-#if QT_CONFIG(http)
+#if QT_CONFIG(http) && QT_CONFIG(ssl)
 #include <private/qhttpserverhttp2protocolhandler_p.h>
 #endif
 
@@ -334,6 +334,35 @@ void QAbstractHttpServer::sslSetup(const QSslConfiguration &sslConfiguration)
     d->sslConfiguration = sslConfiguration;
     d->sslEnabled = true;
 }
+
+/*!
+    \since 6.8
+
+    Returns server's HTTP/2 configuration parameters.
+
+    \sa setHttp2Configuration()
+*/
+QHttp2Configuration QAbstractHttpServer::http2Configuration() const
+{
+    Q_D(const QAbstractHttpServer);
+    return d->h2Configuration;
+}
+
+/*!
+    \since 6.8
+
+    Sets server's HTTP/2 configuration parameters.
+
+    The next HTTP/2 connection will use the given \a configuration.
+
+    \sa http2Configuration()
+*/
+void QAbstractHttpServer::setHttp2Configuration(const QHttp2Configuration &configuration)
+{
+    Q_D(QAbstractHttpServer);
+    d->h2Configuration = configuration;
+}
+
 #endif
 
 QT_END_NAMESPACE

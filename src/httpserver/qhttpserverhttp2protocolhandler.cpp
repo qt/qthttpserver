@@ -21,7 +21,8 @@ QHttpServerHttp2ProtocolHandler::QHttpServerHttp2ProtocolHandler(QAbstractHttpSe
 {
     socket->setParent(this);
 
-    m_connection = QHttp2Connection::createDirectServerConnection(socket, {});
+    m_connection = QHttp2Connection::createDirectServerConnection(socket,
+                                                                  server->http2Configuration());
     if (!m_connection)
         return;
 
