@@ -5,6 +5,7 @@
 #define QHttpServerHttp2ProtocolHandler_H
 
 #include <QtHttpServer/qthttpserverglobal.h>
+#include <QtHttpServer/qhttpserverrequest.h>
 #include <private/qhttpserverstream_p.h>
 
 //
@@ -25,6 +26,7 @@ QT_BEGIN_NAMESPACE
 class QTcpSocket;
 class QAbstractHttpServer;
 class QHttp2Connection;
+class QHttp2Stream;
 
 class QHttpServerHttp2ProtocolHandler : public QHttpServerStream
 {
@@ -40,19 +42,37 @@ private:
     void socketDisconnected() final;
 
     void write(const QByteArray &body, const QHttpHeaders &headers,
-               QHttpServerResponder::StatusCode status) final;
-    void write(QHttpServerResponder::StatusCode status) final;
+               QHttpServerResponder::StatusCode status, quint32 streamId) final;
+    void write(QHttpServerResponder::StatusCode status, quint32 streamId) final;
     void write(QIODevice *data, const QHttpHeaders &headers,
-               QHttpServerResponder::StatusCode status) final;
+               QHttpServerResponder::StatusCode status, quint32 streamId) final;
     void writeBeginChunked(const QHttpHeaders &headers,
-                           QHttpServerResponder::StatusCode status) final;
-    void writeChunk(const QByteArray &body) final;
-    void writeEndChunked(const QByteArray &data, const QHttpHeaders &trailers) final;
+                           QHttpServerResponder::StatusCode status,
+                           quint32 streamId) final;
+    void writeChunk(const QByteArray &body, quint32 streamId) final;
+    void writeEndChunked(const QByteArray &data,
+                         const QHttpHeaders &trailers,
+                         quint32 streamId) final;
 
-    QAbstractHttpServer *server;
-    QIODevice *socket;
-    QTcpSocket *tcpSocket;
-    QHttp2Connection *m_connection = nullptr;
+    void writeHeadersAndStatus(const QHttpHeaders &headers,
+                               QHttpServerResponder::StatusCode status,
+                               bool endStream,
+                               quint32 streamId);
+
+private slots:
+    void onStreamCreated(QHttp2Stream *stream);
+    void onStreamClosed(quint32 streamId);
+    void onStreamHalfClosed(quint32 streamId);
+
+private:
+    QHttp2Stream * getStream(quint32 streamId) const;
+
+    QAbstractHttpServer *m_server;
+    QIODevice *m_socket;
+    QTcpSocket *m_tcpSocket;
+    QHttpServerRequest m_request;
+    QHttp2Connection *m_connection;
+    QHash<quint32, QList<QMetaObject::Connection>> m_streamConnections;
 };
 
 QT_END_NAMESPACE

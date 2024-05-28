@@ -147,6 +147,7 @@ private slots:
     void servers();
     void qtbug82053();
     void http2handshake();
+    void http2request();
 
 private:
 #if QT_CONFIG(ssl)
@@ -488,7 +489,7 @@ QSslSocketPtr tst_QAbstractHttpServer::createNewConnection(const QTcpServer * se
     clientConfig.setAllowedNextProtocols({"h2"});
     socketPtr->setSslConfiguration(clientConfig);
     socketPtr->connectToHostEncrypted(server->serverAddress().toString(),
-                                   server->serverPort());
+                                      server->serverPort());
     socketPtr->waitForConnected();
 
     // Expected errors
@@ -585,6 +586,87 @@ void tst_QAbstractHttpServer::http2handshake()
     QCOMPARE(serverPrefaceResult, serverPrefaceExpected);
 #endif // QT_BUILD_INTERNAL
 
+#else
+    QSKIP("TLS/SSL is not available, skipping test");
+#endif // QT_CONFIG(ssl)
+}
+
+void tst_QAbstractHttpServer::http2request()
+{
+#if QT_CONFIG(ssl)
+    if (!hasServerAlpn)
+        QSKIP("Server-side ALPN is unsupported, skipping test");
+
+    struct HttpServer : QAbstractHttpServer
+    {
+        QUrl url;
+        QHttpHeaders headers;
+        QByteArray body = {"hello client"};
+        bool receivedRequest = false;
+
+        bool handleRequest(const QHttpServerRequest &request, QHttpServerResponder &responder) override
+        {
+            receivedRequest = true;
+            url = request.url();
+
+            headers.append("name1", "value1");
+            headers.append("name2", "value2");
+            responder.write(body, headers, QHttpServerResponder::StatusCode::Ok);
+
+            auto _responder = std::move(responder);
+            return true;
+        }
+
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&) override
+        {
+            Q_ASSERT(false);
+        }
+    } server;
+
+    QSslConfiguration serverConfig;
+    serverConfig.setLocalCertificate(QSslCertificate(g_certificate));
+    serverConfig.setPrivateKey(QSslKey(g_privateKey, QSsl::Rsa));
+    serverConfig.setAllowedNextProtocols({"h2"});
+    server.sslSetup(serverConfig);
+    quint16 port = server.listen(QHostAddress::LocalHost);
+
+    const auto serverPtr = server.servers().constFirst();
+    QNetworkAccessManager manager;
+    const QList<QSslError> expectedSslErrors = {
+        QSslError(QSslError::SelfSignedCertificate, QSslCertificate(g_certificate)),
+        QSslError(QSslError::CertificateUntrusted, QSslCertificate(g_certificate)),
+        QSslError(QSslError::HostNameMismatch, QSslCertificate(g_certificate)),
+    };
+    connect(&manager, &QNetworkAccessManager::sslErrors,
+            this, [expectedSslErrors](QNetworkReply *reply, const QList<QSslError> &errors) {
+                for (const auto &error: errors) {
+                    if (!expectedSslErrors.contains(error))
+                        qCritical() << "Got unexpected ssl error:" << error << error.certificate();
+                }
+                reply->ignoreSslErrors(expectedSslErrors);
+            });
+
+    QUrl url;
+    url.setScheme("https");
+    url.setHost(serverPtr->serverAddress().toString());
+    url.setPort(port);
+    url.setPath("/foo");
+    QNetworkRequest req(url);
+    QNetworkReply *reply = manager.get(req);
+    QTRY_VERIFY(reply->isFinished());
+
+    const QVariant http2Used = reply->attribute(QNetworkRequest::Http2WasUsedAttribute);
+    QVERIFY(http2Used.isValid());
+    QVERIFY(http2Used.toBool());
+
+    QCOMPARE(server.receivedRequest, true);
+    QCOMPARE(server.url, url);
+
+    QCOMPARE(reply->readAll(), server.body);
+    QHttpHeaders expectedHeaders = server.headers;
+    expectedHeaders.append(QHttpHeaders::WellKnownHeader::ContentLength,
+                           QByteArray::number(server.body.size()));
+    QCOMPARE(reply->headers().toListOfPairs(), expectedHeaders.toListOfPairs());
 #else
     QSKIP("TLS/SSL is not available, skipping test");
 #endif // QT_CONFIG(ssl)

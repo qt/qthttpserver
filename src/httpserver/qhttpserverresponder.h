@@ -27,6 +27,7 @@ class Q_HTTPSERVER_EXPORT QHttpServerResponder final
     Q_DECLARE_PRIVATE(QHttpServerResponder)
 
     friend class QHttpServerHttp1ProtocolHandler;
+    friend class QHttpServerHttp2ProtocolHandler;
 
 public:
     enum class StatusCode {

@@ -333,16 +333,18 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
 }
 
 void QHttpServerHttp1ProtocolHandler::write(const QByteArray &body, const QHttpHeaders &headers,
-                                        QHttpServerResponder::StatusCode status)
+                                        QHttpServerResponder::StatusCode status, quint32 streamId)
 {
+    Q_UNUSED(streamId);
     Q_ASSERT(state == TransferState::Ready);
     writeStatusAndHeaders(status, headers);
     write(body.constData(), body.size());
     state = TransferState::Ready;
 }
 
-void QHttpServerHttp1ProtocolHandler::write(QHttpServerResponder::StatusCode status)
+void QHttpServerHttp1ProtocolHandler::write(QHttpServerResponder::StatusCode status, quint32 streamId)
 {
+    Q_UNUSED(streamId);
     Q_ASSERT(state == TransferState::Ready);
     QHttpHeaders headers;
     headers.append(QHttpHeaders::WellKnownHeader::ContentType,
@@ -353,8 +355,9 @@ void QHttpServerHttp1ProtocolHandler::write(QHttpServerResponder::StatusCode sta
 }
 
 void QHttpServerHttp1ProtocolHandler::write(QIODevice *data, const QHttpHeaders &headers,
-                                        QHttpServerResponder::StatusCode status)
+                                        QHttpServerResponder::StatusCode status, quint32 streamId)
 {
+    Q_UNUSED(streamId);
     Q_ASSERT(state == TransferState::Ready);
     std::unique_ptr<QIODevice, QScopedPointerDeleteLater> input(data);
 
@@ -364,14 +367,14 @@ void QHttpServerHttp1ProtocolHandler::write(QIODevice *data, const QHttpHeaders 
             // TODO Add developer error handling
             qCDebug(lcHttpServerHttp1Handler, "500: Could not open device %ls",
                     qUtf16Printable(input->errorString()));
-            write(QHttpServerResponder::StatusCode::InternalServerError);
+            write(QHttpServerResponder::StatusCode::InternalServerError, 0);
             return;
         }
     } else if (!(input->openMode() & QIODevice::ReadOnly)) {
         // TODO Add developer error handling
         qCDebug(lcHttpServerHttp1Handler) << "500: Device is opened in a wrong mode"
                                           << input->openMode();
-        write(QHttpServerResponder::StatusCode::InternalServerError);
+        write(QHttpServerResponder::StatusCode::InternalServerError, 0);
         return;
     }
 
@@ -394,8 +397,10 @@ void QHttpServerHttp1ProtocolHandler::write(QIODevice *data, const QHttpHeaders 
 }
 
 void QHttpServerHttp1ProtocolHandler::writeBeginChunked(const QHttpHeaders &headers,
-                                                    QHttpServerResponder::StatusCode status)
+                                                    QHttpServerResponder::StatusCode status,
+                                                    quint32 streamId)
 {
+    Q_UNUSED(streamId);
     Q_ASSERT(state == TransferState::Ready);
     QHttpHeaders allHeaders(headers);
     allHeaders.append(QHttpHeaders::WellKnownHeader::TransferEncoding, "chunked");
@@ -403,9 +408,11 @@ void QHttpServerHttp1ProtocolHandler::writeBeginChunked(const QHttpHeaders &head
     state = TransferState::ChunkedTransferBegun;
 }
 
-void QHttpServerHttp1ProtocolHandler::writeChunk(const QByteArray &data)
+void QHttpServerHttp1ProtocolHandler::writeChunk(const QByteArray &data, quint32 streamId)
 {
+    Q_UNUSED(streamId);
     Q_ASSERT(state == TransferState::ChunkedTransferBegun);
+
     if (data.length() == 0) {
         qCWarning(lcHttpServerHttp1Handler, "Chunk must have length > 0");
         return;
@@ -418,10 +425,12 @@ void QHttpServerHttp1ProtocolHandler::writeChunk(const QByteArray &data)
 }
 
 void QHttpServerHttp1ProtocolHandler::writeEndChunked(const QByteArray &data,
-                                                  const QHttpHeaders &trailers)
+                                                      const QHttpHeaders &trailers,
+                                                      quint32 streamId)
 {
+    Q_UNUSED(streamId);
     Q_ASSERT(state == TransferState::ChunkedTransferBegun);
-    writeChunk(data);
+    writeChunk(data, 0);
     write("0\r\n");
     for (qsizetype i = 0; i < trailers.size(); ++i) {
         const auto name = trailers.nameAt(i);
@@ -471,23 +480,6 @@ void QHttpServerHttp1ProtocolHandler::write(const char *body, qint64 size)
 {
     Q_ASSERT(QThread::currentThread() == thread());
     socket->write(body, size);
-}
-
-QHttpServerRequest QHttpServerHttp1ProtocolHandler::initRequestFromSocket(QTcpSocket *tcpSocket)
-{
-    if (tcpSocket) {
-#if QT_CONFIG(ssl)
-        if (auto *ssl = qobject_cast<const QSslSocket *>(tcpSocket)) {
-            return QHttpServerRequest(ssl->peerAddress(), ssl->peerPort(),
-                                      ssl->localAddress(), ssl->localPort(),
-                                      ssl->sslConfiguration());
-        }
-#endif
-        return QHttpServerRequest(tcpSocket->peerAddress(), tcpSocket->peerPort(),
-                                  tcpSocket->localAddress(), tcpSocket->localPort());
-    }
-
-    return QHttpServerRequest(QHostAddress::LocalHost, 0, QHostAddress::LocalHost, 0);
 }
 
 QT_END_NAMESPACE

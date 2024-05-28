@@ -43,14 +43,17 @@ private:
     void handleReadyRead();
 
     void write(const QByteArray &body, const QHttpHeaders &headers,
-               QHttpServerResponder::StatusCode status) final;
-    void write(QHttpServerResponder::StatusCode status) final;
+               QHttpServerResponder::StatusCode status, quint32 streamId) final;
+    void write(QHttpServerResponder::StatusCode status, quint32 streamId) final;
     void write(QIODevice *data, const QHttpHeaders &headers,
-               QHttpServerResponder::StatusCode status) final;
+               QHttpServerResponder::StatusCode status, quint32 streamId) final;
     void writeBeginChunked(const QHttpHeaders &headers,
-                           QHttpServerResponder::StatusCode status) final;
-    void writeChunk(const QByteArray &body) final;
-    void writeEndChunked(const QByteArray &data, const QHttpHeaders &trailers) final;
+                           QHttpServerResponder::StatusCode status,
+                           quint32 streamId) final;
+    void writeChunk(const QByteArray &body, quint32 streamId) final;
+    void writeEndChunked(const QByteArray &data,
+                         const QHttpHeaders &trailers,
+                         quint32 streamId) final;
 
     void writeStatusAndHeaders(QHttpServerResponder::StatusCode status,
                                const QHttpHeaders &headers);
@@ -64,8 +67,6 @@ private:
 #if QT_CONFIG(localserver)
     QLocalSocket *localSocket;
 #endif
-
-    static QHttpServerRequest initRequestFromSocket(QTcpSocket *socket);
 
     enum class TransferState {
         Ready,

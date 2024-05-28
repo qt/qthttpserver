@@ -49,6 +49,7 @@ public:
 #else
     QHttpServerStream *const stream;
 #endif
+    quint32 m_streamId = 0;
 };
 
 QT_END_NAMESPACE

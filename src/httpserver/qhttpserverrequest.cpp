@@ -12,6 +12,9 @@
 #if QT_CONFIG(ssl)
 #include <QtNetwork/qsslsocket.h>
 #endif
+#if QT_CONFIG(http)
+#include <QtNetwork/private/qhttp2connection_p.h>
+#endif
 
 Q_LOGGING_CATEGORY(lc, "qt.httpserver.request")
 
@@ -41,6 +44,32 @@ Q_HTTPSERVER_EXPORT QDebug operator<<(QDebug debug, const QHttpServerRequest &re
 }
 
 #endif
+
+namespace {
+
+QHttpServerRequest::Method parseRequestMethod(QByteArrayView str)
+{
+    if (str == "GET")
+        return QHttpServerRequest::Method::Get;
+    else if (str == "PUT")
+        return QHttpServerRequest::Method::Put;
+    else if (str == "DELETE")
+        return QHttpServerRequest::Method::Delete;
+    else if (str == "POST")
+        return QHttpServerRequest::Method::Post;
+    else if (str == "HEAD")
+        return QHttpServerRequest::Method::Head;
+    else if (str == "OPTIONS")
+        return QHttpServerRequest::Method::Options;
+    else if (str == "PATCH")
+        return QHttpServerRequest::Method::Patch;
+    else if (str == "CONNECT")
+        return QHttpServerRequest::Method::Connect;
+    else
+        return QHttpServerRequest::Method::Unknown;
+}
+
+} // anonymous namespace
 
 /*!
     \internal
@@ -79,25 +108,7 @@ bool QHttpServerRequestPrivate::parseRequestLine(QByteArrayView line)
     parser.setMajorVersion(protocol[5] - '0');
     parser.setMinorVersion(protocol[7] - '0');
 
-    if (requestMethod == "GET")
-        method = QHttpServerRequest::Method::Get;
-    else if (requestMethod == "PUT")
-        method = QHttpServerRequest::Method::Put;
-    else if (requestMethod == "DELETE")
-        method = QHttpServerRequest::Method::Delete;
-    else if (requestMethod == "POST")
-        method = QHttpServerRequest::Method::Post;
-    else if (requestMethod == "HEAD")
-        method = QHttpServerRequest::Method::Head;
-    else if (requestMethod == "OPTIONS")
-        method = QHttpServerRequest::Method::Options;
-    else if (requestMethod == "PATCH")
-        method = QHttpServerRequest::Method::Patch;
-    else if (requestMethod == "CONNECT")
-        method = QHttpServerRequest::Method::Connect;
-    else
-        method = QHttpServerRequest::Method::Unknown;
-
+    method = parseRequestMethod(requestMethod);
     url = QUrl::fromEncoded(requestUrl.toByteArray());
     return true;
 }
@@ -341,6 +352,42 @@ bool QHttpServerRequestPrivate::parse(QIODevice *socket)
 
     return read != -1;
 }
+
+#if QT_CONFIG(http)
+bool QHttpServerRequestPrivate::parse(QHttp2Stream *socket)
+{
+    parser.clear();
+
+    for (const auto &pair : socket->receivedHeaders()) {
+        if (pair.name == ":method") {
+            method = parseRequestMethod(pair.value);
+        } else if (pair.name == ":scheme") {
+            url.setScheme(QLatin1StringView(pair.value));
+        } else if (pair.name == ":authority") {
+            url.setAuthority(QLatin1StringView(pair.value));
+        } else if (pair.name == ":path") {
+            url.setPath(QLatin1StringView(pair.value));
+        } else {
+            parser.appendHeaderField(pair.name, pair.value);
+        }
+    }
+
+    if (url.scheme().isEmpty())
+        url.setScheme(u"https"_s);
+
+    if (url.host().isEmpty())
+        url.setHost(u"127.0.0.1"_s);
+
+    if (url.port() == -1)
+        url.setPort(port);
+
+    bodyLength = contentLength(); // cache the length
+
+    body = socket->downloadBuffer().readAll();
+
+    return true;
+}
+#endif
 
 /*!
     \internal

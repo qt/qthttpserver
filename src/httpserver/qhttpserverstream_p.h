@@ -8,6 +8,7 @@
 
 #include <QtHttpServer/qthttpserverglobal.h>
 #include <QtHttpServer/qhttpserverresponder.h>
+#include <QtHttpServer/qhttpserverrequest.h>
 
 //
 //  W A R N I N G
@@ -20,6 +21,8 @@
 // We mean it.
 
 QT_BEGIN_NAMESPACE
+
+class QTcpSocket;
 
 class QHttpServerStream : public QObject
 {
@@ -35,15 +38,20 @@ protected:
     virtual void socketDisconnected() = 0;
 
     virtual void write(const QByteArray &body, const QHttpHeaders &headers,
-                       QHttpServerResponder::StatusCode status) = 0;
-    virtual void write(QHttpServerResponder::StatusCode status) = 0;
+                       QHttpServerResponder::StatusCode status, quint32 streamId) = 0;
+    virtual void write(QHttpServerResponder::StatusCode status, quint32 streamId) = 0;
     virtual void write(QIODevice *data, const QHttpHeaders &headers,
-                       QHttpServerResponder::StatusCode status) = 0;
+                       QHttpServerResponder::StatusCode status, quint32 streamId) = 0;
 
     virtual void writeBeginChunked(const QHttpHeaders &headers,
-                                   QHttpServerResponder::StatusCode status) = 0;
-    virtual void writeChunk(const QByteArray &body) = 0;
-    virtual void writeEndChunked(const QByteArray &data, const QHttpHeaders &trailers) = 0;
+                                   QHttpServerResponder::StatusCode status,
+                                   quint32 streamId) = 0;
+    virtual void writeChunk(const QByteArray &body, quint32 streamId) = 0;
+    virtual void writeEndChunked(const QByteArray &data, const
+                                 QHttpHeaders &trailers,
+                                 quint32 streamId) = 0;
+
+    static QHttpServerRequest initRequestFromSocket(QTcpSocket *socket);
 };
 
 QT_END_NAMESPACE
