@@ -12,6 +12,7 @@
 
 #if QT_CONFIG(ssl)
 #include <QtNetwork/qssl.h>
+#include <QtNetwork/qhttp2configuration.h>
 #endif
 
 #if defined(QT_WEBSOCKETS_LIB)
