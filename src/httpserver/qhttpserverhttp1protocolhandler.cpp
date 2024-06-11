@@ -338,7 +338,7 @@ void QHttpServerHttp1ProtocolHandler::write(const QByteArray &body, const QHttpH
     Q_UNUSED(streamId);
     Q_ASSERT(state == TransferState::Ready);
     writeStatusAndHeaders(status, headers);
-    write(body.constData(), body.size());
+    write(body);
     state = TransferState::Ready;
 }
 
