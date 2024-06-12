@@ -31,6 +31,7 @@
 #include <QtNetwork/qsslconfiguration.h>
 #include <QtNetwork/qsslkey.h>
 #include <QtNetwork/qsslserver.h>
+#include <QtNetwork/private/qhttp2connection_p.h>
 #endif
 
 #if QT_CONFIG(ssl)
@@ -148,6 +149,7 @@ private slots:
     void qtbug82053();
     void http2handshake();
     void http2request();
+    void socketDisconnected();
 
 private:
 #if QT_CONFIG(ssl)
@@ -667,6 +669,84 @@ void tst_QAbstractHttpServer::http2request()
     expectedHeaders.append(QHttpHeaders::WellKnownHeader::ContentLength,
                            QByteArray::number(server.body.size()));
     QCOMPARE(reply->headers().toListOfPairs(), expectedHeaders.toListOfPairs());
+#else
+    QSKIP("TLS/SSL is not available, skipping test");
+#endif // QT_CONFIG(ssl)
+}
+
+void tst_QAbstractHttpServer::socketDisconnected()
+{
+#if QT_CONFIG(ssl)
+    if (!hasServerAlpn)
+        QSKIP("Server-side ALPN is unsupported, skipping test");
+
+    struct HttpServer : QAbstractHttpServer
+    {
+        bool handlingStarted = false;
+        bool handlingFinished = false;
+
+        bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &responder) override
+        {
+            handlingStarted = true;
+
+            QTestEventLoop loop;
+            loop.enterLoopMSecs(500);
+
+            responder.write(QHttpServerResponder::StatusCode::Ok);
+
+            handlingFinished = true;
+            auto _responder = std::move(responder);
+            return true;
+        }
+
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&) override
+        {
+            Q_ASSERT(false);
+        }
+    } server;
+
+    QSslConfiguration serverConfig;
+    serverConfig.setLocalCertificate(QSslCertificate(g_certificate));
+    serverConfig.setPrivateKey(QSslKey(g_privateKey, QSsl::Rsa));
+    serverConfig.setAllowedNextProtocols({"h2"});
+    server.sslSetup(serverConfig);
+    server.listen(QHostAddress::LocalHost);
+
+    const auto serverPtr = server.servers().constFirst();
+    QSslSocketPtr socket = createNewConnection(serverPtr);
+    QVERIFY(socket->isEncrypted());
+    QCOMPARE(socket->state(), QAbstractSocket::ConnectedState);
+
+    QHttp2Connection *connection = QHttp2Connection::createDirectConnection(socket.get(), {});
+
+    QSignalSpy settingsFrameReceivedSpy{ connection, &QHttp2Connection::settingsFrameReceived };
+    connect(socket.get(), &QIODevice::readyRead, connection, &QHttp2Connection::handleReadyRead);
+    connection->handleReadyRead();
+    QVERIFY(settingsFrameReceivedSpy.wait());
+
+    auto stream = connection->createStream().unwrap();
+    QVERIFY(stream);
+
+    // disconnect while request is being processed on server
+    QTimer timer;
+    connect(&timer, &QTimer::timeout, this, [&server, &socket, &timer] {
+        if (server.handlingStarted) {
+            socket->disconnectFromHost();
+            timer.stop();
+        }
+    });
+    timer.start(100);
+
+    HPack::HttpHeader headers = HPack::HttpHeader{
+       { ":authority", "example.com" },
+       { ":method", "GET" },
+       { ":path", "/" },
+       { ":scheme", "https" },
+    };
+    stream->sendHEADERS(headers, true);
+
+    QTRY_VERIFY(server.handlingFinished);
+
 #else
     QSKIP("TLS/SSL is not available, skipping test");
 #endif // QT_CONFIG(ssl)

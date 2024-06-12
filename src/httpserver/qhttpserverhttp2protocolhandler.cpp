@@ -53,6 +53,11 @@ QHttpServerHttp2ProtocolHandler::QHttpServerHttp2ProtocolHandler(QAbstractHttpSe
 
     connect(m_tcpSocket,
             &QTcpSocket::disconnected,
+            m_connection,
+            &QHttp2Connection::handleConnectionClosure);
+
+    connect(m_tcpSocket,
+            &QTcpSocket::disconnected,
             this,
             &QHttpServerHttp2ProtocolHandler::socketDisconnected);
 
@@ -64,17 +69,18 @@ QHttpServerHttp2ProtocolHandler::QHttpServerHttp2ProtocolHandler(QAbstractHttpSe
 
 void QHttpServerHttp2ProtocolHandler::responderDestroyed()
 {
-
+    m_responderCounter--;
 }
 
 void QHttpServerHttp2ProtocolHandler::startHandlingRequest()
 {
-
+    m_responderCounter++;
 }
 
 void QHttpServerHttp2ProtocolHandler::socketDisconnected()
 {
-    deleteLater();
+    if (m_responderCounter == 0)
+        deleteLater();
 }
 
 void QHttpServerHttp2ProtocolHandler::write(const QByteArray &body, const QHttpHeaders &headers,
