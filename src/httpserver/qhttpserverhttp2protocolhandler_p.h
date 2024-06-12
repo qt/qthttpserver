@@ -73,6 +73,7 @@ private:
     QHttpServerRequest m_request;
     QHttp2Connection *m_connection;
     QHash<quint32, QList<QMetaObject::Connection>> m_streamConnections;
+    qint32 m_responderCounter = 0;
 };
 
 QT_END_NAMESPACE
