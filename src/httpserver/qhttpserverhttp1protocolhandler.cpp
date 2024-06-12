@@ -7,6 +7,7 @@
 #include <QtCore/qmetaobject.h>
 #include <QtCore/qthread.h>
 #include <QtCore/qtimer.h>
+#include <QtCore/qpointer.h>
 #include <QtHttpServer/qabstracthttpserver.h>
 #include <QtHttpServer/qhttpserverrequest.h>
 #include <QtHttpServer/qhttpserverresponder.h>
