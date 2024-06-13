@@ -366,7 +366,9 @@ bool QHttpServerRequestPrivate::parse(QHttp2Stream *socket)
         } else if (pair.name == ":authority") {
             url.setAuthority(QLatin1StringView(pair.value));
         } else if (pair.name == ":path") {
-            url.setPath(QLatin1StringView(pair.value));
+            auto path = QUrl::fromEncoded(pair.value);
+            url.setPath(path.path());
+            url.setQuery(path.query());
         } else {
             parser.appendHeaderField(pair.name, pair.value);
         }
