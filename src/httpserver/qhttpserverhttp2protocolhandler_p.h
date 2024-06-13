@@ -6,7 +6,10 @@
 
 #include <QtHttpServer/qthttpserverglobal.h>
 #include <QtHttpServer/qhttpserverrequest.h>
-#include <private/qhttpserverstream_p.h>
+#include <QtHttpServer/private/qhttpserverstream_p.h>
+#include <QtNetwork/private/hpack_p.h>
+#include <QtCore/qbytearray.h>
+#include <QtCore/qqueue.h>
 
 //
 //  W A R N I N G
@@ -27,6 +30,13 @@ class QTcpSocket;
 class QAbstractHttpServer;
 class QHttp2Connection;
 class QHttp2Stream;
+
+struct QHttpServerHttp2Queue
+{
+    QQueue<QByteArray> data;
+    HPack::HttpHeader trailers;
+    bool allEnqueued = false;
+};
 
 class QHttpServerHttp2ProtocolHandler : public QHttpServerStream
 {
@@ -63,9 +73,12 @@ private slots:
     void onStreamCreated(QHttp2Stream *stream);
     void onStreamClosed(quint32 streamId);
     void onStreamHalfClosed(quint32 streamId);
+    void sendToStream(quint32 streamId);
 
 private:
     QHttp2Stream * getStream(quint32 streamId) const;
+    void enqueueChunk(const QByteArray &body, bool allEnqueued, const QHttpHeaders &trailers,
+                      quint32 streamId);
 
     QAbstractHttpServer *m_server;
     QIODevice *m_socket;
@@ -73,6 +86,7 @@ private:
     QHttpServerRequest m_request;
     QHttp2Connection *m_connection;
     QHash<quint32, QList<QMetaObject::Connection>> m_streamConnections;
+    QHash<quint32, QHttpServerHttp2Queue> m_streamQueue;
     qint32 m_responderCounter = 0;
 };
 

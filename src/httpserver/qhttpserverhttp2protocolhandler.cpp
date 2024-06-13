@@ -169,36 +169,36 @@ void QHttpServerHttp2ProtocolHandler::writeBeginChunked(const QHttpHeaders &head
 
 void QHttpServerHttp2ProtocolHandler::writeChunk(const QByteArray &body, quint32 streamId)
 {
-    QHttp2Stream *stream = getStream(streamId);
-    if (!stream)
-        return;
-
-    QBuffer *buffer = new QBuffer(stream);
-    buffer->setData(body);
-    buffer->open(QIODevice::ReadOnly);
-
-    connect(stream, &QHttp2Stream::uploadFinished, buffer, &QObject::deleteLater);
-    stream->sendDATA(buffer, false);
+    enqueueChunk(body, false, {}, streamId);
 }
 
 void QHttpServerHttp2ProtocolHandler::writeEndChunked(const QByteArray &body,
-                                                      const QHttpHeaders &headers,
+                                                      const QHttpHeaders &trailers,
                                                       quint32 streamId)
+{
+    enqueueChunk(body, true, trailers, streamId);
+}
+
+void QHttpServerHttp2ProtocolHandler::enqueueChunk(const QByteArray &body, bool allEnqueued,
+                                                   const QHttpHeaders &trailers, quint32 streamId)
 {
     QHttp2Stream *stream = getStream(streamId);
     if (!stream)
         return;
 
-    QBuffer *buffer = new QBuffer(stream);
-    buffer->setData(body);
-    buffer->open(QIODevice::ReadOnly);
+    auto &queue = m_streamQueue[streamId];
 
-    connect(stream, &QHttp2Stream::uploadFinished, buffer, &QObject::deleteLater);
-    stream->sendDATA(buffer, false);
+    if (!trailers.isEmpty()) {
+        Q_ASSERT(queue.trailers.empty());
+        toHeaderPairs(queue.trailers, trailers);
+    }
 
-    HPack::HttpHeader h;
-    toHeaderPairs(h, headers);
-    stream->sendHEADERS(h, true);
+    queue.data.enqueue(body);
+    if (allEnqueued)
+        queue.allEnqueued = true;
+
+    if (!stream->isUploadingDATA())
+        sendToStream(streamId);
 }
 
 void QHttpServerHttp2ProtocolHandler::writeHeadersAndStatus(const QHttpHeaders &headers,
@@ -229,6 +229,7 @@ QHttp2Stream *QHttpServerHttp2ProtocolHandler::getStream(quint32 streamId) const
 void QHttpServerHttp2ProtocolHandler::onStreamCreated(QHttp2Stream *stream)
 {
     const quint32 id = stream->streamID();
+    m_streamQueue.insert(id, QHttpServerHttp2Queue());
 
     auto onStateChanged = [this, id](QHttp2Stream::State newState) {
         switch (newState) {
@@ -249,6 +250,9 @@ void QHttpServerHttp2ProtocolHandler::onStreamCreated(QHttp2Stream *stream)
                            this,
                            onStateChanged,
                            Qt::QueuedConnection);
+
+    connections << connect(stream, &QHttp2Stream::uploadFinished, this,
+                           [this, id]() { sendToStream(id); });
 }
 
 void QHttpServerHttp2ProtocolHandler::onStreamHalfClosed(quint32 streamId)
@@ -274,6 +278,31 @@ void QHttpServerHttp2ProtocolHandler::onStreamClosed(quint32 streamId)
     auto connections = m_streamConnections.take(streamId);
     for (auto &c : connections)
         disconnect(c);
+
+    m_streamQueue.remove(streamId);
+}
+
+void QHttpServerHttp2ProtocolHandler::sendToStream(quint32 streamId)
+{
+    QHttp2Stream *stream = getStream(streamId);
+    if (!stream)
+        return;
+
+    if (stream->isUploadingDATA())
+        return;
+
+    auto &queue = m_streamQueue[streamId];
+    if (!queue.data.isEmpty()) {
+        QBuffer *buffer = new QBuffer(stream);
+        buffer->setData(queue.data.dequeue());
+        buffer->open(QIODevice::ReadOnly);
+        connect(stream, &QHttp2Stream::uploadFinished, buffer, &QObject::deleteLater);
+        bool endStream = queue.allEnqueued && queue.data.isEmpty() && queue.trailers.empty();
+        stream->sendDATA(buffer, endStream);
+    } else if (!queue.trailers.empty()) {
+        stream->sendHEADERS(queue.trailers, true);
+        queue.trailers.clear();
+    }
 }
 
 QT_END_NAMESPACE
