@@ -160,6 +160,7 @@ class tst_QHttpServer final : public QObject
     Q_OBJECT
 
 private slots:
+    void initTestCase_data();
     void initTestCase();
     void routeGet_data();
     void routeGet();
@@ -169,6 +170,7 @@ private slots:
     void routeDelete_data();
     void routeDelete();
     void routeExtraHeaders();
+    void getLongChunks();
     void invalidRouterArguments();
     void checkRouteLambdaCapture();
     void afterRequest();
@@ -188,7 +190,7 @@ private:
 
 private:
     QHttpServer httpserver;
-    QString urlBase;
+    QString clearUrlBase;
     QString sslUrlBase;
     QNetworkAccessManager networkAccessManager;
 };
@@ -220,6 +222,22 @@ public:
 private:
     const char *message;
 };
+
+void tst_QHttpServer::initTestCase_data()
+{
+    QTest::addColumn<bool>("useSsl");
+    QTest::addColumn<bool>("useHttp2");
+
+    QTest::newRow("http/1.1") << false << false;
+
+#if QT_CONFIG(ssl)
+    if (QSslSocket::supportsSsl()) {
+        QTest::newRow("https/1.1") << true << false;
+        if (QSslSocket::supportedFeatures().contains(QSsl::SupportedFeature::ServerSideAlpn))
+            QTest::newRow("http/2") << true << true;
+    }
+#endif
+}
 
 void tst_QHttpServer::initTestCase()
 {
@@ -341,6 +359,17 @@ void tst_QHttpServer::initTestCase()
         responder.writeEndChunked("part 2 of the message");
     });
 
+    httpserver.route("/longChunks/", [](QHttpServerResponder &&responder) {
+        responder.writeBeginChunked("text/plain", QHttpServerResponder::StatusCode::Ok);
+        constexpr qsizetype chunkLength = 8 * 1024 * 1024;
+        QByteArray a(chunkLength, 'a');
+        QByteArray b(chunkLength, 'b');
+        QByteArray c(chunkLength, 'c');
+        responder.writeChunk(a);
+        responder.writeChunk(b);
+        responder.writeEndChunked(c);
+    });
+
     httpserver.route("/extra-headers", [] () {
         QHttpServerResponse resp("");
         auto h = resp.headers();
@@ -397,11 +426,14 @@ void tst_QHttpServer::initTestCase()
     if (!port)
         qCritical("Http server listen failed");
 
-    urlBase = QStringLiteral("http://localhost:%1%2").arg(port);
+    clearUrlBase = QStringLiteral("http://localhost:%1%2").arg(port);
 
 #if QT_CONFIG(ssl)
-    httpserver.sslSetup(QSslCertificate(g_certificate),
-                        QSslKey(g_privateKey, QSsl::Rsa));
+    QSslConfiguration serverConfig;
+    serverConfig.setLocalCertificate(QSslCertificate(g_certificate));
+    serverConfig.setPrivateKey(QSslKey(g_privateKey, QSsl::Rsa));
+    serverConfig.setAllowedNextProtocols({"h2"});
+    httpserver.sslSetup(serverConfig);
 
     port = httpserver.listen();
     if (!port)
@@ -436,251 +468,238 @@ void tst_QHttpServer::routeGet_data()
     QTest::addColumn<QString>("body");
 
     QTest::addRow("hello world")
-        << urlBase.arg("/")
+        << "/"
         << 200
         << "text/plain"
         << "Hello world get";
 
     QTest::addRow("test msg")
-        << urlBase.arg("/test")
+        << "/test"
         << 200
         << "text/html"
         << "test msg";
 
     QTest::addRow("not found")
-        << urlBase.arg("/not-found")
+        << "/not-found"
         << 404
         << "application/x-empty"
         << "";
 
     QTest::addRow("arg:int")
-        << urlBase.arg("/page/10")
+        << "/page/10"
         << 200
         << "text/plain"
         << "page: 10";
 
     QTest::addRow("arg:-int")
-        << urlBase.arg("/page/-10")
+        << "/page/-10"
         << 200
         << "text/plain"
         << "page: -10";
 
     QTest::addRow("arg:uint")
-        << urlBase.arg("/page/10/detail")
+        << "/page/10/detail"
         << 200
         << "text/plain"
         << "page: 10 detail";
 
     QTest::addRow("arg:-uint")
-        << urlBase.arg("/page/-10/detail")
+        << "/page/-10/detail"
         << 404
         << "application/x-empty"
         << "";
 
     QTest::addRow("arg:string")
-        << urlBase.arg("/user/test")
+        << "/user/test"
         << 200
         << "text/plain"
         << "test";
 
     QTest::addRow("arg:string")
-        << urlBase.arg("/user/test test ,!a+.")
+        << "/user/test test ,!a+."
         << 200
         << "text/plain"
         << "test test ,!a+.";
 
     QTest::addRow("arg:string,ba")
-        << urlBase.arg("/user/james/bond")
+        << "/user/james/bond"
         << 200
         << "text/plain"
         << "james-bond";
 
     QTest::addRow("arg:url")
-        << urlBase.arg("/test/api/v0/cmds?val=1")
+        << "/test/api/v0/cmds?val=1"
         << 200
         << "text/plain"
         << "path: api/v0/cmds";
 
     QTest::addRow("arg:float 5.1")
-        << urlBase.arg("/api/v5.1")
+        << "/api/v5.1"
         << 200
         << "text/plain"
         << "api 5.1v";
 
     QTest::addRow("arg:float 5.")
-        << urlBase.arg("/api/v5.")
+        << "/api/v5."
         << 200
         << "text/plain"
         << "api 5v";
 
     QTest::addRow("arg:float 6.0")
-        << urlBase.arg("/api/v6.0")
+        << "/api/v6.0"
         << 200
         << "text/plain"
         << "api 6v";
 
     QTest::addRow("arg:float,uint")
-        << urlBase.arg("/api/v5.1/user/10")
+        << "/api/v5.1/user/10"
         << 200
         << "text/plain"
         << "api 5.1v, user id - 10";
 
     QTest::addRow("arg:float,uint,query")
-        << urlBase.arg("/api/v5.2/user/11/settings?role=admin")
+        << "/api/v5.2/user/11/settings?role=admin"
         << 200
         << "text/plain"
         << "api 5.2v, user id - 11, set settings role=admin#''";
 
     // The fragment isn't actually sent via HTTP (it's information for the user agent)
     QTest::addRow("arg:float,uint, query+fragment")
-        << urlBase.arg("/api/v5.2/user/11/settings?role=admin#tag")
+        << "/api/v5.2/user/11/settings?role=admin#tag"
         << 200
         << "text/plain"
         << "api 5.2v, user id - 11, set settings role=admin#''";
 
     QTest::addRow("custom route rule")
-        << urlBase.arg("/custom/15")
+        << "/custom/15"
         << 404
         << "application/x-empty"
         << "";
 
     QTest::addRow("custom route rule + query")
-        << urlBase.arg("/custom/10?key=11&g=1")
+        << "/custom/10?key=11&g=1"
         << 200
         << "text/plain"
         << "Custom router rule: 10, key=11";
 
     QTest::addRow("custom route rule + query key req")
-        << urlBase.arg("/custom/10?g=1&key=12")
+        << "/custom/10?g=1&key=12"
         << 200
         << "text/plain"
         << "Custom router rule: 10, key=12";
 
     QTest::addRow("post-and-get, get")
-        << urlBase.arg("/post-and-get")
+        << "/post-and-get"
         << 200
         << "text/plain"
         << "Hello world get";
 
     QTest::addRow("invalid-rule-method, get")
-        << urlBase.arg("/invalid-rule-method")
+        << "/invalid-rule-method"
         << 404
         << "application/x-empty"
         << "";
 
     QTest::addRow("check custom type, data=1")
-        << urlBase.arg("/check-custom-type/1")
+        << "/check-custom-type/1"
         << 200
         << "text/plain"
         << "data = 1";
 
     QTest::addRow("any, get")
-        << urlBase.arg("/any")
+        << "/any"
         << 200
         << "text/plain"
         << "Get";
 
     QTest::addRow("response from html file")
-        << urlBase.arg("/file/text.html")
+        << "/file/text.html"
         << 200
         << "text/html"
         << "<html></html>";
 
     QTest::addRow("response from json file")
-        << urlBase.arg("/file/application.json")
+        << "/file/application.json"
         << 200
         << "application/json"
         << "{ \"key\": \"value\" }";
 
     QTest::addRow("json-object")
-        << urlBase.arg("/json-object/")
+        << "/json-object/"
         << 200
         << "application/json"
         << "{\"property\":\"test\",\"value\":1}";
 
     QTest::addRow("json-array")
-        << urlBase.arg("/json-array/")
+        << "/json-array/"
         << 200
         << "application/json"
         << "[1,\"2\",{\"name\":\"test\"}]";
 
     QTest::addRow("data-and-custom-status-code")
-            << urlBase.arg("/data-and-custom-status-code/") << 202 << "application/json"
+            << "/data-and-custom-status-code/"
+            << 202
+            << "application/json"
             << "{\"key\":\"value\"}";
 
     QTest::addRow("chunked")
-        << urlBase.arg("/chunked/")
+        << "/chunked/"
         << 200
         << "text/plain"
         << "part 1 of the message, part 2 of the message";
 
 #if QT_CONFIG(concurrent)
     QTest::addRow("future")
-        << urlBase.arg("/future/1")
+        << "/future/1"
         << 200
         << "text/plain"
         << "future is coming";
 
     QTest::addRow("future-not-found")
-        << urlBase.arg("/future/0")
+        << "/future/0"
         << 404
         << "application/x-empty"
         << "";
 #endif
-
-#if QT_CONFIG(ssl)
-
-    QTest::addRow("hello world, ssl")
-        << sslUrlBase.arg("/")
-        << 200
-        << "text/plain"
-        << "Hello world get";
-
-    QTest::addRow("post-and-get, get, ssl")
-        << sslUrlBase.arg("/post-and-get")
-        << 200
-        << "text/plain"
-        << "Hello world get";
-
-    QTest::addRow("invalid-rule-method, get, ssl")
-        << sslUrlBase.arg("/invalid-rule-method")
-        << 404
-        << "application/x-empty"
-        << "";
-
-    QTest::addRow("check custom type, data=1, ssl")
-        << sslUrlBase.arg("/check-custom-type/1")
-        << 200
-        << "text/plain"
-        << "data = 1";
-
-#endif // QT_CONFIG(ssl)
 }
 
 void tst_QHttpServer::routeGet()
 {
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
     QFETCH(QString, url);
     QFETCH(int, code);
     QFETCH(QString, type);
     QFETCH(QString, body);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    QNetworkRequest request = QNetworkRequest(urlBase.arg(url));
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
 
-    auto reply = networkAccessManager.get(QNetworkRequest(url));
-
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(request));
     QTRY_VERIFY(reply->isFinished());
+
+    const QVariant http2Used = reply->attribute(QNetworkRequest::Http2WasUsedAttribute);
+    QVERIFY(http2Used.isValid());
+    QCOMPARE(http2Used.toBool(), useHttp2);
+
+    const QVariant sslUsed = reply->attribute(QNetworkRequest::ConnectionEncryptedAttribute);
+    QVERIFY(sslUsed.isValid());
+    QCOMPARE(sslUsed.toBool(), useSsl);
 
     QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader), type);
     QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), code);
     QCOMPARE(reply->readAll().trimmed(), body);
-
-    reply->deleteLater();
 }
 
 void tst_QHttpServer::routeKeepAlive()
 {
-    httpserver.route("/keep-alive", [] (const QHttpServerRequest &req) -> QHttpServerResponse {
-        if (!req.value("Connection").contains("keep-alive"))
-            return QHttpServerResponse::StatusCode::NotFound;
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    if (useHttp2)
+        QSKIP("Keep-alive header is not allowed for HTTP 2");
 
+    httpserver.route("/keep-alive", [] (const QHttpServerRequest &req) -> QHttpServerResponse {
         return QString("header: %1, query: %2, body: %3, method: %4")
             .arg(req.value("CustomHeader"),
                  req.url().query(),
@@ -690,6 +709,7 @@ void tst_QHttpServer::routeKeepAlive()
 
     QNetworkRequest request(urlBase.arg("/keep-alive"));
     request.setRawHeader(QByteArray("Connection"), QByteArray("keep-alive"));
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
 
     checkReply(networkAccessManager.get(request),
                QString("header: , query: , body: , method: %1")
@@ -710,6 +730,7 @@ void tst_QHttpServer::routeKeepAlive()
     request = QNetworkRequest(urlBase.arg("/keep-alive"));
     request.setRawHeader(QByteArray("Connection"), QByteArray("keep-alive"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "text/html"_ba);
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
 
     checkReply(networkAccessManager.post(request, QByteArray("")),
                QString("header: , query: , body: , method: %1")
@@ -733,28 +754,28 @@ void tst_QHttpServer::routePost_data()
     QTest::addColumn<QString>("body");
 
     QTest::addRow("hello world")
-        << urlBase.arg("/")
+        << "/"
         << 200
         << "text/plain"
         << ""
         << "Hello world post";
 
     QTest::addRow("post-and-get, post")
-        << urlBase.arg("/post-and-get")
+        << "/post-and-get"
         << 200
         << "text/plain"
         << ""
         << "Hello world post";
 
     QTest::addRow("any, post")
-        << urlBase.arg("/any")
+        << "/any"
         << 200
         << "text/plain"
         << ""
         << "Post";
 
     QTest::addRow("post-body")
-        << urlBase.arg("/post-body")
+        << "/post-body"
         << 200
         << "text/plain"
         << "some post data"
@@ -765,80 +786,57 @@ void tst_QHttpServer::routePost_data()
         body.append(QString::number(i));
 
     QTest::addRow("post-body - huge body, chunk test")
-        << urlBase.arg("/post-body")
+        << "/post-body"
         << 200
         << "text/plain"
         << body
         << body;
 
     QTest::addRow("req-and-resp")
-        << urlBase.arg("/req-and-resp")
+        << "/req-and-resp"
         << 200
         << "text/html"
         << "test"
         << "test";
 
     QTest::addRow("resp-and-req")
-        << urlBase.arg("/resp-and-req")
+        << "/resp-and-req"
         << 200
         << "text/html"
         << "test"
         << "test";
-
-#if QT_CONFIG(ssl)
-
-    QTest::addRow("post-and-get, post, ssl")
-        << sslUrlBase.arg("/post-and-get")
-        << 200
-        << "text/plain"
-        << ""
-        << "Hello world post";
-
-    QTest::addRow("any, post, ssl")
-        << sslUrlBase.arg("/any")
-        << 200
-        << "text/plain"
-        << ""
-        << "Post";
-
-    QTest::addRow("post-body, ssl")
-        << sslUrlBase.arg("/post-body")
-        << 200
-        << "text/plain"
-        << "some post data"
-        << "some post data";
-
-    QTest::addRow("post-body - huge body, chunk test, ssl")
-        << sslUrlBase.arg("/post-body")
-        << 200
-        << "text/plain"
-        << body
-        << body;
-
-#endif // QT_CONFIG(ssl)
 }
 
 void tst_QHttpServer::routePost()
 {
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
     QFETCH(QString, url);
     QFETCH(int, code);
     QFETCH(QString, type);
     QFETCH(QString, data);
     QFETCH(QString, body);
-
-    QNetworkRequest request(url);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    QNetworkRequest request(urlBase.arg(url));
     if (data.size())
         request.setHeader(QNetworkRequest::ContentTypeHeader, "text/html"_ba);
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
 
-    auto reply = networkAccessManager.post(request, data.toUtf8());
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.post(request, data.toUtf8()));
 
     QTRY_VERIFY(reply->isFinished());
+
+    const QVariant http2Used = reply->attribute(QNetworkRequest::Http2WasUsedAttribute);
+    QVERIFY(http2Used.isValid());
+    QCOMPARE(http2Used.toBool(), useHttp2);
+
+    const QVariant sslUsed = reply->attribute(QNetworkRequest::ConnectionEncryptedAttribute);
+    QVERIFY(sslUsed.isValid());
+    QCOMPARE(sslUsed.toBool(), useSsl);
 
     QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader), type);
     QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), code);
     QCOMPARE(reply->readAll(), body);
-
-    reply->deleteLater();
 }
 
 void tst_QHttpServer::routeDelete_data()
@@ -849,61 +847,103 @@ void tst_QHttpServer::routeDelete_data()
     QTest::addColumn<QString>("data");
 
     QTest::addRow("post-and-get, delete")
-        << urlBase.arg("/post-and-get")
+        << "/post-and-get"
         << 404
         << "application/x-empty"
         << "";
 
     QTest::addRow("any, delete")
-        << urlBase.arg("/any")
+        << "/any"
         << 200
         << "text/plain"
         << "Delete";
-
-#if QT_CONFIG(ssl)
-
-    QTest::addRow("post-and-get, delete, ssl")
-        << sslUrlBase.arg("/post-and-get")
-        << 404
-        << "application/x-empty"
-        << "";
-
-    QTest::addRow("any, delete, ssl")
-        << sslUrlBase.arg("/any")
-        << 200
-        << "text/plain"
-        << "Delete";
-
-#endif // QT_CONFIG(ssl)
 }
 
 void tst_QHttpServer::routeDelete()
 {
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
     QFETCH(QString, url);
     QFETCH(int, code);
     QFETCH(QString, type);
     QFETCH(QString, data);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    QNetworkRequest request(urlBase.arg(url));
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
 
-    auto reply = networkAccessManager.deleteResource(QNetworkRequest(url));
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.deleteResource(request));
 
     QTRY_VERIFY(reply->isFinished());
 
+    const QVariant http2Used = reply->attribute(QNetworkRequest::Http2WasUsedAttribute);
+    QVERIFY(http2Used.isValid());
+    QCOMPARE(http2Used.toBool(), useHttp2);
+
+    const QVariant sslUsed = reply->attribute(QNetworkRequest::ConnectionEncryptedAttribute);
+    QVERIFY(sslUsed.isValid());
+    QCOMPARE(sslUsed.toBool(), useSsl);
+
     QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader), type);
     QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), code);
-
-    reply->deleteLater();
 }
 
 void tst_QHttpServer::routeExtraHeaders()
 {
-    const QUrl requestUrl(urlBase.arg("/extra-headers"));
-    auto reply = networkAccessManager.get(QNetworkRequest(requestUrl));
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    QNetworkRequest request(urlBase.arg("/extra-headers"));
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(request));
 
     QTRY_VERIFY(reply->isFinished());
+
+    const QVariant http2Used = reply->attribute(QNetworkRequest::Http2WasUsedAttribute);
+    QVERIFY(http2Used.isValid());
+    QCOMPARE(http2Used.toBool(), useHttp2);
+
+    const QVariant sslUsed = reply->attribute(QNetworkRequest::ConnectionEncryptedAttribute);
+    QVERIFY(sslUsed.isValid());
+    QCOMPARE(sslUsed.toBool(), useSsl);
 
     QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader), "application/x-empty");
     QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 200);
     QCOMPARE(reply->header(QNetworkRequest::ServerHeader), "test server");
+}
+
+void tst_QHttpServer::getLongChunks()
+{
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    QNetworkRequest request(urlBase.arg("/longChunks/"));
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(request));
+    QTRY_VERIFY(reply->isFinished());
+
+    const QVariant http2Used = reply->attribute(QNetworkRequest::Http2WasUsedAttribute);
+    QVERIFY(http2Used.isValid());
+    QCOMPARE(http2Used.toBool(), useHttp2);
+
+    const QVariant sslUsed = reply->attribute(QNetworkRequest::ConnectionEncryptedAttribute);
+    QVERIFY(sslUsed.isValid());
+    QCOMPARE(sslUsed.toBool(), useSsl);
+
+    QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader), "text/plain");
+    QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 200);
+
+    QByteArray body(reply->readAll());
+    qsizetype offset = 0;
+    char parts[] = { 'a', 'b', 'c' };
+    constexpr qsizetype chunkLength = 8 * 1024 * 1024;
+    for (auto part : parts) {
+        for (int i = 0; i < chunkLength; ++i)
+            QCOMPARE(body[i + offset], part);
+
+        offset += chunkLength;
+    }
 }
 
 struct CustomType {
@@ -933,7 +973,13 @@ void tst_QHttpServer::invalidRouterArguments()
 
 void tst_QHttpServer::checkRouteLambdaCapture()
 {
-    httpserver.route("/capture-this/", [this] () {
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    QNetworkRequest request;
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+
+    httpserver.route("/capture-this/", [&urlBase] () {
         return urlBase;
     });
 
@@ -942,21 +988,25 @@ void tst_QHttpServer::checkRouteLambdaCapture()
         return msg;
     });
 
-    checkReply(networkAccessManager.get(
-                   QNetworkRequest(QUrl(urlBase.arg("/capture-this/")))),
-               urlBase);
+    request.setUrl(QUrl(urlBase.arg("/capture-this/")));
+    checkReply(networkAccessManager.get(request), urlBase);
     if (QTest::currentTestFailed())
         return;
 
-    checkReply(networkAccessManager.get(
-                   QNetworkRequest(QUrl(urlBase.arg("/capture-non-pod-data/")))),
-               msg);
+    request.setUrl(QUrl(urlBase.arg("/capture-non-pod-data/")));
+    checkReply(networkAccessManager.get(request), msg);
     if (QTest::currentTestFailed())
         return;
 }
 
 void tst_QHttpServer::afterRequest()
 {
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    QNetworkRequest request(urlBase.arg("/test-after-request"));
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+
     httpserver.afterRequest([] (QHttpServerResponse &&resp,
                                 const QHttpServerRequest &request) {
         if (request.url().path() == "/test-after-request") {
@@ -980,30 +1030,53 @@ void tst_QHttpServer::afterRequest()
         return std::move(resp);
     });
 
-    const QUrl requestUrl(urlBase.arg("/test-after-request"));
-    auto reply = networkAccessManager.get(QNetworkRequest(requestUrl));
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(request));
 
     QTRY_VERIFY(reply->isFinished());
+
+    const QVariant http2Used = reply->attribute(QNetworkRequest::Http2WasUsedAttribute);
+    QVERIFY(http2Used.isValid());
+    QCOMPARE(http2Used.toBool(), useHttp2);
+
+    const QVariant sslUsed = reply->attribute(QNetworkRequest::ConnectionEncryptedAttribute);
+    QVERIFY(sslUsed.isValid());
+    QCOMPARE(sslUsed.toBool(), useSsl);
 
     QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader), "application/x-empty");
     QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 404);
     QCOMPARE(reply->rawHeader("Arguments-Order-1"), "resp, request");
     QCOMPARE(reply->rawHeader("Arguments-Order-2"), "request, resp");
-    reply->deleteLater();
 }
 
 void tst_QHttpServer::checkReply(QNetworkReply *reply, const QString &response) {
-    QTRY_VERIFY(reply->isFinished());
+    QVERIFY(reply != nullptr);
+    std::unique_ptr<QNetworkReply> replyPtr(reply);
+    QTRY_VERIFY(replyPtr->isFinished());
 
-    QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader).toByteArray(), "text/plain");
-    QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 200);
-    QCOMPARE(reply->readAll(), response);
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
 
-    reply->deleteLater();
+    const QVariant http2Used = replyPtr->attribute(QNetworkRequest::Http2WasUsedAttribute);
+    QVERIFY(http2Used.isValid());
+    QCOMPARE(http2Used.toBool(), useHttp2);
+
+    const QVariant sslUsed = replyPtr->attribute(QNetworkRequest::ConnectionEncryptedAttribute);
+    QVERIFY(sslUsed.isValid());
+    QCOMPARE(sslUsed.toBool(), useSsl);
+
+    QCOMPARE(replyPtr->header(QNetworkRequest::ContentTypeHeader).toByteArray(), "text/plain");
+    QCOMPARE(replyPtr->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 200);
+    QCOMPARE(replyPtr->readAll(), response);
 };
 
 void tst_QHttpServer::disconnectedInEventLoop()
 {
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    QNetworkRequest request(urlBase.arg("/event-loop/"));
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+
     httpserver.route("/event-loop/", [] () {
         QEventLoop loop;
         QTimer::singleShot(1000, &loop, &QEventLoop::quit);
@@ -1011,32 +1084,32 @@ void tst_QHttpServer::disconnectedInEventLoop()
         return QHttpServerResponse::StatusCode::Ok;
     });
 
-    const QUrl requestUrl(urlBase.arg("/event-loop/"));
-    auto reply = networkAccessManager.get(QNetworkRequest(requestUrl));
-    QTimer::singleShot(500, reply, &QNetworkReply::abort); // cancel connection
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(request));
+    QTimer::singleShot(500, reply.get(), &QNetworkReply::abort); // cancel connection
     QEventLoop loop;
-    connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    connect(reply.get(), &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
-    reply->deleteLater();
 }
 
 void tst_QHttpServer::multipleRequests()
 {
     // Test to ensure that the passed lambda is not moved away after the
     // first handled request
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    QNetworkRequest request(urlBase.arg("/do-not-move"));
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+
     httpserver.route("/do-not-move", [v = std::vector<int>{1, 2, 3}] () {
         return QString::number(v.size());
     });
 
-    checkReply(networkAccessManager.get(
-                   QNetworkRequest(QUrl(urlBase.arg("/do-not-move")))),
-               "3");
+    checkReply(networkAccessManager.get(request), "3");
     if (QTest::currentTestFailed())
         return;
 
-    checkReply(networkAccessManager.get(
-                   QNetworkRequest(QUrl(urlBase.arg("/do-not-move")))),
-               "3");
+    checkReply(networkAccessManager.get(request), "3");
     if (QTest::currentTestFailed())
         return;
 }
@@ -1044,10 +1117,15 @@ void tst_QHttpServer::multipleRequests()
 void tst_QHttpServer::pipelinedRequests()
 {
     QNetworkReply *replies[10];
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
 
     for (std::size_t i = 0; i < std::size(replies); i++) {
         QNetworkRequest req(QUrl(urlBase.arg("/user/") + QString::number(i)));
         req.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
+        req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+
         replies[i] = networkAccessManager.get(req);
     }
 
@@ -1057,11 +1135,16 @@ void tst_QHttpServer::pipelinedRequests()
 
 void tst_QHttpServer::missingHandler()
 {
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
     const QUrl requestUrl(urlBase.arg("/missing"));
-    auto reply = networkAccessManager.get(QNetworkRequest(requestUrl));
+    QNetworkRequest request(requestUrl);
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(request));
     QTRY_VERIFY(reply->isFinished());
     QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 404);
-    reply->deleteLater();
 
     {
         auto guard = QScopeGuard([this]() { httpserver.setMissingHandler({}); });
@@ -1071,22 +1154,35 @@ void tst_QHttpServer::missingHandler()
                     responder.write(QHttpServerResponder::StatusCode::Ok);
                 });
 
-        reply = networkAccessManager.get(QNetworkRequest(requestUrl));
+        QNetworkRequest request2(requestUrl);
+        request2.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+        reply.reset(networkAccessManager.get(QNetworkRequest(requestUrl)));
+
         QTRY_VERIFY(reply->isFinished());
         QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 200);
-        reply->deleteLater();
     }
 
-    reply = networkAccessManager.get(QNetworkRequest(requestUrl));
+    reply.reset(networkAccessManager.get(request));
     QTRY_VERIFY(reply->isFinished());
     QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 404);
-    reply->deleteLater();
+
+    const QVariant http2Used = reply->attribute(QNetworkRequest::Http2WasUsedAttribute);
+    QVERIFY(http2Used.isValid());
+    QCOMPARE(http2Used.toBool(), useHttp2);
+
+    const QVariant sslUsed = reply->attribute(QNetworkRequest::ConnectionEncryptedAttribute);
+    QVERIFY(sslUsed.isValid());
+    QCOMPARE(sslUsed.toBool(), useSsl);
 }
 
 #if QT_CONFIG(concurrent)
 // Test that responses to pipelined requests come in correct order, see also: QTBUG-105202
 void tst_QHttpServer::pipelinedFutureRequests()
 {
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+
     std::array<QNetworkReply *, 10> replies;
     QThreadPool::globalInstance()->setMaxThreadCount(static_cast<int>(replies.size()));
 
@@ -1096,6 +1192,7 @@ void tst_QHttpServer::pipelinedFutureRequests()
         QString path = u"/user/%1/delayed/%2"_s.arg(i).arg(delayMs);
         QNetworkRequest req(QUrl(urlBase.arg(path)));
         req.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
+        req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
         replies[i] = networkAccessManager.get(req);
     }
 
@@ -1106,8 +1203,17 @@ void tst_QHttpServer::pipelinedFutureRequests()
 
 void tst_QHttpServer::multipleResponses()
 {
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    if (useHttp2)
+        QSKIP("StatusCode::Processing is not supported for HTTP 2");
+
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+
     const QUrl requestUrl(urlBase.arg("/processing"));
-    auto reply = networkAccessManager.get(QNetworkRequest(requestUrl));
+    QNetworkRequest req(requestUrl);
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+    auto reply = networkAccessManager.get(req);
 
     QTRY_VERIFY(reply->isFinished());
 
@@ -1119,6 +1225,11 @@ void tst_QHttpServer::multipleResponses()
 #if QT_CONFIG(localserver)
 void tst_QHttpServer::localSocket()
 {
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    if (useSsl || useHttp2)
+        QSKIP("Use only HTTP 1.1 for localSocket");
+
     QVERIFY(!httpserver.localServers().isEmpty());
 
     for (const auto &localServer : httpserver.localServers()) {
