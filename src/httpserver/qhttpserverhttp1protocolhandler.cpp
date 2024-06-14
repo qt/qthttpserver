@@ -110,14 +110,9 @@ struct IOChunkedTransfer
     IOChunkedTransfer(QIODevice *input, QIODevice *output) :
           source(input),
           sink(output),
-          bytesWrittenConnection(QObject::connect(sink.data(), &QIODevice::bytesWritten,
-                                                  sink.data(), [this]() {
-              writeToOutput();
-          })),
-          readyReadConnection(QObject::connect(source.data(), &QIODevice::readyRead,
-                                               source.data(), [this]() {
-              readFromInput();
-          }))
+          bytesWrittenConnection(connectToBytesWritten(this, output)),
+          readyReadConnection(QObject::connect(source.data(), &QIODevice::readyRead, source.data(),
+                                               [this]() { readFromInput(); }))
     {
         Q_ASSERT(!source->atEnd());  // TODO error out
         QObject::connect(sink.data(), &QObject::destroyed, source.data(), &QObject::deleteLater);
@@ -131,6 +126,18 @@ struct IOChunkedTransfer
     {
         QObject::disconnect(bytesWrittenConnection);
         QObject::disconnect(readyReadConnection);
+    }
+
+    static QMetaObject::Connection connectToBytesWritten(IOChunkedTransfer *that, QIODevice *device)
+    {
+        auto send = [that]() { that->writeToOutput(); };
+#if QT_CONFIG(ssl)
+        if (auto *sslSocket = qobject_cast<QSslSocket *>(device)) {
+            return QObject::connect(sslSocket, &QSslSocket::encryptedBytesWritten, sslSocket,
+                                    std::move(send));
+        }
+#endif
+        return QObject::connect(device, &QIODevice::bytesWritten, device, std::move(send));
     }
 
     inline bool isBufferEmpty()
