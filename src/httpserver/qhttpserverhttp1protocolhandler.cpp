@@ -99,7 +99,8 @@ struct IOChunkedTransfer
     // TODO Can we implement it without the buffer? Direct write to the target buffer
     // would be great.
 
-    const qint64 bufferSize = BUFFERSIZE;
+    static constexpr qint64 bufferSize = BUFFERSIZE;
+    static constexpr qint64 targetWriteBufferSaturation = bufferSize / 2;
     char buffer[BUFFERSIZE];
     qint64 beginIndex = -1;
     qint64 endIndex = -1;
@@ -172,6 +173,19 @@ struct IOChunkedTransfer
 
         if (isBufferEmpty())
             return;
+
+        // If downstream has enough data to write already,
+        // don't bother writing more now. That would only lead to
+        // higher, unnecessary memory usage.
+        if (sink->bytesToWrite() >= targetWriteBufferSaturation)
+            return;
+#if QT_CONFIG(ssl)
+        if (auto *sslSocket = qobject_cast<QSslSocket *>(sink.data())) {
+            const qint64 budget = targetWriteBufferSaturation - sink->bytesToWrite();
+            if (sslSocket->encryptedBytesToWrite() >= budget)
+                return;
+        }
+#endif
 
         const auto writtenBytes = sink->write(buffer + beginIndex, endIndex);
         if (writtenBytes < 0) {
