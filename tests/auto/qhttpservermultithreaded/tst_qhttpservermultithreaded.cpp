@@ -14,6 +14,7 @@
 #include <QtCore/qsemaphore.h>
 #include <QtCore/qtimer.h>
 #include <QtNetwork/qnetworkaccessmanager.h>
+#include <QtNetwork/qtcpsocket.h>
 
 #if QT_CONFIG(localserver)
 #include <QtNetwork/qlocalsocket.h>
