@@ -386,7 +386,7 @@ void tst_QAbstractHttpServer::verifyWebSocketUpgrades()
         port = tcpServer.serverPort();
     }
 #else
-    QVERIFY(!useSslPort)
+    QVERIFY(!useSslPort);
     port = tcpServer.serverPort();
 #endif
 
