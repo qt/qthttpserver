@@ -446,29 +446,29 @@ void QHttpServerHttp1ProtocolHandler::writeStatusAndHeaders(QHttpServerResponder
                                                         const QHttpHeaders &headers)
 {
     Q_ASSERT(state == TransferState::Ready);
-    write("HTTP/1.1 ");
-    write(QByteArray::number(quint32(status)));
+    QByteArray payload;
+    payload.append("HTTP/1.1 ");
+    payload.append(QByteArray::number(quint32(status)));
     const auto it = statusString.find(status);
     if (it != statusString.end()) {
-        write(" ");
-        write(statusString.at(status));
+        payload.append(" ");
+        payload.append(statusString.at(status));
     }
-    write("\r\n");
+    payload.append("\r\n");
 
     for (qsizetype i = 0; i < headers.size(); ++i) {
         const auto name = headers.nameAt(i);
-        writeHeader(QByteArray(name.data(), name.size()), headers.valueAt(i).toByteArray());
+        payload.append(QByteArrayView(name.data(), name.size()) + ": "
+                       + headers.valueAt(i).toByteArray() + "\r\n");
     }
-    write("\r\n");
+    payload.append("\r\n");
+    write(payload);
     state = TransferState::HeadersSent;
 }
 
 void QHttpServerHttp1ProtocolHandler::writeHeader(const QByteArray &key, const QByteArray &value)
 {
-    write(key);
-    write(": ");
-    write(value);
-    write("\r\n");
+    write(key + ": " + value + "\r\n");
 }
 
 void QHttpServerHttp1ProtocolHandler::write(const QByteArray &ba)
