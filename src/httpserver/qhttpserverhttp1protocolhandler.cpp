@@ -6,7 +6,6 @@
 #include <QtCore/qloggingcategory.h>
 #include <QtCore/qmetaobject.h>
 #include <QtCore/qthread.h>
-#include <QtCore/qtimer.h>
 #include <QtCore/qpointer.h>
 #include <QtHttpServer/qabstracthttpserver.h>
 #include <QtHttpServer/qhttpserverrequest.h>
@@ -108,6 +107,8 @@ struct IOChunkedTransfer
     const QPointer<QIODevice> sink;
     const QMetaObject::Connection bytesWrittenConnection;
     const QMetaObject::Connection readyReadConnection;
+    bool inRead = false;
+
     IOChunkedTransfer(QIODevice *input, QIODevice *output) :
           source(input),
           sink(output),
@@ -149,18 +150,26 @@ struct IOChunkedTransfer
 
     void readFromInput()
     {
+        if (inRead)
+            return;
         if (source.isNull())
             return;
 
         if (!isBufferEmpty()) // We haven't consumed all the data yet.
             return;
-        beginIndex = 0;
-        endIndex = source->read(buffer, bufferSize);
-        if (endIndex < 0) {
-            endIndex = beginIndex; // Mark the buffer as empty
-            qCWarning(lcHttpServerHttp1Handler, "Error reading chunk: %ls",
-                      qUtf16Printable(source->errorString()));
-        } else if (endIndex) {
+        QScopedValueRollback inReadGuard(inRead, true);
+
+        while (isBufferEmpty()) {
+            beginIndex = 0;
+            endIndex = source->read(buffer, bufferSize);
+            if (endIndex < 0) {
+                endIndex = beginIndex; // Mark the buffer as empty
+                qCWarning(lcHttpServerHttp1Handler, "Error reading chunk: %ls",
+                        qUtf16Printable(source->errorString()));
+                break;
+            }
+            if (endIndex == 0)
+                break;
             memset(buffer + endIndex, 0, sizeof(buffer) - std::size_t(endIndex));
             writeToOutput();
         }
@@ -195,9 +204,9 @@ struct IOChunkedTransfer
         }
         beginIndex += writtenBytes;
         if (isBufferEmpty()) {
-            if (source->bytesAvailable())
-                QTimer::singleShot(0, source.data(), [this]() { readFromInput(); });
-            else if (source->atEnd()) // Finishing
+            if (source->bytesAvailable() && !inRead)
+                readFromInput();
+            else if (source->atEnd())  // Finishing
                 source->deleteLater();
         }
     }
