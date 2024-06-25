@@ -20,10 +20,6 @@
 #include <QtWebSockets/qwebsocket.h>
 #endif // defined(QT_WEBSOCKETS_LIB)
 
-#if QT_CONFIG(localserver)
-#include <QtNetwork/qlocalserver.h>
-#endif
-
 #include <functional>
 #include <memory>
 
@@ -31,6 +27,7 @@ QT_BEGIN_NAMESPACE
 
 class QHttpServerRequest;
 class QHttpServerResponder;
+class QLocalServer;
 class QSslCertificate;
 class QSslConfiguration;
 class QSslKey;
