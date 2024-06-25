@@ -26,24 +26,22 @@ public:
     QHttpServerResponse(QHttpServerResponse &&other) noexcept;
     QHttpServerResponse& operator=(QHttpServerResponse &&other) noexcept;
 
-    QHttpServerResponse(const StatusCode statusCode);
+    QHttpServerResponse(StatusCode statusCode);
 
-    QHttpServerResponse(const char *data, const StatusCode status = StatusCode::Ok);
+    QHttpServerResponse(const char *data, StatusCode status = StatusCode::Ok);
 
-    QHttpServerResponse(const QString &data, const StatusCode status = StatusCode::Ok);
+    QHttpServerResponse(const QString &data, StatusCode status = StatusCode::Ok);
 
-    explicit QHttpServerResponse(const QByteArray &data, const StatusCode status = StatusCode::Ok);
-    explicit QHttpServerResponse(QByteArray &&data, const StatusCode status = StatusCode::Ok);
+    explicit QHttpServerResponse(const QByteArray &data, StatusCode status = StatusCode::Ok);
+    explicit QHttpServerResponse(QByteArray &&data, StatusCode status = StatusCode::Ok);
 
-    QHttpServerResponse(const QJsonObject &data, const StatusCode status = StatusCode::Ok);
-    QHttpServerResponse(const QJsonArray &data, const StatusCode status = StatusCode::Ok);
+    QHttpServerResponse(const QJsonObject &data, StatusCode status = StatusCode::Ok);
+    QHttpServerResponse(const QJsonArray &data, StatusCode status = StatusCode::Ok);
 
-    QHttpServerResponse(const QByteArray &mimeType,
-                        const QByteArray &data,
-                        const StatusCode status = StatusCode::Ok);
-    QHttpServerResponse(const QByteArray &mimeType,
-                        QByteArray &&data,
-                        const StatusCode status = StatusCode::Ok);
+    QHttpServerResponse(const QByteArray &mimeType, const QByteArray &data,
+                        StatusCode status = StatusCode::Ok);
+    QHttpServerResponse(const QByteArray &mimeType, QByteArray &&data,
+                        StatusCode status = StatusCode::Ok);
 
     ~QHttpServerResponse();
     static QHttpServerResponse fromFile(const QString &fileName);
