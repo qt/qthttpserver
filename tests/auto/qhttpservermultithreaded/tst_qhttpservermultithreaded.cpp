@@ -18,6 +18,7 @@
 
 #if QT_CONFIG(localserver)
 #include <QtNetwork/qlocalsocket.h>
+#include <QtNetwork/qlocalserver.h>
 #endif
 
 #if QT_CONFIG(ssl)
