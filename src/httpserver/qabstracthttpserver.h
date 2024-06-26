@@ -47,11 +47,11 @@ public:
     quint16 listen(const QHostAddress &address = QHostAddress::Any, quint16 port = 0);
     QList<quint16> serverPorts() const;
 
-    void bind(QTcpServer *server = nullptr);
+    bool bind(QTcpServer *server = nullptr);
     QList<QTcpServer *> servers() const;
 
 #if QT_CONFIG(localserver)
-    void bind(QLocalServer *server);
+    bool bind(QLocalServer *server);
     QList<QLocalServer *> localServers() const;
 #endif
 
