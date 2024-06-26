@@ -66,7 +66,7 @@ public:
     bool hasHeader(const QByteArray &name, const QByteArray &value) const;
 
     QHttpHeaders headers() const;
-    QList<QByteArray> headers(const QByteArray &name) const;
+    QList<QByteArray> headerData(const QByteArray &name) const;
 
 private:
     std::unique_ptr<QHttpServerResponsePrivate> d_ptr;

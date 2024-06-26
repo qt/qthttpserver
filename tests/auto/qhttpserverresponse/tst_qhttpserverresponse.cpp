@@ -132,12 +132,12 @@ void tst_QHttpServerResponse::headers()
     QVERIFY(resp.hasHeader(contentTypeHeader, test1));
     QVERIFY(!resp.hasHeader(contentTypeHeader, test2));
 
-    const auto &typeHeaders = resp.headers(contentTypeHeader);
+    const auto &typeHeaders = resp.headerData(contentTypeHeader);
     QCOMPARE(typeHeaders.size(), 2);
     QVERIFY(typeHeaders.contains(zero));
     QVERIFY(typeHeaders.contains(test1));
 
-    const auto &lengthHeaders = resp.headers(contentLengthHeader);
+    const auto &lengthHeaders = resp.headerData(contentLengthHeader);
     QCOMPARE(lengthHeaders.size(), 1);
     QVERIFY(lengthHeaders.contains(test2));
 
