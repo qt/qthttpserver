@@ -29,13 +29,11 @@ class Q_HTTPSERVER_EXPORT QHttpServer final : public QAbstractHttpServer
     Q_OBJECT
     Q_DECLARE_PRIVATE(QHttpServer)
 
-    template<int I, typename ... Ts>
-    struct VariadicTypeAt { using Type = typename std::tuple_element<I, std::tuple<Ts...>>::type; };
+    template <int I, typename... Ts>
+    using VariadicTypeAt = typename std::tuple_element<I, std::tuple<Ts...>>::type;
 
-    template<typename ... Ts>
-    struct VariadicTypeLast {
-        using Type = typename VariadicTypeAt<sizeof ... (Ts) - 1, Ts...>::Type;
-    };
+    template <typename... Ts>
+    using VariadicTypeLast = VariadicTypeAt<sizeof...(Ts) - 1, Ts...>;
 
     template <typename...>
     static constexpr bool dependent_false_v = false;
@@ -61,7 +59,7 @@ public:
     template<typename Rule = QHttpServerRouterRule, typename ... Args>
     bool route(Args && ... args)
     {
-        using ViewHandler = typename VariadicTypeLast<Args...>::Type;
+        using ViewHandler = VariadicTypeLast<Args...>;
         using ViewTraits = QHttpServerRouterViewTraits<ViewHandler>;
         static_assert(ViewTraits::Arguments::StaticAssert,
                       "ViewHandler arguments are in the wrong order or not supported");
@@ -121,7 +119,7 @@ private:
         return routeImpl<Rule,
                          ViewHandler,
                          ViewTraits,
-                         typename VariadicTypeAt<I, Args...>::Type...>(std::forward<Args>(args)...);
+                         VariadicTypeAt<I, Args...>...>(std::forward<Args>(args)...);
     }
 
     template<typename Rule, typename ViewHandler, typename ViewTraits, typename ... Args>
