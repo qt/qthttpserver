@@ -324,7 +324,7 @@ QHttpHeaders QHttpServerResponse::headers() const
 /*!
     Returns values of the HTTP header with name \a name.
 */
-QList<QByteArray> QHttpServerResponse::headers(const QByteArray &name) const
+QList<QByteArray> QHttpServerResponse::headerData(const QByteArray &name) const
 {
     Q_D(const QHttpServerResponse);
     return d->headers.values(name);
