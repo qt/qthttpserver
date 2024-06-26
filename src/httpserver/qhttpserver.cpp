@@ -16,7 +16,7 @@
 
 QT_BEGIN_NAMESPACE
 
-Q_LOGGING_CATEGORY(lcHS, "qt.httpserver");
+Q_STATIC_LOGGING_CATEGORY(lcHS, "qt.httpserver");
 
 void QHttpServerPrivate::callMissingHandler(const QHttpServerRequest &request,
                                             QHttpServerResponder &&responder)

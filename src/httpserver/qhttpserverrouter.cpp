@@ -14,8 +14,6 @@
 
 QT_BEGIN_NAMESPACE
 
-Q_LOGGING_CATEGORY(lcRouter, "qt.httpserver.router")
-
 using namespace Qt::StringLiterals;
 
 /*!

@@ -19,7 +19,7 @@
 
 QT_BEGIN_NAMESPACE
 
-Q_LOGGING_CATEGORY(lcHttpServerHttp1Handler, "qt.httpserver.http1handler")
+Q_STATIC_LOGGING_CATEGORY(lcHttpServerHttp1Handler, "qt.httpserver.http1handler")
 
 // https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
 static const std::map<QHttpServerResponder::StatusCode, QByteArray> statusString{

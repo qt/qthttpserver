@@ -15,7 +15,7 @@
 
 QT_BEGIN_NAMESPACE
 
-Q_LOGGING_CATEGORY(lcRouterRule, "qt.httpserver.router.rule")
+Q_STATIC_LOGGING_CATEGORY(lcRouterRule, "qt.httpserver.router.rule")
 
 /*!
     \class QHttpServerRouterRule

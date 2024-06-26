@@ -16,8 +16,6 @@
 #include <QtNetwork/private/qhttp2connection_p.h>
 #endif
 
-Q_LOGGING_CATEGORY(lc, "qt.httpserver.request")
-
 QT_BEGIN_NAMESPACE
 
 using namespace Qt::StringLiterals;

@@ -14,7 +14,7 @@
 
 QT_BEGIN_NAMESPACE
 
-Q_LOGGING_CATEGORY(lcHttpServerHttp2Handler, "qt.httpserver.http2handler")
+Q_STATIC_LOGGING_CATEGORY(lcHttpServerHttp2Handler, "qt.httpserver.http2handler")
 
 namespace {
 
