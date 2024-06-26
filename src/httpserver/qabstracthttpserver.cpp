@@ -139,8 +139,7 @@ quint16 QAbstractHttpServer::listen(const QHostAddress &address, quint16 port)
     auto tcpServer = new QTcpServer(this);
 #endif
     const auto listening = tcpServer->listen(address, port);
-    if (listening) {
-        bind(tcpServer);
+    if (listening && bind(tcpServer)) {
         return tcpServer->serverPort();
     } else {
         qCCritical(lcHttpServer, "listen failed: %ls",
@@ -181,17 +180,19 @@ QList<quint16> QAbstractHttpServer::serverPorts() const
     handled and forwarded by the HTTP server.
 
     It is the user's responsibility to call QTcpServer::listen() on
-    the \a server.
+    the \a server before calling this function. If \a server is not
+    listening, nothing will happen and \c false will be returned.
 
     If the \a server is null, then a new, default-constructed TCP
     server will be constructed, which will be listening on a random
     port and all interfaces.
 
-    The \a server will be parented to this HTTP server.
+    If successful the \a server will be parented to this HTTP server
+    and \c true is returned.
 
     \sa QTcpServer, QTcpServer::listen()
 */
-void QAbstractHttpServer::bind(QTcpServer *server)
+bool QAbstractHttpServer::bind(QTcpServer *server)
 {
     Q_D(QAbstractHttpServer);
     if (!server) {
@@ -199,29 +200,56 @@ void QAbstractHttpServer::bind(QTcpServer *server)
         if (!server->listen()) {
             qCCritical(lcHttpServer, "QTcpServer listen failed (%ls)",
                        qUtf16Printable(server->errorString()));
+            delete server;
+            return false;
         }
-    } else {
-        if (!server->isListening())
-            qCWarning(lcHttpServer) << "The TCP server" << server << "is not listening.";
-        server->setParent(this);
     }
+
+    if (!server->isListening()) {
+        qCWarning(lcHttpServer) << "The TCP server" << server << "is not listening.";
+        return false;
+    }
+    server->setParent(this);
     QObjectPrivate::connect(server, &QTcpServer::pendingConnectionAvailable, d,
                             &QAbstractHttpServerPrivate::handleNewConnections,
                             Qt::UniqueConnection);
+    return true;
 }
 
 #if QT_CONFIG(localserver)
-void QAbstractHttpServer::bind(QLocalServer *server)
+/*!
+    Bind the HTTP server to given QLocalServer \a server over which
+    the transmission happens. It is possible to call this function
+    multiple times with different instances of \a server to
+    handle multiple connections.
+
+    After calling this function, every _new_ connection will be
+    handled and forwarded by the HTTP server.
+
+    It is the user's responsibility to call QLocalServer::listen() on
+    the \a server before calling this function. If \a server is not
+    listening, nothing will happen and \c false will be returned.
+
+    If successful the \a server will be parented to this HTTP server
+    and \c true is returned.
+
+    \sa QLocalServer, QLocalServer::listen()
+*/
+bool QAbstractHttpServer::bind(QLocalServer *server)
 {
     Q_D(QAbstractHttpServer);
+    if (!server)
+        return false;
 
-    if (!server->isListening())
+    if (!server->isListening()) {
         qCWarning(lcHttpServer) << "The local server" << server << "is not listening.";
+        return false;
+    }
     server->setParent(this);
-
     QObjectPrivate::connect(server, &QLocalServer::newConnection,
                             d, &QAbstractHttpServerPrivate::handleNewLocalConnections,
                             Qt::UniqueConnection);
+    return true;
 }
 #endif
 
