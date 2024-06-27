@@ -160,7 +160,7 @@ quint16 QAbstractHttpServer::listen(const QHostAddress &address, quint16 port)
 
     \sa servers()
 */
-QList<quint16> QAbstractHttpServer::serverPorts()
+QList<quint16> QAbstractHttpServer::serverPorts() const
 {
     QList<quint16> ports;
     auto children = findChildren<QTcpServer *>();
