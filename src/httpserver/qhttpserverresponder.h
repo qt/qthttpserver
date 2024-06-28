@@ -105,8 +105,15 @@ public:
     };
     Q_ENUM(StatusCode)
 
-    QHttpServerResponder(QHttpServerResponder &&other);
+    QHttpServerResponder(QHttpServerResponder &&other) noexcept
+        : d_ptr(std::exchange(other.d_ptr, nullptr))
+    {
+    }
+    QT_MOVE_ASSIGNMENT_OPERATOR_IMPL_VIA_MOVE_AND_SWAP(QHttpServerResponder)
+
     ~QHttpServerResponder();
+
+    void swap(QHttpServerResponder &other) noexcept { qt_ptr_swap(d_ptr, other.d_ptr); }
 
     void write(QIODevice *data, const QHttpHeaders &headers, StatusCode status = StatusCode::Ok);
 
@@ -143,8 +150,9 @@ public:
 
 private:
     QHttpServerResponder(QHttpServerStream *stream);
+    Q_DISABLE_COPY(QHttpServerResponder)
 
-    std::unique_ptr<QHttpServerResponderPrivate> d_ptr;
+    QHttpServerResponderPrivate *d_ptr;
 };
 
 QT_END_NAMESPACE

@@ -188,17 +188,28 @@ QHttpServerResponder::QHttpServerResponder(QHttpServerStream *stream)
 }
 
 /*!
+    \fn QHttpServerResponder::QHttpServerResponder(QHttpServerResponder &&other)
+
     Move-constructs a QHttpServerResponder instance, making it point
     at the same object that \a other was pointing to.
 */
-QHttpServerResponder::QHttpServerResponder(QHttpServerResponder &&other)
-    : d_ptr(std::move(other.d_ptr))
-{}
 
 /*!
     Destroys a QHttpServerResponder.
 */
-QHttpServerResponder::~QHttpServerResponder() = default;
+QHttpServerResponder::~QHttpServerResponder()
+{
+    delete d_ptr;
+};
+
+/*!
+    \fn void QHttpServerResponder::swap(QHttpServerResponder &other) noexcept
+
+    Swaps QHttpServerResponder \a other with this QHttpServerResponder.
+    This operation is very fast and never fails.
+
+    \since 6.8
+*/
 
 /*!
     Answers a request with an HTTP status code \a status and
