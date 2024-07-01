@@ -183,9 +183,7 @@ QList<quint16> QAbstractHttpServer::serverPorts() const
     the \a server before calling this function. If \a server is not
     listening, nothing will happen and \c false will be returned.
 
-    If the \a server is null, then a new, default-constructed TCP
-    server will be constructed, which will be listening on a random
-    port and all interfaces.
+    If the \a server is nullptr false is returned.
 
     If successful the \a server will be parented to this HTTP server
     and \c true is returned.
@@ -195,15 +193,8 @@ QList<quint16> QAbstractHttpServer::serverPorts() const
 bool QAbstractHttpServer::bind(QTcpServer *server)
 {
     Q_D(QAbstractHttpServer);
-    if (!server) {
-        server = new QTcpServer(this);
-        if (!server->listen()) {
-            qCCritical(lcHttpServer, "QTcpServer listen failed (%ls)",
-                       qUtf16Printable(server->errorString()));
-            delete server;
-            return false;
-        }
-    }
+    if (!server)
+        return false;
 
     if (!server->isListening()) {
         qCWarning(lcHttpServer) << "The TCP server" << server << "is not listening.";
@@ -229,6 +220,8 @@ bool QAbstractHttpServer::bind(QTcpServer *server)
     It is the user's responsibility to call QLocalServer::listen() on
     the \a server before calling this function. If \a server is not
     listening, nothing will happen and \c false will be returned.
+
+    If the \a server is nullptr false is returned.
 
     If successful the \a server will be parented to this HTTP server
     and \c true is returned.
