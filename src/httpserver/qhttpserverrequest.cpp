@@ -676,11 +676,19 @@ QHttpServerRequest::Method QHttpServerRequest::method() const
 }
 
 /*!
+    \fn const QHttpHeaders &QHttpServerRequest::headers() const &
+    \fn QHttpHeaders QHttpServerRequest::headers() &&
+
     Returns all the request headers.
 */
-const QHttpHeaders& QHttpServerRequest::headers() const
+const QHttpHeaders &QHttpServerRequest::headers() const &
 {
     return d->parser.headers();
+}
+
+QHttpHeaders QHttpServerRequest::headers() &&
+{
+    return std::move(d->parser).headers();
 }
 
 /*!
