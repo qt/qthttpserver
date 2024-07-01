@@ -50,7 +50,8 @@ public:
     void addConverter(QMetaType metaType, QAnyStringView regexp);
     void removeConverter(QMetaType metaType);
     void clearConverters();
-    const QHash<QMetaType, QString> &converters() const;
+    const QHash<QMetaType, QString> &converters() const &;
+    QHash<QMetaType, QString> converters() &&;
 
     template<typename ViewHandler, typename ViewTraits = QHttpServerRouterViewTraits<ViewHandler>>
     bool addRule(std::unique_ptr<QHttpServerRouterRule> rule)

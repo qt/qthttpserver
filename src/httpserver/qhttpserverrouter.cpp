@@ -225,6 +225,9 @@ void QHttpServerRouter::clearConverters()
 }
 
 /*!
+    \fn const QHash<QMetaType, QString> &QHttpServerRouter::converters() const &
+    \fn QHash<QMetaType, QString> QHttpServerRouter::converters() &&
+
     Returns a map of converter type and regexp.
 
     The following converters are available by default:
@@ -244,10 +247,16 @@ void QHttpServerRouter::clearConverters()
     \value QMetaType::QUrl
     \value QMetaType::Void       An empty converter.
 */
-const QHash<QMetaType, QString> &QHttpServerRouter::converters() const
+const QHash<QMetaType, QString> &QHttpServerRouter::converters() const &
 {
     Q_D(const QHttpServerRouter);
     return d->converters;
+}
+
+QHash<QMetaType, QString> QHttpServerRouter::converters() &&
+{
+    Q_D(QHttpServerRouter);
+    return std::move(d->converters);
 }
 
 bool QHttpServerRouter::addRuleImpl(std::unique_ptr<QHttpServerRouterRule> rule,
