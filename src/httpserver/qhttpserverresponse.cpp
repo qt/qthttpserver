@@ -74,18 +74,15 @@ QHttpServerResponse& QHttpServerResponse::operator=(QHttpServerResponse &&other)
 /*!
     Creates a QHttpServerResponse object with the status code \a statusCode.
 */
-QHttpServerResponse::QHttpServerResponse(
-        const QHttpServerResponse::StatusCode statusCode)
-    : QHttpServerResponse(QHttpServerLiterals::contentTypeXEmpty(),
-                          QByteArray(),
-                          statusCode)
+QHttpServerResponse::QHttpServerResponse(QHttpServerResponse::StatusCode statusCode)
+    : QHttpServerResponse(QHttpServerLiterals::contentTypeXEmpty(), QByteArray(), statusCode)
 {
 }
 
 /*!
     Creates a QHttpServerResponse object from \a data with the status code \a status.
 */
-QHttpServerResponse::QHttpServerResponse(const char *data, const StatusCode status)
+QHttpServerResponse::QHttpServerResponse(const char *data, StatusCode status)
     : QHttpServerResponse(QByteArray::fromRawData(data, qstrlen(data)), status)
 {
 }
@@ -93,7 +90,7 @@ QHttpServerResponse::QHttpServerResponse(const char *data, const StatusCode stat
 /*!
     Creates a QHttpServerResponse object from \a data with the status code \a status.
 */
-QHttpServerResponse::QHttpServerResponse(const QString &data, const StatusCode status)
+QHttpServerResponse::QHttpServerResponse(const QString &data, StatusCode status)
     : QHttpServerResponse(data.toUtf8(), status)
 {
 }
@@ -101,7 +98,7 @@ QHttpServerResponse::QHttpServerResponse(const QString &data, const StatusCode s
 /*!
     Creates a QHttpServerResponse object from \a data with the status code \a status.
 */
-QHttpServerResponse::QHttpServerResponse(const QByteArray &data, const StatusCode status)
+QHttpServerResponse::QHttpServerResponse(const QByteArray &data, StatusCode status)
     : QHttpServerResponse(QMimeDatabase().mimeTypeForData(data).name().toLocal8Bit(), data, status)
 {
 }
@@ -110,7 +107,7 @@ QHttpServerResponse::QHttpServerResponse(const QByteArray &data, const StatusCod
     Move-constructs a QHttpServerResponse whose body will contain the given
     \a data with the status code \a status.
 */
-QHttpServerResponse::QHttpServerResponse(QByteArray &&data, const StatusCode status)
+QHttpServerResponse::QHttpServerResponse(QByteArray &&data, StatusCode status)
     : QHttpServerResponse(QMimeDatabase().mimeTypeForData(data).name().toLocal8Bit(),
                           std::move(data), status)
 {
@@ -119,7 +116,7 @@ QHttpServerResponse::QHttpServerResponse(QByteArray &&data, const StatusCode sta
 /*!
     Creates a QHttpServerResponse object from \a data with the status code \a status.
 */
-QHttpServerResponse::QHttpServerResponse(const QJsonObject &data, const StatusCode status)
+QHttpServerResponse::QHttpServerResponse(const QJsonObject &data, StatusCode status)
     : QHttpServerResponse(QHttpServerLiterals::contentTypeJson(),
                           QJsonDocument(data).toJson(QJsonDocument::Compact), status)
 {
@@ -128,7 +125,7 @@ QHttpServerResponse::QHttpServerResponse(const QJsonObject &data, const StatusCo
 /*!
     Creates a QHttpServerResponse object from \a data with the status code \a status.
 */
-QHttpServerResponse::QHttpServerResponse(const QJsonArray &data, const StatusCode status)
+QHttpServerResponse::QHttpServerResponse(const QJsonArray &data, StatusCode status)
     : QHttpServerResponse(QHttpServerLiterals::contentTypeJson(),
                           QJsonDocument(data).toJson(QJsonDocument::Compact), status)
 {
@@ -137,10 +134,10 @@ QHttpServerResponse::QHttpServerResponse(const QJsonArray &data, const StatusCod
 /*!
     \fn QHttpServerResponse::QHttpServerResponse(const QByteArray &mimeType,
                                                  const QByteArray &data,
-                                                 const StatusCode status)
+                                                 StatusCode status)
     \fn QHttpServerResponse::QHttpServerResponse(const QByteArray &mimeType,
                                                  QByteArray &&data,
-                                                 const StatusCode status)
+                                                 StatusCode status)
 
     Creates a QHttpServer response.
 
@@ -150,7 +147,7 @@ QHttpServerResponse::QHttpServerResponse(const QJsonArray &data, const StatusCod
 */
 QHttpServerResponse::QHttpServerResponse(const QByteArray &mimeType,
                                          const QByteArray &data,
-                                         const StatusCode status)
+                                         StatusCode status)
     : d_ptr(new QHttpServerResponsePrivate(QByteArray(data), status))
 {
     if (!mimeType.isEmpty()) {
@@ -160,7 +157,7 @@ QHttpServerResponse::QHttpServerResponse(const QByteArray &mimeType,
 
 QHttpServerResponse::QHttpServerResponse(const QByteArray &mimeType,
                                          QByteArray &&data,
-                                         const StatusCode status)
+                                         StatusCode status)
     : d_ptr(new QHttpServerResponsePrivate(std::move(data), status))
 {
     if (!mimeType.isEmpty()) {
