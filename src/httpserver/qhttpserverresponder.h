@@ -157,7 +157,4 @@ private:
 
 QT_END_NAMESPACE
 
-QT_DECL_METATYPE_EXTERN_TAGGED(QHttpServerResponder::StatusCode, QHttpServerResponder__StatusCode,
-                               Q_HTTPSERVER_EXPORT)
-
 #endif // QHTTPSERVERRESPONDER_H
