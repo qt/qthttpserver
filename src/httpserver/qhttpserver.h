@@ -168,9 +168,9 @@ private:
     }
 
     bool handleRequest(const QHttpServerRequest &request,
-                       QHttpServerResponder &responder) override final;
+                       QHttpServerResponder &responder) override;
     void missingHandler(const QHttpServerRequest &request,
-                        QHttpServerResponder &&responder) override final;
+                        QHttpServerResponder &&responder) override;
 
     void sendResponse(QHttpServerResponse &&response, const QHttpServerRequest &request,
                       QHttpServerResponder &&responder);
