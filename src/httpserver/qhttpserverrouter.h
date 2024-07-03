@@ -22,14 +22,14 @@ class QHttpServerRequest;
 class QHttpServerRouterRule;
 
 class QHttpServerRouterPrivate;
-class Q_HTTPSERVER_EXPORT QHttpServerRouter
+class QHttpServerRouter
 {
     Q_DECLARE_PRIVATE(QHttpServerRouter)
     Q_DISABLE_COPY_MOVE(QHttpServerRouter)
 
 public:
-    QHttpServerRouter();
-    ~QHttpServerRouter();
+    Q_HTTPSERVER_EXPORT QHttpServerRouter();
+    Q_HTTPSERVER_EXPORT ~QHttpServerRouter();
 
     template<typename Type>
     bool addConverter(QAnyStringView regexp) {
@@ -47,11 +47,11 @@ public:
         return true;
     }
 
-    void addConverter(QMetaType metaType, QAnyStringView regexp);
-    void removeConverter(QMetaType metaType);
-    void clearConverters();
-    const QHash<QMetaType, QString> &converters() const &;
-    QHash<QMetaType, QString> converters() &&;
+    Q_HTTPSERVER_EXPORT void addConverter(QMetaType metaType, QAnyStringView regexp);
+    Q_HTTPSERVER_EXPORT void removeConverter(QMetaType metaType);
+    Q_HTTPSERVER_EXPORT void clearConverters();
+    Q_HTTPSERVER_EXPORT const QHash<QMetaType, QString> &converters() const &;
+    Q_HTTPSERVER_EXPORT QHash<QMetaType, QString> converters() &&;
 
     template<typename ViewHandler, typename ViewTraits = QHttpServerRouterViewTraits<ViewHandler>>
     bool addRule(std::unique_ptr<QHttpServerRouterRule> rule)
@@ -70,7 +70,8 @@ public:
                 typename ViewTraits::Arguments::CapturableIndexes{});
     }
 
-    bool handleRequest(const QHttpServerRequest &request, QHttpServerResponder &responder) const;
+    Q_HTTPSERVER_EXPORT bool handleRequest(const QHttpServerRequest &request,
+                                           QHttpServerResponder &responder) const;
 
 private:
     template<typename ViewTraits, int ... Idx>
@@ -80,8 +81,8 @@ private:
         return addRuleImpl(std::move(rule), {ViewTraits::Arguments::template metaType<Idx>()...});
     }
 
-    bool addRuleImpl(std::unique_ptr<QHttpServerRouterRule> rule,
-                     std::initializer_list<QMetaType> metaTypes);
+    Q_HTTPSERVER_EXPORT bool addRuleImpl(std::unique_ptr<QHttpServerRouterRule> rule,
+                                         std::initializer_list<QMetaType> metaTypes);
 
     // Implementation of C++20 std::bind_front() in C++17
     template<typename F, typename... Args>
