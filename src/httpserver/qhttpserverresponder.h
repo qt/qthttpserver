@@ -21,9 +21,9 @@ class QHttpServerRequest;
 class QHttpServerResponse;
 
 class QHttpServerResponderPrivate;
-class Q_HTTPSERVER_EXPORT QHttpServerResponder final
+class QHttpServerResponder final
 {
-    Q_GADGET
+    Q_GADGET_EXPORT(Q_HTTPSERVER_EXPORT)
     Q_DECLARE_PRIVATE(QHttpServerResponder)
 
     friend class QHttpServerHttp1ProtocolHandler;
@@ -111,45 +111,52 @@ public:
     }
     QT_MOVE_ASSIGNMENT_OPERATOR_IMPL_VIA_MOVE_AND_SWAP(QHttpServerResponder)
 
-    ~QHttpServerResponder();
+    Q_HTTPSERVER_EXPORT ~QHttpServerResponder();
 
     void swap(QHttpServerResponder &other) noexcept { qt_ptr_swap(d_ptr, other.d_ptr); }
 
-    void write(QIODevice *data, const QHttpHeaders &headers, StatusCode status = StatusCode::Ok);
+    Q_HTTPSERVER_EXPORT void write(QIODevice *data, const QHttpHeaders &headers,
+                                   StatusCode status = StatusCode::Ok);
 
-    void write(QIODevice *data, const QByteArray &mimeType, StatusCode status = StatusCode::Ok);
+    Q_HTTPSERVER_EXPORT void write(QIODevice *data, const QByteArray &mimeType,
+                                   StatusCode status = StatusCode::Ok);
 
-    void write(const QJsonDocument &document,
-               const QHttpHeaders &headers,
-               StatusCode status = StatusCode::Ok);
+    Q_HTTPSERVER_EXPORT void write(const QJsonDocument &document, const QHttpHeaders &headers,
+                                   StatusCode status = StatusCode::Ok);
 
-    void write(const QJsonDocument &document,
-               StatusCode status = StatusCode::Ok);
+    Q_HTTPSERVER_EXPORT void write(const QJsonDocument &document,
+                                   StatusCode status = StatusCode::Ok);
 
-    void write(const QByteArray &data,
-               const QHttpHeaders &headers,
-               StatusCode status = StatusCode::Ok);
+    Q_HTTPSERVER_EXPORT void write(const QByteArray &data, const QHttpHeaders &headers,
+                                   StatusCode status = StatusCode::Ok);
 
-    void write(const QByteArray &data,
-               const QByteArray &mimeType,
-               StatusCode status = StatusCode::Ok);
+    Q_HTTPSERVER_EXPORT void write(const QByteArray &data, const QByteArray &mimeType,
+                                   StatusCode status = StatusCode::Ok);
 
-    void write(const QHttpHeaders &headers, StatusCode status = StatusCode::Ok);
-    void write(StatusCode status = StatusCode::Ok);
+    Q_HTTPSERVER_EXPORT void write(const QHttpHeaders &headers, StatusCode status = StatusCode::Ok);
 
-    void sendResponse(const QHttpServerResponse &response);
+    Q_HTTPSERVER_EXPORT void write(StatusCode status = StatusCode::Ok);
 
-    void writeBeginChunked(const QHttpHeaders &headers, StatusCode status = StatusCode::Ok);
-    void writeBeginChunked(const QByteArray &mimeType, StatusCode status = StatusCode::Ok);
-    void writeBeginChunked(const QHttpHeaders &headers,
-                           QList<QHttpHeaders::WellKnownHeader> trailerNames,
-                           StatusCode status = StatusCode::Ok);
-    void writeChunk(const QByteArray &data);
-    void writeEndChunked(const QByteArray &data, const QHttpHeaders &trailers);
-    void writeEndChunked(const QByteArray &data);
+    Q_HTTPSERVER_EXPORT void sendResponse(const QHttpServerResponse &response);
+
+    Q_HTTPSERVER_EXPORT void writeBeginChunked(const QHttpHeaders &headers,
+                                               StatusCode status = StatusCode::Ok);
+
+    Q_HTTPSERVER_EXPORT void writeBeginChunked(const QByteArray &mimeType,
+                                               StatusCode status = StatusCode::Ok);
+
+    Q_HTTPSERVER_EXPORT void writeBeginChunked(const QHttpHeaders &headers,
+                                               QList<QHttpHeaders::WellKnownHeader> trailerNames,
+                                               StatusCode status = StatusCode::Ok);
+
+    Q_HTTPSERVER_EXPORT void writeChunk(const QByteArray &data);
+
+    Q_HTTPSERVER_EXPORT void writeEndChunked(const QByteArray &data, const QHttpHeaders &trailers);
+
+    Q_HTTPSERVER_EXPORT void writeEndChunked(const QByteArray &data);
 
 private:
-    QHttpServerResponder(QHttpServerStream *stream);
+    Q_HTTPSERVER_EXPORT QHttpServerResponder(QHttpServerStream *stream);
     Q_DISABLE_COPY(QHttpServerResponder)
 
     QHttpServerResponderPrivate *d_ptr;
