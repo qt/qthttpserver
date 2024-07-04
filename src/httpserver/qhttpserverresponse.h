@@ -7,8 +7,6 @@
 #include <QtHttpServer/qhttpserverresponder.h>
 #include <QtNetwork/qhttpheaders.h>
 
-#include <memory>
-
 QT_BEGIN_NAMESPACE
 
 class QJsonObject;
@@ -23,8 +21,10 @@ class Q_HTTPSERVER_EXPORT QHttpServerResponse final
 public:
     using StatusCode = QHttpServerResponder::StatusCode;
 
-    QHttpServerResponse(QHttpServerResponse &&other) noexcept;
-    QHttpServerResponse& operator=(QHttpServerResponse &&other) noexcept;
+    QHttpServerResponse(QHttpServerResponse &&other) noexcept
+        : d_ptr(std::exchange(other.d_ptr, nullptr)) {}
+    QT_MOVE_ASSIGNMENT_OPERATOR_IMPL_VIA_MOVE_AND_SWAP(QHttpServerResponse)
+    void swap(QHttpServerResponse &other) noexcept { qt_ptr_swap(d_ptr, other.d_ptr); }
 
     QHttpServerResponse(StatusCode statusCode);
 
@@ -69,7 +69,7 @@ public:
     QList<QByteArray> headerData(const QByteArray &name) const;
 
 private:
-    std::unique_ptr<QHttpServerResponsePrivate> d_ptr;
+    QHttpServerResponsePrivate *d_ptr;
 };
 
 QT_END_NAMESPACE
