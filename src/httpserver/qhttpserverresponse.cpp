@@ -52,24 +52,24 @@ QHttpServerResponsePrivate::QHttpServerResponsePrivate(const QHttpServerResponse
 */
 
 /*!
-    Move-constructs an instance of a QHttpServerResponse object from \a other.
+    \fn QHttpServerResponse::QHttpServerResponse(QHttpServerResponse &&other) noexcept
+
+    Move-constructs a new QHttpServerResponse from \a other.
 */
-QHttpServerResponse::QHttpServerResponse(QHttpServerResponse &&other) noexcept
-    : d_ptr(std::move(other.d_ptr))
-{
-}
 
 /*!
-    Move-assigns the values of \a other to this object.
-*/
-QHttpServerResponse& QHttpServerResponse::operator=(QHttpServerResponse &&other) noexcept
-{
-    if (this == &other)
-        return *this;
+    \fn QHttpServerResponse &QHttpServerResponse::operator=(
+                                                QHttpServerResponse &&other) noexcept
 
-    qSwap(d_ptr, other.d_ptr);
-    return *this;
-}
+    Move-assigns \a other to this QHttpServerResponse instance.
+*/
+
+/*!
+    \fn void QHttpServerResponse::swap(QHttpServerResponse &other)
+
+    Swaps this QHttpServerResponse with \a other. This operation is very
+    fast and never fails.
+*/
 
 /*!
     Creates a QHttpServerResponse object with the status code \a statusCode.
@@ -170,7 +170,8 @@ QHttpServerResponse::QHttpServerResponse(const QByteArray &mimeType,
 */
 QHttpServerResponse::~QHttpServerResponse()
 {
-}
+    delete d_ptr;
+};
 
 /*!
     Returns a QHttpServerResponse from the content of the file \a fileName.
