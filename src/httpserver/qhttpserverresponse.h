@@ -26,27 +26,30 @@ public:
     QT_MOVE_ASSIGNMENT_OPERATOR_IMPL_VIA_MOVE_AND_SWAP(QHttpServerResponse)
     void swap(QHttpServerResponse &other) noexcept { qt_ptr_swap(d_ptr, other.d_ptr); }
 
-    Q_HTTPSERVER_EXPORT QHttpServerResponse(StatusCode statusCode);
+    Q_HTTPSERVER_EXPORT Q_IMPLICIT QHttpServerResponse(StatusCode statusCode);
 
-    Q_HTTPSERVER_EXPORT QHttpServerResponse(const char *data, StatusCode status = StatusCode::Ok);
+    Q_HTTPSERVER_EXPORT Q_IMPLICIT QHttpServerResponse(const char *data,
+                                                       StatusCode status = StatusCode::Ok);
 
-    Q_HTTPSERVER_EXPORT QHttpServerResponse(const QString &data,
-                                            StatusCode status = StatusCode::Ok);
+    Q_HTTPSERVER_EXPORT Q_IMPLICIT QHttpServerResponse(const QString &data,
+                                                       StatusCode status = StatusCode::Ok);
 
-    Q_HTTPSERVER_EXPORT explicit QHttpServerResponse(const QByteArray &data,
-                                                     StatusCode status = StatusCode::Ok);
-    Q_HTTPSERVER_EXPORT explicit QHttpServerResponse(QByteArray &&data,
-                                                     StatusCode status = StatusCode::Ok);
+    Q_HTTPSERVER_EXPORT Q_IMPLICIT QHttpServerResponse(const QByteArray &data,
+                                                       StatusCode status = StatusCode::Ok);
+    Q_HTTPSERVER_EXPORT Q_IMPLICIT QHttpServerResponse(QByteArray &&data,
+                                                       StatusCode status = StatusCode::Ok);
 
-    Q_HTTPSERVER_EXPORT QHttpServerResponse(const QJsonObject &data,
-                                            StatusCode status = StatusCode::Ok);
-    Q_HTTPSERVER_EXPORT QHttpServerResponse(const QJsonArray &data,
-                                            StatusCode status = StatusCode::Ok);
+    Q_HTTPSERVER_EXPORT Q_IMPLICIT QHttpServerResponse(const QJsonObject &data,
+                                                       StatusCode status = StatusCode::Ok);
+    Q_HTTPSERVER_EXPORT Q_IMPLICIT QHttpServerResponse(const QJsonArray &data,
+                                                       StatusCode status = StatusCode::Ok);
 
-    Q_HTTPSERVER_EXPORT QHttpServerResponse(const QByteArray &mimeType, const QByteArray &data,
-                        StatusCode status = StatusCode::Ok);
-    Q_HTTPSERVER_EXPORT QHttpServerResponse(const QByteArray &mimeType, QByteArray &&data,
-                        StatusCode status = StatusCode::Ok);
+    Q_HTTPSERVER_EXPORT Q_IMPLICIT QHttpServerResponse(const QByteArray &mimeType,
+                                                       const QByteArray &data,
+                                                       StatusCode status = StatusCode::Ok);
+    Q_HTTPSERVER_EXPORT Q_IMPLICIT QHttpServerResponse(const QByteArray &mimeType,
+                                                       QByteArray &&data,
+                                                       StatusCode status = StatusCode::Ok);
 
     Q_HTTPSERVER_EXPORT ~QHttpServerResponse();
     Q_HTTPSERVER_EXPORT static QHttpServerResponse fromFile(const QString &fileName);
