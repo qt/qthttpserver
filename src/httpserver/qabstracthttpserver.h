@@ -12,7 +12,6 @@
 #include <QtNetwork/qhostaddress.h>
 
 #if QT_CONFIG(ssl)
-#include <QtNetwork/qssl.h>
 #include <QtNetwork/qhttp2configuration.h>
 #endif
 
@@ -28,9 +27,6 @@ QT_BEGIN_NAMESPACE
 class QHttpServerRequest;
 class QHttpServerResponder;
 class QLocalServer;
-class QSslCertificate;
-class QSslConfiguration;
-class QSslKey;
 class QTcpServer;
 
 class QAbstractHttpServerPrivate;
@@ -44,9 +40,7 @@ public:
     explicit QAbstractHttpServer(QObject *parent = nullptr);
     ~QAbstractHttpServer() override;
 
-    quint16 listen(const QHostAddress &address = QHostAddress::Any, quint16 port = 0);
     QList<quint16> serverPorts() const;
-
     bool bind(QTcpServer *server);
     QList<QTcpServer *> servers() const;
 
@@ -56,10 +50,6 @@ public:
 #endif
 
 #if QT_CONFIG(ssl)
-    void sslSetup(const QSslCertificate &certificate, const QSslKey &privateKey,
-                  QSsl::SslProtocol protocol = QSsl::SecureProtocols);
-    void sslSetup(const QSslConfiguration &sslConfiguration);
-
     QHttp2Configuration http2Configuration() const;
     void setHttp2Configuration(const QHttp2Configuration &configuration);
 #endif

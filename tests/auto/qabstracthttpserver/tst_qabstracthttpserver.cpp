@@ -374,7 +374,7 @@ void tst_QAbstractHttpServer::verifyWebSocketUpgrades()
     server.bind(&tcpServer);
 #if QT_CONFIG(ssl)
     QSslServer sslServer;
-    QSslConfiguration sslConfiguration;
+    QSslConfiguration sslConfiguration = QSslConfiguration::defaultConfiguration();
     sslConfiguration.setLocalCertificate(QSslCertificate(QByteArray(g_certificate)));
     sslConfiguration.setPrivateKey(QSslKey(g_privateKey, QSsl::Rsa));
     sslServer.setSslConfiguration(sslConfiguration);
@@ -488,7 +488,7 @@ QSslSocketPtr tst_QAbstractHttpServer::createNewConnection(const QTcpServer * se
     QSslSocketPtr socketPtr = std::make_unique<QSslSocket>();
 
     QSslConfiguration clientConfig = socketPtr->sslConfiguration();
-    clientConfig.setAllowedNextProtocols({"h2"});
+    clientConfig.setAllowedNextProtocols({ QSslConfiguration::ALPNProtocolHTTP2 });
     socketPtr->setSslConfiguration(clientConfig);
     socketPtr->connectToHostEncrypted(server->serverAddress().toString(),
                                       server->serverPort());
@@ -528,12 +528,15 @@ void tst_QAbstractHttpServer::http2handshake()
         void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&) override { }
     } server;
 
-    QSslConfiguration serverConfig;
+    auto sslserver = std::make_unique<QSslServer>();
+    QSslConfiguration serverConfig = QSslConfiguration::defaultConfiguration();
     serverConfig.setLocalCertificate(QSslCertificate(g_certificate));
     serverConfig.setPrivateKey(QSslKey(g_privateKey, QSsl::Rsa));
-    serverConfig.setAllowedNextProtocols({"h2"});
-    server.sslSetup(serverConfig);
-    server.listen(QHostAddress::LocalHost);
+    serverConfig.setAllowedNextProtocols({ QSslConfiguration::ALPNProtocolHTTP2 });
+    sslserver->setSslConfiguration(serverConfig);
+    QVERIFY2(sslserver->listen(QHostAddress::LocalHost), "HTTPS server listen failed");
+    QVERIFY2(server.bind(sslserver.get()), "HTTPS server bind failed");
+    sslserver.release();
 
     const auto serverPtr = server.servers().constFirst();
     QSslSocketPtr client1 = createNewConnection(serverPtr);
@@ -625,12 +628,16 @@ void tst_QAbstractHttpServer::http2request()
         }
     } server;
 
-    QSslConfiguration serverConfig;
+    auto sslserver = std::make_unique<QSslServer>();
+    QSslConfiguration serverConfig = QSslConfiguration::defaultConfiguration();
     serverConfig.setLocalCertificate(QSslCertificate(g_certificate));
     serverConfig.setPrivateKey(QSslKey(g_privateKey, QSsl::Rsa));
-    serverConfig.setAllowedNextProtocols({"h2"});
-    server.sslSetup(serverConfig);
-    quint16 port = server.listen(QHostAddress::LocalHost);
+    serverConfig.setAllowedNextProtocols({ QSslConfiguration::ALPNProtocolHTTP2 });
+    sslserver->setSslConfiguration(serverConfig);
+    QVERIFY2(sslserver->listen(QHostAddress::LocalHost), "HTTPS server listen failed");
+    quint16 port = sslserver->serverPort();
+    QVERIFY2(server.bind(sslserver.get()), "HTTPS server bind failed");
+    sslserver.release();
 
     const auto serverPtr = server.servers().constFirst();
     QNetworkAccessManager manager;
@@ -705,12 +712,15 @@ void tst_QAbstractHttpServer::socketDisconnected()
         }
     } server;
 
-    QSslConfiguration serverConfig;
+    auto sslserver = std::make_unique<QSslServer>();
+    QSslConfiguration serverConfig = QSslConfiguration::defaultConfiguration();
     serverConfig.setLocalCertificate(QSslCertificate(g_certificate));
     serverConfig.setPrivateKey(QSslKey(g_privateKey, QSsl::Rsa));
-    serverConfig.setAllowedNextProtocols({"h2"});
-    server.sslSetup(serverConfig);
-    server.listen(QHostAddress::LocalHost);
+    serverConfig.setAllowedNextProtocols({ QSslConfiguration::ALPNProtocolHTTP2 });
+    sslserver->setSslConfiguration(serverConfig);
+    QVERIFY2(sslserver->listen(QHostAddress::LocalHost), "HTTPS server listen failed");
+    QVERIFY2(server.bind(sslserver.get()), "HTTPS server bind failed");
+    sslserver.release();
 
     const auto serverPtr = server.servers().constFirst();
     QSslSocketPtr socket = createNewConnection(serverPtr);

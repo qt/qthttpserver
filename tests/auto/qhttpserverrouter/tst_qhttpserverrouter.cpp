@@ -9,6 +9,7 @@
 #include <QtTest/qsignalspy.h>
 #include <QtTest/qtest.h>
 #include <QtNetwork/qnetworkaccessmanager.h>
+#include <QtNetwork/qtcpserver.h>
 
 Q_DECLARE_METATYPE(QNetworkAccessManager::Operation);
 
@@ -91,7 +92,12 @@ void tst_QHttpServerRouter::initTestCase()
 
     httpserver.route("/get-only", QHttpServerRequest::Method::Get, getTest);
 
-    urlBase = QStringLiteral("http://localhost:%1%2").arg(httpserver.listen());
+    auto tcpserver = std::make_unique<QTcpServer>();
+    QVERIFY2(tcpserver->listen(QHostAddress::Any), "HTTP server listen failed");
+    quint16 port = tcpserver->serverPort();
+    QVERIFY2(httpserver.bind(tcpserver.get()), "HTTP server bind failed");
+    tcpserver.release();
+    urlBase = QStringLiteral("http://localhost:%1%2").arg(port);
 }
 
 void tst_QHttpServerRouter::routerRule_data()

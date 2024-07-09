@@ -14,6 +14,7 @@
 #include <QtCore/qsemaphore.h>
 #include <QtCore/qtimer.h>
 #include <QtNetwork/qnetworkaccessmanager.h>
+#include <QtNetwork/qtcpserver.h>
 #include <QtNetwork/qtcpsocket.h>
 
 #if QT_CONFIG(localserver)
@@ -25,6 +26,7 @@
 // TODO check if guards are necessary
 #include <QtNetwork/qsslconfiguration.h>
 #include <QtNetwork/qsslkey.h>
+#include <QtNetwork/qsslserver.h>
 
 constexpr char g_privateKey[] = R"(-----BEGIN RSA PRIVATE KEY-----
 MIIJKAIBAAKCAgEAvdrtZtVquwiG12+vd3OjRVibdK2Ob73DOOWgb5rIgQ+B2Uzc
@@ -473,22 +475,30 @@ void tst_QHttpServerMultithreaded::initTestCase()
                          });
                      });
 
-    port = httpserver.listen(QHostAddress::Any);
-    if (!port)
-        qCritical("Http server listen failed");
+    auto tcpserver = std::make_unique<QTcpServer>();
+    QVERIFY2(tcpserver->listen(), "HTTP server listen failed");
+    port = tcpserver->serverPort();
+    QVERIFY2(httpserver.bind(tcpserver.get()), "HTTP server bind failed");
+    tcpserver.release();
 
 #if QT_CONFIG(localserver)
-    QLocalServer *localServer = new QLocalServer;
-    localServer->removeServer(local);
-    localServer->listen(local);
-    httpserver.bind(localServer);
+    auto localserver = std::make_unique<QLocalServer>();
+    localserver->removeServer(local);
+    QVERIFY2(localserver->listen(local), "Local server listen failed");
+    QVERIFY2(httpserver.bind(localserver.get()), "Local server bind failed");
+    localserver.release();
 #endif
 #if QT_CONFIG(ssl)
     if (QSslSocket::supportsSsl()) {
-        httpserver.sslSetup(QSslCertificate(g_certificate), QSslKey(g_privateKey, QSsl::Rsa));
-        sslPort = httpserver.listen(QHostAddress::Any);
-        if (!sslPort)
-            qCritical("Http SSL server listen failed");
+        auto sslserver = std::make_unique<QSslServer>();
+        QSslConfiguration serverConfig = QSslConfiguration::defaultConfiguration();
+        serverConfig.setLocalCertificate(QSslCertificate(g_certificate));
+        serverConfig.setPrivateKey(QSslKey(g_privateKey, QSsl::Rsa));
+        sslserver->setSslConfiguration(serverConfig);
+        QVERIFY2(sslserver->listen(), "HTTPS server listen failed");
+        sslPort = sslserver->serverPort();
+        QVERIFY2(httpserver.bind(sslserver.get()), "HTTPS server bind failed");
+        sslserver.release();
     }
 #endif
 }

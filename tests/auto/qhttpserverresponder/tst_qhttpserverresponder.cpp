@@ -10,6 +10,7 @@
 #include <QtTest/qsignalspy.h>
 #include <QtTest/qtest.h>
 #include <QtNetwork/qnetworkaccessmanager.h>
+#include <QtNetwork/qtcpserver.h>
 
 #include <functional>
 
@@ -48,9 +49,18 @@ private slots:
 
 struct HttpServer : QAbstractHttpServer {
     std::function<void(QHttpServerResponder responder)> handleRequestFunction;
-    QUrl url { QStringLiteral("http://localhost:%1").arg(listen()) };
+    QUrl url;
 
-    HttpServer(decltype(handleRequestFunction) function) : handleRequestFunction(function) {}
+    HttpServer(decltype(handleRequestFunction) function) : handleRequestFunction(function)
+    {
+        auto tcpserver = std::make_unique<QTcpServer>();
+        tcpserver->listen();
+        quint16 port = tcpserver->serverPort();
+        bind(tcpserver.get());
+        tcpserver.release();
+        url.setUrl(QStringLiteral("http://localhost:%1").arg(port));
+    }
+
     bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &) override;
     void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&) override
     {
