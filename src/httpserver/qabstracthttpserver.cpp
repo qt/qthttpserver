@@ -88,8 +88,8 @@ void QAbstractHttpServerPrivate::handleNewLocalConnections()
     \brief API to subclass to implement an HTTP server.
 
     Subclass this class and override handleRequest() and missingHandler() to
-    create an HTTP server. Use listen() or bind() to start listening to
-    incoming connections.
+    create an HTTP server. Use bind() to start listening to all the incoming
+    connections to a server.
 */
 
 /*!
@@ -116,38 +116,6 @@ QAbstractHttpServer::QAbstractHttpServer(QAbstractHttpServerPrivate &dd, QObject
     connect(&d->websocketServer, &QWebSocketServer::newConnection,
             this, &QAbstractHttpServer::newWebSocketConnection);
 #endif
-}
-
-/*!
-    Tries to bind a \c QTcpServer to \a address and \a port.
-
-    Returns the server port upon success, 0 otherwise.
-*/
-quint16 QAbstractHttpServer::listen(const QHostAddress &address, quint16 port)
-{
-#if QT_CONFIG(ssl)
-    Q_D(QAbstractHttpServer);
-    QTcpServer *tcpServer;
-    if (d->sslEnabled) {
-        auto sslServer = new QSslServer(this);
-        sslServer->setSslConfiguration(d->sslConfiguration);
-        tcpServer = sslServer;
-    } else {
-        tcpServer = new QTcpServer(this);
-    }
-#else
-    auto tcpServer = new QTcpServer(this);
-#endif
-    const auto listening = tcpServer->listen(address, port);
-    if (listening && bind(tcpServer)) {
-        return tcpServer->serverPort();
-    } else {
-        qCCritical(lcHttpServer, "listen failed: %ls",
-                   qUtf16Printable(tcpServer->errorString()));
-    }
-
-    delete tcpServer;
-    return 0;
 }
 
 /*!
@@ -188,7 +156,11 @@ QList<quint16> QAbstractHttpServer::serverPorts() const
     If successful the \a server will be parented to this HTTP server
     and \c true is returned.
 
-    \sa QTcpServer, QTcpServer::listen()
+    To allow usage of HTTP 2, bind to a QSslServer where
+    QSslConfiguration::setAllowedNextProtocols() has been called with
+    the arguments \c {{ QSslConfiguration::ALPNProtocolHTTP2 }}.
+
+    \sa QTcpServer, QTcpServer::listen(), QSslConfiguration::setAllowedNextProtocols()
 */
 bool QAbstractHttpServer::bind(QTcpServer *server)
 {
@@ -399,35 +371,6 @@ void QAbstractHttpServer::registerWebSocketUpgradeVerifierImpl(
 */
 
 #if QT_CONFIG(ssl)
-/*!
-    Turns the server into an HTTPS server.
-
-    The next listen() call will use the given \a certificate, \a privateKey,
-    and \a protocol.
-*/
-void QAbstractHttpServer::sslSetup(const QSslCertificate &certificate,
-                                   const QSslKey &privateKey,
-                                   QSsl::SslProtocol protocol)
-{
-    QSslConfiguration conf;
-    conf.setLocalCertificate(certificate);
-    conf.setPrivateKey(privateKey);
-    conf.setProtocol(protocol);
-    sslSetup(conf);
-}
-
-/*!
-    Turns the server into an HTTPS server.
-
-    The next listen() call will use the given \a sslConfiguration.
-*/
-void QAbstractHttpServer::sslSetup(const QSslConfiguration &sslConfiguration)
-{
-    Q_D(QAbstractHttpServer);
-    d->sslConfiguration = sslConfiguration;
-    d->sslEnabled = true;
-}
-
 /*!
     \since 6.8
 

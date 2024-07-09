@@ -44,7 +44,15 @@ void QHttpServerPrivate::callMissingHandler(const QHttpServerRequest &request,
     server.route("/", [] () {
         return "hello world";
     });
-    server.listen();
+
+    auto tcpserver = std::make_unique<QTcpServer>();
+    if (!tcpserver->listen() || !server.bind(tcpserver.get())) {
+        qDebug() << "Failed listening";
+        return -1;
+    }
+    quint16 port = tcpserver->serverPort();
+    tcpserver.release();
+    qDebug() << "Listening on port" << port;
 
     \endcode
 */

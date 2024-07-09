@@ -24,9 +24,13 @@
 #include <QtNetwork/qnetworkaccessmanager.h>
 #include <QtNetwork/qnetworkreply.h>
 #include <QtNetwork/qnetworkrequest.h>
+#include <QtNetwork/qtcpserver.h>
 
+#if QT_CONFIG(ssl)
 #include <QtNetwork/qsslconfiguration.h>
 #include <QtNetwork/qsslkey.h>
+#include <QtNetwork/qsslserver.h>
+#endif
 
 #if QT_CONFIG(localserver)
 #include <qrandom.h>
@@ -422,41 +426,48 @@ void tst_QHttpServer::initTestCase()
         qCritical("Local Socket server listen failed");
 #endif
 
-    quint16 port = httpserver.listen();
-    if (!port)
-        qCritical("Http server listen failed");
+    auto tcpserver = std::make_unique<QTcpServer>();
+    QVERIFY2(tcpserver->listen(), "HTTP server listen failed");
+    quint16 port = tcpserver->serverPort();
+    QVERIFY2(httpserver.bind(tcpserver.get()), "HTTP server bind failed");
+    tcpserver.release();
 
     clearUrlBase = QStringLiteral("http://localhost:%1%2").arg(port);
 
 #if QT_CONFIG(ssl)
-    QSslConfiguration serverConfig;
-    serverConfig.setLocalCertificate(QSslCertificate(g_certificate));
-    serverConfig.setPrivateKey(QSslKey(g_privateKey, QSsl::Rsa));
-    serverConfig.setAllowedNextProtocols({"h2"});
-    httpserver.sslSetup(serverConfig);
+    if (QSslSocket::supportsSsl()) {
+        auto sslserver = std::make_unique<QSslServer>();
+        QSslConfiguration serverConfig = QSslConfiguration::defaultConfiguration();
+        serverConfig.setLocalCertificate(QSslCertificate(g_certificate));
+        serverConfig.setPrivateKey(QSslKey(g_privateKey, QSsl::Rsa));
+        serverConfig.setAllowedNextProtocols({QSslConfiguration::ALPNProtocolHTTP2});
+        sslserver->setSslConfiguration(serverConfig);
+        QVERIFY2(sslserver->listen(), "HTTPS server listen failed");
+        port = sslserver->serverPort();
+        QVERIFY2(httpserver.bind(sslserver.get()), "HTTPS server bind failed");
+        sslserver.release();
 
-    port = httpserver.listen();
-    if (!port)
-        qCritical("Http server listen failed");
+        sslUrlBase = QStringLiteral("https://localhost:%1%2").arg(port);
 
-    sslUrlBase = QStringLiteral("https://localhost:%1%2").arg(port);
+        const QList<QSslError> expectedSslErrors = {
+            QSslError(QSslError::SelfSignedCertificate, QSslCertificate(g_certificate)),
+            // Non-OpenSSL backends are not able to report a specific error code
+            // for self-signed certificates.
+            QSslError(QSslError::CertificateUntrusted, QSslCertificate(g_certificate)),
+            QSslError(QSslError::HostNameMismatch, QSslCertificate(g_certificate)),
+        };
 
-    const QList<QSslError> expectedSslErrors = {
-        QSslError(QSslError::SelfSignedCertificate, QSslCertificate(g_certificate)),
-        // Non-OpenSSL backends are not able to report a specific error code
-        // for self-signed certificates.
-        QSslError(QSslError::CertificateUntrusted, QSslCertificate(g_certificate)),
-        QSslError(QSslError::HostNameMismatch, QSslCertificate(g_certificate)),
-    };
-
-    connect(&networkAccessManager, &QNetworkAccessManager::sslErrors,
-            this, [expectedSslErrors](QNetworkReply *reply, const QList<QSslError> &errors) {
-        for (const auto &error: errors) {
-            if (!expectedSslErrors.contains(error))
-                qCritical() << "Got unexpected ssl error:" << error << error.certificate();
-        }
-        reply->ignoreSslErrors(expectedSslErrors);
-    });
+        connect(&networkAccessManager, &QNetworkAccessManager::sslErrors, this,
+                [expectedSslErrors](QNetworkReply *reply, const QList<QSslError> &errors) {
+                    for (const auto &error : errors) {
+                        if (!expectedSslErrors.contains(error)) {
+                            qCritical()
+                                    << "Got unexpected ssl error:" << error << error.certificate();
+                        }
+                    }
+                    reply->ignoreSslErrors(expectedSslErrors);
+                });
+    }
 #endif
 }
 

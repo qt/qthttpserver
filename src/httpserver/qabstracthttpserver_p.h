@@ -29,7 +29,6 @@
 
 #if QT_CONFIG(ssl)
 #include <QtNetwork/qhttp2configuration.h>
-#include <QtNetwork/qsslconfiguration.h>
 #endif
 
 QT_BEGIN_NAMESPACE
@@ -61,9 +60,7 @@ public:
     std::vector<QtPrivate::SlotObjUniquePtr> webSocketUpgradeVerifiers;
 #endif // defined(QT_WEBSOCKETS_LIB)
 #if QT_CONFIG(ssl)
-    QSslConfiguration sslConfiguration;
     QHttp2Configuration h2Configuration;
-    bool sslEnabled = false;
 #endif
 };
 
