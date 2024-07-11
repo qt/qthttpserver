@@ -52,7 +52,7 @@ class Q_HTTPSERVER_EXPORT QHttpServer final : public QAbstractHttpServer
 
 public:
     explicit QHttpServer(QObject *parent = nullptr);
-    ~QHttpServer();
+    ~QHttpServer() override;
 
     QHttpServerRouter *router();
 
