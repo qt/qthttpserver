@@ -76,6 +76,9 @@ QHttpServer::QHttpServer(QObject *parent)
     of them present. Only handlers with \c void return type can accept
     \c {QHttpServerResponder&&} arguments.
 
+    \note If a request was processed by a handler accepting \c {QHttpServerResponder&&}
+    as an argument, \c {afterRequest(ViewHandler &&viewHandler)} method won't be called.
+
     Examples:
 
     \code
@@ -111,11 +114,14 @@ QHttpServer::QHttpServer(QObject *parent)
     belongs to. The \c {QHttpServerResponder&&} special argument is not
     available for routes returning a \c {QFuture}.
 
-    \sa QHttpServerRouter::addRule
+    \sa QHttpServerRouter::addRule, afterRequest
 */
 
 /*! \fn template<typename ViewHandler> void QHttpServer::afterRequest(ViewHandler &&viewHandler)
     Register a function to be run after each request.
+
+    \note This function won't be called for requests, processed by handlers
+    with \c {QHttpServerResponder&&} argument.
 
     The \a viewHandler argument can be a function pointer, non-mutable lambda,
     or any other copiable callable with const call operator. The callable
