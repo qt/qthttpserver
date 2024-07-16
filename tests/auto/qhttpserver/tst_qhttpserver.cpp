@@ -529,7 +529,7 @@ void tst_QHttpServer::routeGet_data()
         << "text/plain"
         << "test";
 
-    QTest::addRow("arg:string")
+    QTest::addRow("arg:string,!a+.")
         << "/user/test test ,!a+."
         << 200
         << "text/plain"
