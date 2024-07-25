@@ -113,41 +113,24 @@ void tst_QHttpServerResponse::headers()
     const QByteArray test1 = "test1"_ba;
     const QByteArray test2 = "test2"_ba;
     const QByteArray zero = "application/x-zerosize"_ba;
-    const auto contentTypeHeader = "Content-Type"_ba;
-    const auto contentLengthHeader = "Content-Length"_ba;
-
-    QVERIFY(!resp.hasHeader(contentLengthHeader));
-    QVERIFY(resp.hasHeader(contentTypeHeader, zero));
-    QVERIFY(!resp.hasHeader(contentTypeHeader, test1));
-    QVERIFY(!resp.hasHeader(contentTypeHeader, test2));
 
     QHttpHeaders h = resp.headers();
-    h.append(contentTypeHeader, test1);
-    h.append(contentLengthHeader, test2);
-    resp.withHeaders(h);
+    QVERIFY(!h.contains(QHttpHeaders::WellKnownHeader::ContentLength));
+    const auto contentTypeValues = h.values(QHttpHeaders::WellKnownHeader::ContentType);
+    QCOMPARE(contentTypeValues.size(), 1);
+    QCOMPARE(contentTypeValues.first(), zero);
 
-    QVERIFY(resp.hasHeader(contentLengthHeader, test2));
-    QVERIFY(resp.hasHeader(contentTypeHeader, zero));
-    QVERIFY(resp.hasHeader(contentTypeHeader, test1));
-    QVERIFY(!resp.hasHeader(contentTypeHeader, test2));
+    h.append(QHttpHeaders::WellKnownHeader::ContentType, test1);
+    h.append(QHttpHeaders::WellKnownHeader::ContentLength, test2);
+    resp.setHeaders(h);
+    QCOMPARE(resp.headers().toListOfPairs(), h.toListOfPairs());
 
-    const auto &typeHeaders = resp.headerData(contentTypeHeader);
-    QCOMPARE(typeHeaders.size(), 2);
-    QVERIFY(typeHeaders.contains(zero));
-    QVERIFY(typeHeaders.contains(test1));
+    resp.setHeaders({});
+    QVERIFY(resp.headers().isEmpty());
 
-    const auto &lengthHeaders = resp.headerData(contentLengthHeader);
-    QCOMPARE(lengthHeaders.size(), 1);
-    QVERIFY(lengthHeaders.contains(test2));
-
-    h.removeAll(contentTypeHeader);
-    h.append(contentTypeHeader, test2);
-    resp.withHeaders(h);
-
-    QVERIFY(resp.hasHeader(contentLengthHeader, test2));
-    QVERIFY(!resp.hasHeader(contentTypeHeader, zero));
-    QVERIFY(!resp.hasHeader(contentTypeHeader, test1));
-    QVERIFY(resp.hasHeader(contentTypeHeader, test2));
+    auto tmp = h;
+    resp.setHeaders(std::move(tmp));
+    QCOMPARE(resp.headers().toListOfPairs(), h.toListOfPairs());
 }
 
 QT_END_NAMESPACE

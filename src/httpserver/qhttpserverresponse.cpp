@@ -209,73 +209,6 @@ QHttpServerResponse::StatusCode QHttpServerResponse::statusCode() const
 }
 
 /*!
-    Adds the HTTP header with name \a name and value \a value,
-    does not override any previously set headers.
-*/
-void QHttpServerResponse::addHeader(const QByteArray &name, const QByteArray &value)
-{
-    Q_D(QHttpServerResponse);
-    d->headers.append(name, value);
-}
-
-/*!
-    Removes the HTTP header with name \a name.
-*/
-void QHttpServerResponse::clearHeader(const QByteArray &name)
-{
-    Q_D(QHttpServerResponse);
-    d->headers.removeAll(name);
-}
-
-/*!
-    Removes all HTTP headers.
-*/
-void QHttpServerResponse::clearHeaders()
-{
-    Q_D(QHttpServerResponse);
-    d->headers.clear();
-}
-
-/*!
-    Sets the HTTP header with name \a name and value \a value,
-    overriding any previously set headers.
-*/
-void QHttpServerResponse::setHeader(const QByteArray &name, const QByteArray &value)
-{
-    Q_D(QHttpServerResponse);
-    d->headers.removeAll(name);
-    d->headers.append(name, value);
-}
-
-/*!
-    Sets \a headers as the HTTP headers, overriding any previously set headers.
-    Returns a reference to this object.
-
-    \since 6.8
-*/
-QHttpServerResponse &QHttpServerResponse::withHeaders(const QHttpHeaders &headers)
-{
-    Q_D(QHttpServerResponse);
-
-    d->headers = headers;
-    return *this;
-}
-
-/*!
-    Sets \a headers as the HTTP headers, overriding any previously set headers.
-    Returns a reference to this object.
-
-    \since 6.8
-*/
-QHttpServerResponse& QHttpServerResponse::withHeaders(QHttpHeaders &&headers)
-{
-    Q_D(QHttpServerResponse);
-
-    d->headers = std::move(headers);
-    return *this;
-}
-
-/*!
     Returns the value of the HTTP "Content-Type" header.
 
     \note Default value is "text/html"
@@ -285,27 +218,6 @@ QByteArray QHttpServerResponse::mimeType() const
     Q_D(const QHttpServerResponse);
     return d->headers.value(QHttpHeaders::WellKnownHeader::ContentType,
                             QHttpServerLiterals::contentTypeTextHtml()).toByteArray();
-}
-
-/*!
-    Returns true if the response contains an HTTP header with name \a header,
-    otherwise returns false.
-*/
-bool QHttpServerResponse::hasHeader(const QByteArray &header) const
-{
-    Q_D(const QHttpServerResponse);
-    return d->headers.contains(header);
-}
-
-/*!
-    Returns true if the response contains an HTTP header with name \a name and
-    with value \a value, otherwise returns false.
-*/
-bool QHttpServerResponse::hasHeader(const QByteArray &name,
-                                    const QByteArray &value) const
-{
-    Q_D(const QHttpServerResponse);
-    return d->headers.values(name).contains(value);
 }
 
 /*!
@@ -320,12 +232,24 @@ QHttpHeaders QHttpServerResponse::headers() const
 }
 
 /*!
-    Returns values of the HTTP header with name \a name.
+    Sets \a newHeaders as the HTTP headers, overriding any previously set headers.
+
+    \since 6.8
 */
-QList<QByteArray> QHttpServerResponse::headerData(const QByteArray &name) const
+void QHttpServerResponse::setHeaders(QHttpHeaders &&newHeaders)
 {
-    Q_D(const QHttpServerResponse);
-    return d->headers.values(name);
+    Q_D(QHttpServerResponse);
+    d->headers = std::move(newHeaders);
+}
+
+/*!
+    \overload
+    \since 6.8
+*/
+void QHttpServerResponse::setHeaders(const QHttpHeaders &newHeaders)
+{
+    Q_D(QHttpServerResponse);
+    d->headers = newHeaders;
 }
 
 QT_END_NAMESPACE

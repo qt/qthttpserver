@@ -384,7 +384,8 @@ void tst_QHttpServer::initTestCase()
         h.removeAll(QHttpHeaders::WellKnownHeader::Server);
         h.append(QHttpHeaders::WellKnownHeader::Server, "test server");
 
-        return std::move(resp.withHeaders(h));
+        resp.setHeaders(std::move(h));
+        return resp;
     });
 
     httpserver.route("/processing", [](QHttpServerResponder &&responder) {
@@ -1024,7 +1025,7 @@ void tst_QHttpServer::afterRequest()
             auto h = resp.headers();
             h.removeAll("Arguments-Order-1");
             h.append("Arguments-Order-1", "resp, request");
-            resp.withHeaders(std::move(h));
+            resp.setHeaders(std::move(h));
         }
 
         return std::move(resp);
@@ -1036,7 +1037,7 @@ void tst_QHttpServer::afterRequest()
             auto h = resp.headers();
             h.removeAll("Arguments-Order-2");
             h.append("Arguments-Order-2", "request, resp");
-            resp.withHeaders(std::move(h));
+            resp.setHeaders(std::move(h));
         }
         return std::move(resp);
     });
