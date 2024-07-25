@@ -60,21 +60,9 @@ public:
 
     Q_HTTPSERVER_EXPORT StatusCode statusCode() const;
 
-    Q_HTTPSERVER_EXPORT void addHeader(const QByteArray &name, const QByteArray &value);
-
-    Q_HTTPSERVER_EXPORT void clearHeader(const QByteArray &name);
-    Q_HTTPSERVER_EXPORT void clearHeaders();
-
-    Q_HTTPSERVER_EXPORT void setHeader(const QByteArray &name, const QByteArray &value);
-
-    Q_HTTPSERVER_EXPORT QHttpServerResponse& withHeaders(const QHttpHeaders &headers);
-    Q_HTTPSERVER_EXPORT QHttpServerResponse& withHeaders(QHttpHeaders &&headers);
-
-    Q_HTTPSERVER_EXPORT bool hasHeader(const QByteArray &name) const;
-    Q_HTTPSERVER_EXPORT bool hasHeader(const QByteArray &name, const QByteArray &value) const;
-
     Q_HTTPSERVER_EXPORT QHttpHeaders headers() const;
-    Q_HTTPSERVER_EXPORT QList<QByteArray> headerData(const QByteArray &name) const;
+    Q_HTTPSERVER_EXPORT void setHeaders(const QHttpHeaders &newHeaders);
+    Q_HTTPSERVER_EXPORT void setHeaders(QHttpHeaders &&newHeaders);
 
 private:
     QHttpServerResponsePrivate *d_ptr;

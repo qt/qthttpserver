@@ -95,19 +95,21 @@ int main(int argc, char *argv[])
                     return QHttpServerResponse("text/plain", "Success\n");
             }
         }
-        QHttpServerResponse response("text/plain", "Authentication required\n",
-                                     QHttpServerResponse::StatusCode::Unauthorized);
-        auto h = response.headers();
+        QHttpServerResponse resp("text/plain", "Authentication required\n",
+                                 QHttpServerResponse::StatusCode::Unauthorized);
+        auto h = resp.headers();
         h.append(QHttpHeaders::WellKnownHeader::WWWAuthenticate,
                  R"(Basic realm="Simple example", charset="UTF-8")");
-        return std::move(response.withHeaders(std::move(h)));
+        resp.setHeaders(std::move(h));
+        return std::move(resp);
     });
 
     //! [Using afterRequest()]
     httpServer.afterRequest([](QHttpServerResponse &&resp) {
         auto h = resp.headers();
         h.append(QHttpHeaders::WellKnownHeader::Server, "Qt HTTP Server");
-        return std::move(resp.withHeaders(std::move(h)));
+        resp.setHeaders(std::move(h));
+        return std::move(resp);
     });
     //! [Using afterRequest()]
 
