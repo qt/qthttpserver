@@ -55,6 +55,7 @@ public:
     ~QHttpServer() override;
 
     QHttpServerRouter *router();
+    const QHttpServerRouter *router() const;
 
     template<typename Rule = QHttpServerRouterRule, typename ... Args>
     bool route(Args && ... args)

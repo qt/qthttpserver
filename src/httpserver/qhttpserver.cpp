@@ -173,11 +173,20 @@ QHttpServer::~QHttpServer()
 }
 
 /*!
-    Returns the router object.
+    Returns a pointer to the router object.
 */
 QHttpServerRouter *QHttpServer::router()
 {
     Q_D(QHttpServer);
+    return &d->router;
+}
+
+/*!
+    Returns a pointer to the constant router object.
+*/
+const QHttpServerRouter *QHttpServer::router() const
+{
+    Q_D(const QHttpServer);
     return &d->router;
 }
 
