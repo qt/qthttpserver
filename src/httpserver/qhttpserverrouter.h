@@ -54,7 +54,7 @@ public:
     Q_HTTPSERVER_EXPORT QHash<QMetaType, QString> converters() &&;
 
     template<typename ViewHandler, typename ViewTraits = QHttpServerRouterViewTraits<ViewHandler>>
-    bool addRule(std::unique_ptr<QHttpServerRouterRule> rule)
+    QHttpServerRouterRule *addRule(std::unique_ptr<QHttpServerRouterRule> rule)
     {
         return addRuleHelper<ViewTraits>(
                 std::move(rule),
@@ -75,13 +75,13 @@ public:
 
 private:
     template<typename ViewTraits, int ... Idx>
-    bool addRuleHelper(std::unique_ptr<QHttpServerRouterRule> rule,
+    QHttpServerRouterRule *addRuleHelper(std::unique_ptr<QHttpServerRouterRule> rule,
                        QtPrivate::IndexesList<Idx...>)
     {
         return addRuleImpl(std::move(rule), {ViewTraits::Arguments::template metaType<Idx>()...});
     }
 
-    Q_HTTPSERVER_EXPORT bool addRuleImpl(std::unique_ptr<QHttpServerRouterRule> rule,
+    Q_HTTPSERVER_EXPORT QHttpServerRouterRule *addRuleImpl(std::unique_ptr<QHttpServerRouterRule> rule,
                                          std::initializer_list<QMetaType> metaTypes);
 
     // Implementation of C++20 std::bind_front() in C++17

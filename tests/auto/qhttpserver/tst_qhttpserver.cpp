@@ -138,12 +138,12 @@ class QueryRequireRouterRule : public QHttpServerRouterRule
 {
 public:
     QueryRequireRouterRule(const QString &pathPattern,
-                           const char *queryKey,
                            RouterHandler routerHandler)
-        : QHttpServerRouterRule(pathPattern, std::move(routerHandler)),
-          m_queryKey(queryKey)
+        : QHttpServerRouterRule(pathPattern, std::move(routerHandler))
     {
     }
+
+    void setKey(const QString &key) { m_queryKey = key; }
 
     bool matches(const QHttpServerRequest &request, QRegularExpressionMatch *match) const override
     {
@@ -156,7 +156,7 @@ public:
     }
 
 private:
-    const char * m_queryKey;
+    QString m_queryKey;
 };
 
 class tst_QHttpServer final : public QObject
@@ -315,14 +315,16 @@ void tst_QHttpServer::initTestCase()
                    .arg(api).arg(user).arg(role, fragment);
     });
 
-    httpserver.route<QueryRequireRouterRule>(
+    auto route = httpserver.route<QueryRequireRouterRule>(
             "/custom/",
-            "key",
             [] (const quint64 num, const QHttpServerRequest &request) {
         return QString("Custom router rule: %1, key=%2")
                     .arg(num)
                     .arg(request.query().queryItemValue("key"));
     });
+    QVERIFY(route);
+    if (route)
+        route->setKey(QLatin1String("key"));
 
     httpserver.router()->addConverter<CustomArg>("[+-]?\\d+"_L1);
     httpserver.route("/check-custom-type/", [] (const CustomArg &customArg) {
@@ -970,7 +972,7 @@ void tst_QHttpServer::invalidRouterArguments()
         httpserver.route("/datetime/", [] (const QDateTime &datetime) {
             return QString("datetime: %1").arg(datetime.toString());
         }),
-        false);
+        nullptr);
 
     QTest::ignoreMessage(QtWarningMsg,
                          "CustomType has not registered a converter to QString. "
@@ -980,7 +982,7 @@ void tst_QHttpServer::invalidRouterArguments()
                          [] (const CustomType &) {
             return "";
         }),
-        false);
+        nullptr);
 }
 
 void tst_QHttpServer::checkRouteLambdaCapture()
