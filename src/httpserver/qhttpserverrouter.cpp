@@ -259,17 +259,16 @@ QHash<QMetaType, QString> QHttpServerRouter::converters() &&
     return std::move(d->converters);
 }
 
-bool QHttpServerRouter::addRuleImpl(std::unique_ptr<QHttpServerRouterRule> rule,
+QHttpServerRouterRule *QHttpServerRouter::addRuleImpl(std::unique_ptr<QHttpServerRouterRule> rule,
                                     std::initializer_list<QMetaType> metaTypes)
 {
     Q_D(QHttpServerRouter);
 
     if (!rule->hasValidMethods() || !rule->createPathRegexp(metaTypes, d->converters)) {
-        return false;
+        return nullptr;
     }
 
-    d->rules.push_back(std::move(rule));
-    return true;
+    return d->rules.emplace_back(std::move(rule)).get();
 }
 
 /*!

@@ -29,12 +29,6 @@ class Q_HTTPSERVER_EXPORT QHttpServer final : public QAbstractHttpServer
     Q_OBJECT
     Q_DECLARE_PRIVATE(QHttpServer)
 
-    template <int I, typename... Ts>
-    using VariadicTypeAt = typename std::tuple_element<I, std::tuple<Ts...>>::type;
-
-    template <typename... Ts>
-    using VariadicTypeLast = VariadicTypeAt<sizeof...(Ts) - 1, Ts...>;
-
     template <typename...>
     static constexpr bool dependent_false_v = false;
 
@@ -57,16 +51,22 @@ public:
     QHttpServerRouter *router();
     const QHttpServerRouter *router() const;
 
-    template<typename Rule = QHttpServerRouterRule, typename ... Args>
-    bool route(Args && ... args)
+    template<typename Rule = QHttpServerRouterRule, typename ViewHandler>
+    Rule *route(const QString &pathPattern, ViewHandler &&viewHandler)
     {
-        using ViewHandler = VariadicTypeLast<Args...>;
         using ViewTraits = QHttpServerRouterViewTraits<ViewHandler>;
         static_assert(ViewTraits::Arguments::StaticAssert,
                       "ViewHandler arguments are in the wrong order or not supported");
-        return routeHelper<Rule, ViewHandler, ViewTraits>(
-                std::make_index_sequence<sizeof ... (Args) - 1>{},
-                std::forward<Args>(args)...);
+        return routeImpl<Rule, ViewHandler, ViewTraits>(pathPattern, std::forward<ViewHandler>(viewHandler));
+    }
+
+    template<typename Rule = QHttpServerRouterRule, typename ViewHandler>
+    Rule *route(const QString &pathPattern, QHttpServerRequest::Methods method, ViewHandler &&viewHandler)
+    {
+        using ViewTraits = QHttpServerRouterViewTraits<ViewHandler>;
+        static_assert(ViewTraits::Arguments::StaticAssert,
+                      "ViewHandler arguments are in the wrong order or not supported");
+        return routeImpl<Rule, ViewHandler, ViewTraits>(pathPattern, method, std::forward<ViewHandler>(viewHandler));
     }
 
     template<typename ViewHandler>
@@ -114,29 +114,32 @@ private:
 
     void afterRequestImpl(AfterRequestHandler afterRequestHandler);
 
-    template<typename Rule, typename ViewHandler, typename ViewTraits, size_t ... I, typename ... Args>
-    bool routeHelper(std::index_sequence<I...>, Args &&... args)
+    template<typename ViewHandler, typename ViewTraits>
+    auto createRouteHandler(ViewHandler &&viewHandler)
     {
-        return routeImpl<Rule,
-                         ViewHandler,
-                         ViewTraits,
-                         VariadicTypeAt<I, Args...>...>(std::forward<Args>(args)...);
-    }
-
-    template<typename Rule, typename ViewHandler, typename ViewTraits, typename ... Args>
-    bool routeImpl(Args &&...args, ViewHandler &&viewHandler)
-    {
-        auto routerHandler = [this, viewHandler = std::forward<ViewHandler>(viewHandler)](
-                                     const QRegularExpressionMatch &match,
-                                     const QHttpServerRequest &request,
-                                     QHttpServerResponder &&responder) {
+        return [this, viewHandler = std::forward<ViewHandler>(viewHandler)](
+                       const QRegularExpressionMatch &match,
+                       const QHttpServerRequest &request,
+                       QHttpServerResponder &&responder) {
             auto boundViewHandler = router()->bindCaptured(viewHandler, match);
             responseImpl<ViewTraits>(boundViewHandler, request, std::move(responder));
         };
+    }
 
-        auto rule = std::make_unique<Rule>(std::forward<Args>(args)..., std::move(routerHandler));
+    template<typename Rule, typename ViewHandler, typename ViewTraits>
+    Rule *routeImpl(const QString &pathPattern, ViewHandler &&viewHandler)
+    {
+        auto routerHandler = createRouteHandler<ViewHandler, ViewTraits>(std::forward<ViewHandler>(viewHandler));
+        auto rule = std::make_unique<Rule>(pathPattern, std::move(routerHandler));
+        return reinterpret_cast<Rule*>(router()->addRule<ViewHandler, ViewTraits>(std::move(rule)));
+    }
 
-        return router()->addRule<ViewHandler, ViewTraits>(std::move(rule));
+    template<typename Rule, typename ViewHandler, typename ViewTraits>
+    Rule *routeImpl(const QString &pathPattern, QHttpServerRequest::Methods method, ViewHandler &&viewHandler)
+    {
+        auto routerHandler = createRouteHandler<ViewHandler, ViewTraits>(std::forward<ViewHandler>(viewHandler));
+        auto rule = std::make_unique<Rule>(pathPattern, method, std::move(routerHandler));
+        return reinterpret_cast<Rule*>(router()->addRule<ViewHandler, ViewTraits>(std::move(rule)));
     }
 
     template<typename ViewTraits, typename T>
