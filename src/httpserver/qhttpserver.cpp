@@ -18,6 +18,11 @@ QT_BEGIN_NAMESPACE
 
 Q_LOGGING_CATEGORY(lcHS, "qt.httpserver");
 
+QHttpServerPrivate::QHttpServerPrivate(QHttpServer *p) :
+    router(p)
+{
+}
+
 void QHttpServerPrivate::callMissingHandler(const QHttpServerRequest &request,
                                             QHttpServerResponder &responder)
 {
@@ -63,7 +68,7 @@ void QHttpServerPrivate::callMissingHandler(const QHttpServerRequest &request,
     Creates an instance of QHttpServer with parent \a parent.
 */
 QHttpServer::QHttpServer(QObject *parent)
-    : QAbstractHttpServer(*new QHttpServerPrivate, parent)
+    : QAbstractHttpServer(*new QHttpServerPrivate(this), parent)
 {
 }
 

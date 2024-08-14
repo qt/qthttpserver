@@ -63,21 +63,43 @@ public:
     const QHttpServerRouter *router() const;
 
     template<typename Rule = QHttpServerRouterRule, typename ViewHandler>
-    Rule *route(const QString &pathPattern, ViewHandler &&viewHandler)
+    Rule *route(const QString &pathPattern, QHttpServerRequest::Methods method,
+                const typename QtPrivate::ContextTypeForFunctor<ViewHandler>::ContextType *context,
+                ViewHandler &&viewHandler)
     {
         using ViewTraits = QHttpServerRouterViewTraits<ViewHandler>;
         static_assert(ViewTraits::Arguments::StaticAssert,
                       "ViewHandler arguments are in the wrong order or not supported");
-        return routeImpl<Rule, ViewHandler, ViewTraits>(pathPattern, std::forward<ViewHandler>(viewHandler));
+        return routeImpl<Rule, ViewHandler, ViewTraits>(pathPattern, method, context,
+                                                        std::forward<ViewHandler>(viewHandler));
     }
 
     template<typename Rule = QHttpServerRouterRule, typename ViewHandler>
-    Rule *route(const QString &pathPattern, QHttpServerRequest::Methods method, ViewHandler &&viewHandler)
+    Rule *route(const QString &pathPattern,
+                const typename QtPrivate::ContextTypeForFunctor<ViewHandler>::ContextType *context,
+                ViewHandler &&viewHandler)
     {
         using ViewTraits = QHttpServerRouterViewTraits<ViewHandler>;
         static_assert(ViewTraits::Arguments::StaticAssert,
                       "ViewHandler arguments are in the wrong order or not supported");
-        return routeImpl<Rule, ViewHandler, ViewTraits>(pathPattern, method, std::forward<ViewHandler>(viewHandler));
+        return routeImpl<Rule, ViewHandler, ViewTraits>(pathPattern, context,
+                                                        std::forward<ViewHandler>(viewHandler));
+    }
+
+    template<typename Rule = QHttpServerRouterRule, typename ViewHandler>
+    Rule *route(const QString &pathPattern,
+                ViewHandler &&viewHandler)
+    {
+        return route<Rule>(pathPattern, QHttpServerRequest::Method::AnyKnown,
+                           this, std::forward<ViewHandler>(viewHandler));
+    }
+
+    template<typename Rule = QHttpServerRouterRule, typename ViewHandler>
+    Rule *route(const QString &pathPattern, QHttpServerRequest::Methods method,
+                ViewHandler &&viewHandler)
+    {
+        return route<Rule>(pathPattern, method,
+                           this, std::forward<ViewHandler>(viewHandler));
     }
 
     template <typename Handler, if_missinghandler_prototype_compatible<Handler> = true>
@@ -106,30 +128,38 @@ private:
     void addAfterRequestHandlerImpl(const QObject *context, QtPrivate::QSlotObjectBase *handler);
 
     template<typename ViewHandler, typename ViewTraits>
-    auto createRouteHandler(ViewHandler &&viewHandler)
+    auto createRouteHandler(const typename QtPrivate::ContextTypeForFunctor<ViewHandler>::ContextType *context,
+                            ViewHandler &&viewHandler)
     {
-        return [this, viewHandler = std::forward<ViewHandler>(viewHandler)](
+        return [this, context, viewHandler](
                        const QRegularExpressionMatch &match,
                        const QHttpServerRequest &request,
-                       QHttpServerResponder &&responder) {
-            auto boundViewHandler = router()->bindCaptured(viewHandler, match);
-            responseImpl<ViewTraits>(boundViewHandler, request, std::move(responder));
+                       QHttpServerResponder &responder) mutable {
+                auto boundViewHandler = QHttpServerRouterRule::bindCaptured<ViewHandler, ViewTraits>(context,
+                                                               std::forward<ViewHandler>(viewHandler), match);
+                responseImpl<ViewTraits>(boundViewHandler, request, std::move(responder));
         };
     }
 
     template<typename Rule, typename ViewHandler, typename ViewTraits>
-    Rule *routeImpl(const QString &pathPattern, ViewHandler &&viewHandler)
+    Rule *routeImpl(const QString &pathPattern,
+                    const typename QtPrivate::ContextTypeForFunctor<ViewHandler>::ContextType *context,
+                    ViewHandler &&viewHandler)
     {
-        auto routerHandler = createRouteHandler<ViewHandler, ViewTraits>(std::forward<ViewHandler>(viewHandler));
-        auto rule = std::make_unique<Rule>(pathPattern, std::move(routerHandler));
+        auto routerHandler = createRouteHandler<ViewHandler, ViewTraits>(context,
+                                                                         std::forward<ViewHandler>(viewHandler));
+        auto rule = std::make_unique<Rule>(pathPattern, context, std::move(routerHandler));
         return reinterpret_cast<Rule*>(router()->addRule<ViewHandler, ViewTraits>(std::move(rule)));
     }
 
     template<typename Rule, typename ViewHandler, typename ViewTraits>
-    Rule *routeImpl(const QString &pathPattern, QHttpServerRequest::Methods method, ViewHandler &&viewHandler)
+    Rule *routeImpl(const QString &pathPattern, QHttpServerRequest::Methods method,
+                    const typename QtPrivate::ContextTypeForFunctor<ViewHandler>::ContextType *context,
+                    ViewHandler &&viewHandler)
     {
-        auto routerHandler = createRouteHandler<ViewHandler, ViewTraits>(std::forward<ViewHandler>(viewHandler));
-        auto rule = std::make_unique<Rule>(pathPattern, method, std::move(routerHandler));
+        auto routerHandler = createRouteHandler<ViewHandler, ViewTraits>(context,
+                                                                         std::forward<ViewHandler>(viewHandler));
+        auto rule = std::make_unique<Rule>(pathPattern, method, context, std::move(routerHandler));
         return reinterpret_cast<Rule*>(router()->addRule<ViewHandler, ViewTraits>(std::move(rule)));
     }
 
@@ -147,15 +177,15 @@ private:
             } else {
                 static_assert(std::is_same_v<typename ViewTraits::ReturnType, void>,
                     "Handlers with responder argument must have void return type.");
-                boundViewHandler(std::move(responder));
+                boundViewHandler(responder);
             }
         } else if constexpr (ViewTraits::Arguments::PlaceholdersCount == 2) {
             static_assert(std::is_same_v<typename ViewTraits::ReturnType, void>,
                 "Handlers with responder argument must have void return type.");
             if constexpr (ViewTraits::Arguments::Last::IsRequest::Value) {
-                boundViewHandler(std::move(responder), request);
+                boundViewHandler(responder, request);
             } else {
-                boundViewHandler(request, std::move(responder));
+                boundViewHandler(request, responder);
             }
         } else {
             static_assert(dependent_false_v<ViewTraits>);

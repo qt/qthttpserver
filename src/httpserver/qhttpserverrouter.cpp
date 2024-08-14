@@ -6,6 +6,7 @@
 #include <QtHttpServer/qhttpserverrouter.h>
 #include <QtHttpServer/qhttpserverrouterrule.h>
 #include <QtHttpServer/qhttpserverrequest.h>
+#include <QtHttpServer/qhttpserver.h>
 
 #include <private/qhttpserverrouterrule_p.h>
 
@@ -173,8 +174,8 @@ static const QHash<QMetaType, QString> defaultConverters = {
     \endcode
 */
 
-QHttpServerRouterPrivate::QHttpServerRouterPrivate()
-    : converters(defaultConverters)
+QHttpServerRouterPrivate::QHttpServerRouterPrivate(QAbstractHttpServer *server)
+    : converters(defaultConverters), server(server)
 {}
 
 /*!
@@ -182,8 +183,8 @@ QHttpServerRouterPrivate::QHttpServerRouterPrivate()
 
     \sa converters()
 */
-QHttpServerRouter::QHttpServerRouter()
-    : d_ptr(new QHttpServerRouterPrivate)
+QHttpServerRouter::QHttpServerRouter(QAbstractHttpServer *server)
+    : d_ptr(new QHttpServerRouterPrivate(server))
 {}
 
 /*!
@@ -269,6 +270,9 @@ QHttpServerRouterRule *QHttpServerRouter::addRuleImpl(std::unique_ptr<QHttpServe
     if (!rule->hasValidMethods() || !rule->createPathRegexp(metaTypes, d->converters)) {
         return nullptr;
     }
+    if (!d->verifyThreadAffinity(rule->contextObject())) {
+        return nullptr;
+    }
 
     return d->rules.emplace_back(std::move(rule)).get();
 }
@@ -285,11 +289,24 @@ bool QHttpServerRouter::handleRequest(const QHttpServerRequest &request,
 {
     Q_D(const QHttpServerRouter);
     for (const auto &rule : d->rules) {
+        if (!rule->contextObject())
+            continue;
+        if (!d->verifyThreadAffinity(rule->contextObject()))
+            continue;
         if (rule->exec(request, responder))
             return true;
     }
 
     return false;
+}
+
+bool QHttpServerRouterPrivate::verifyThreadAffinity(const QObject *contextObject) const
+{
+    if (contextObject && (contextObject->thread() != server->thread())) {
+        qCWarning(lcRouter, "QHttpServerRouter: the context object must reside in the same thread");
+        return false;
+    }
+    return true;
 }
 
 QT_END_NAMESPACE

@@ -9,7 +9,6 @@
 
 #include <QtCore/qscopedpointer.h>
 #include <QtCore/qmetatype.h>
-#include <QtCore/qregularexpression.h>
 
 #include <functional>
 #include <initializer_list>
@@ -17,6 +16,7 @@
 
 QT_BEGIN_NAMESPACE
 
+class QAbstractHttpServer;
 class QHttpServerResponder;
 class QHttpServerRequest;
 class QHttpServerRouterRule;
@@ -28,7 +28,7 @@ class QHttpServerRouter
     Q_DISABLE_COPY_MOVE(QHttpServerRouter)
 
 public:
-    Q_HTTPSERVER_EXPORT QHttpServerRouter();
+    Q_HTTPSERVER_EXPORT QHttpServerRouter(QAbstractHttpServer *server);
     Q_HTTPSERVER_EXPORT ~QHttpServerRouter();
 
     template<typename Type>
@@ -61,15 +61,6 @@ public:
                 typename ViewTraits::Arguments::Indexes{});
     }
 
-    template<typename ViewHandler, typename ViewTraits = QHttpServerRouterViewTraits<ViewHandler>>
-    typename ViewTraits::BindableType bindCaptured(ViewHandler &&handler,
-                      const QRegularExpressionMatch &match) const
-    {
-        return bindCapturedImpl<ViewHandler, ViewTraits>(
-                std::forward<ViewHandler>(handler), match,
-                typename ViewTraits::Arguments::CapturableIndexes{});
-    }
-
     Q_HTTPSERVER_EXPORT bool handleRequest(const QHttpServerRequest &request,
                                            QHttpServerResponder &responder) const;
 
@@ -83,30 +74,6 @@ private:
 
     Q_HTTPSERVER_EXPORT QHttpServerRouterRule *addRuleImpl(std::unique_ptr<QHttpServerRouterRule> rule,
                                          std::initializer_list<QMetaType> metaTypes);
-
-    // Implementation of C++20 std::bind_front() in C++17
-    template<typename F, typename... Args>
-    auto bind_front(F &&f, Args &&...args) const
-    {
-        return [f = std::forward<F>(f),
-                args = std::make_tuple(std::forward<Args>(args)...)](auto &&...callArgs) {
-            return std::apply(f,
-                              std::tuple_cat(args,
-                                             std::forward_as_tuple(std::forward<decltype(callArgs)>(
-                                                     callArgs)...)));
-        };
-    }
-
-    template<typename ViewHandler, typename ViewTraits, int... Cx>
-    typename ViewTraits::BindableType bindCapturedImpl(ViewHandler &&handler,
-                                                       const QRegularExpressionMatch &match,
-                                                       QtPrivate::IndexesList<Cx...>) const
-    {
-        return bind_front(
-                std::forward<ViewHandler>(handler),
-                QVariant(match.captured(Cx + 1))
-                        .value<typename ViewTraits::Arguments::template Arg<Cx>::CleanType>()...);
-    }
 
     std::unique_ptr<QHttpServerRouterPrivate> d_ptr;
 };

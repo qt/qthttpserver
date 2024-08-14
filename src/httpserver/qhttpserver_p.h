@@ -32,7 +32,7 @@ class QHttpServerPrivate: public QAbstractHttpServerPrivate
     Q_DECLARE_PUBLIC(QHttpServer)
 
 public:
-    QHttpServerPrivate() = default;
+    QHttpServerPrivate(QHttpServer *p);
 
     QHttpServerRouter router;
     struct AfterRequestHandler
