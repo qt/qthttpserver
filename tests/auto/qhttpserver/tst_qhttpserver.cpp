@@ -134,12 +134,16 @@ QT_BEGIN_NAMESPACE
 
 using namespace Qt::StringLiterals;
 
+using RouterHandler = std::function<void(const QRegularExpressionMatch &,
+                                         const QHttpServerRequest &, QHttpServerResponder &)>;
+
 class QueryRequireRouterRule : public QHttpServerRouterRule
 {
 public:
     QueryRequireRouterRule(const QString &pathPattern,
-                           RouterHandler routerHandler)
-        : QHttpServerRouterRule(pathPattern, std::move(routerHandler))
+                           const QObject *context,
+                           RouterHandler &&routerHandler)
+        : QHttpServerRouterRule(pathPattern, context, std::move(routerHandler))
     {
     }
 
@@ -157,6 +161,46 @@ public:
 
 private:
     QString m_queryKey;
+};
+
+class ReplyObject : public QObject
+{
+    Q_OBJECT
+public:
+
+    void replyRespReq(QHttpServerResponder &resp,
+               const QHttpServerRequest &req)
+    {
+        resp.write(req.body(), "text/plain"_ba);
+    }
+
+    void replyReqResp(const QHttpServerRequest &req,
+                QHttpServerResponder &resp)
+    {
+        resp.write(req.body(), "text/plain"_ba);
+    }
+
+    QString replyNoArgs()
+    {
+        return "ReplyAsHtml::replyNoArgs";
+    }
+
+    void replyRespReqConst(QHttpServerResponder &resp,
+               const QHttpServerRequest &req) const
+    {
+        resp.write(req.body(), "text/plain"_ba);
+    }
+
+    void replyReqRespConst(const QHttpServerRequest &req,
+                QHttpServerResponder &resp) const
+    {
+        resp.write(req.body(), "text/plain"_ba);
+    }
+
+    QString replyNoArgsConst() const
+    {
+        return "ReplyAsHtml::replyNoArgs";
+    }
 };
 
 class tst_QHttpServer final : public QObject
@@ -184,6 +228,7 @@ private slots:
     void missingHandler();
     void pipelinedFutureRequests();
     void multipleResponses();
+    void contextObjectInOtherThreadWarning();
 
 #if QT_CONFIG(localserver)
     void localSocket();
@@ -197,6 +242,7 @@ private:
     QString clearUrlBase;
     QString sslUrlBase;
     QNetworkAccessManager networkAccessManager;
+    ReplyObject replyObject;
 };
 
 struct CustomArg {
@@ -206,12 +252,12 @@ struct CustomArg {
     CustomArg(const QString &urlArg) : data(urlArg.toInt()) {}
 };
 
-static void reqAndRespHandler(QHttpServerResponder &&resp, const QHttpServerRequest &req)
+static void reqAndRespHandler(QHttpServerResponder &resp, const QHttpServerRequest &req)
 {
     resp.write(req.body(), "text/html"_ba);
 }
 
-static void testHandler(QHttpServerResponder &&responder)
+static void testHandler(QHttpServerResponder &responder)
 {
     responder.write("test msg", "text/html"_ba);
 }
@@ -245,24 +291,36 @@ void tst_QHttpServer::initTestCase_data()
 
 void tst_QHttpServer::initTestCase()
 {
-    httpserver.route("/req-and-resp", reqAndRespHandler);
+    httpserver.route("/resp-and-req-from-object", &replyObject, &ReplyObject::replyRespReq);
+    httpserver.route("/req-and-resp-from-object", &replyObject, &ReplyObject::replyReqResp);
+    httpserver.route("/qstring-from-object", &replyObject, &ReplyObject::replyNoArgs);
+    httpserver.route("/resp-and-req-from-const-object", &replyObject, &ReplyObject::replyRespReqConst);
+    httpserver.route("/req-and-resp-from-const-object", &replyObject, &ReplyObject::replyReqRespConst);
+    httpserver.route("/qstring-from-const-object", &replyObject, &ReplyObject::replyNoArgsConst);
 
-    httpserver.route("/resp-and-req", [] (const QHttpServerRequest &req,
-                                          QHttpServerResponder &&resp) {
+    ReplyObject *tempReplyObject = new ReplyObject();
+    httpserver.route("/deleted-route", tempReplyObject, &ReplyObject::replyRespReq);
+    delete tempReplyObject;
+
+    httpserver.route("/req-and-resp", this, reqAndRespHandler);
+
+    httpserver.route("/resp-and-req", this, [] (const QHttpServerRequest &req,
+                                          QHttpServerResponder &resp) {
         resp.write(req.body(), "text/html"_ba);
     });
 
     auto testHandlerPtr = testHandler;
-    httpserver.route("/test", testHandlerPtr);
+    httpserver.route("/test", this, testHandlerPtr);
 
-    auto l = []() { return "Hello world get"; };
+    auto l = []() -> QString { return "Hello world get"; };
 
-    httpserver.route("/", QHttpServerRequest::Method::Get, l);
+    httpserver.route("/", QHttpServerRequest::Method::Get, this, l);
 
-    httpserver.route("/", QHttpServerRequest::Method::Post, MessageHandler("Hello world post"));
+    httpserver.route("/", QHttpServerRequest::Method::Post, this, MessageHandler("Hello world post"));
 
     httpserver.route("/post-and-get",
                      QHttpServerRequest::Method::Get | QHttpServerRequest::Method::Post,
+                     this,
                      [](const QHttpServerRequest &request) {
                          if (request.method() == QHttpServerRequest::Method::Get)
                              return "Hello world get";
@@ -273,40 +331,40 @@ void tst_QHttpServer::initTestCase()
                      });
 
     httpserver.route(
-            "/any", QHttpServerRequest::Method::AnyKnown, [](const QHttpServerRequest &request) {
+            "/any", QHttpServerRequest::Method::AnyKnown, this, [](const QHttpServerRequest &request) {
                 static const auto metaEnum = QMetaEnum::fromType<QHttpServerRequest::Method>();
                 return metaEnum.valueToKey(static_cast<int>(request.method()));
             });
 
-    httpserver.route("/page/", [] (const qint32 number) {
+    httpserver.route("/page/", this, [] (const qint32 number) {
         return QString("page: %1").arg(number);
     });
 
-    httpserver.route("/page/<arg>/detail", [] (const quint32 number) {
+    httpserver.route("/page/<arg>/detail", this, [] (const quint32 number) {
         return QString("page: %1 detail").arg(number);
     });
 
-    httpserver.route("/user/", [] (const QString &name) {
+    httpserver.route("/user/", this, [] (const QString &name) {
         return QString("%1").arg(name);
     });
 
-    httpserver.route("/user/<arg>/", [] (const QString &name, const QByteArray &ba) {
+    httpserver.route("/user/<arg>/", this, [] (const QString &name, const QByteArray &ba) {
         return QString("%1-%2").arg(name).arg(QString::fromLatin1(ba));
     });
 
-    httpserver.route("/test/", [] (const QUrl &url) {
+    httpserver.route("/test/", this, [] (const QUrl &url) {
         return QString("path: %1").arg(url.path());
     });
 
-    httpserver.route("/api/v", [] (const float api) {
+    httpserver.route("/api/v", this, [] (const float api) {
         return QString("api %1v").arg(api);
     });
 
-    httpserver.route("/api/v<arg>/user/", [] (const float api, const quint64 user) {
+    httpserver.route("/api/v<arg>/user/", this, [] (const float api, const quint64 user) {
         return QString("api %1v, user id - %2").arg(api).arg(user);
     });
 
-    httpserver.route("/api/v<arg>/user/<arg>/settings", [] (const float api, const quint64 user,
+    httpserver.route("/api/v<arg>/user/<arg>/settings", this, [] (const float api, const quint64 user,
                                                              const QHttpServerRequest &request) {
         const auto &role = request.query().queryItemValue(QString::fromLatin1("role"));
         const auto &fragment = request.url().fragment();
@@ -317,6 +375,7 @@ void tst_QHttpServer::initTestCase()
 
     auto route = httpserver.route<QueryRequireRouterRule>(
             "/custom/",
+            this,
             [] (const quint64 num, const QHttpServerRequest &request) {
         return QString("Custom router rule: %1, key=%2")
                     .arg(num)
@@ -327,25 +386,25 @@ void tst_QHttpServer::initTestCase()
         route->setKey(QLatin1String("key"));
 
     httpserver.router()->addConverter<CustomArg>("[+-]?\\d+"_L1);
-    httpserver.route("/check-custom-type/", [] (const CustomArg &customArg) {
+    httpserver.route("/check-custom-type/", this, [] (const CustomArg &customArg) {
         return QString("data = %1").arg(customArg.data);
     });
 
-    httpserver.route("/post-body", QHttpServerRequest::Method::Post,
+    httpserver.route("/post-body", QHttpServerRequest::Method::Post, this,
                      [](const QHttpServerRequest &request) { return request.body(); });
 
-    httpserver.route("/file/", [] (const QString &file) {
+    httpserver.route("/file/", this, [] (const QString &file) {
         return QHttpServerResponse::fromFile(QFINDTESTDATA("data/"_L1 + file));
     });
 
-    httpserver.route("/json-object/", [] () {
+    httpserver.route("/json-object/", this, [] () {
         return QJsonObject{
             {"property", "test"},
             {"value", 1}
         };
     });
 
-    httpserver.route("/json-array/", [] () {
+    httpserver.route("/json-array/", this, [] () {
         return QJsonArray{
             1, "2",
             QJsonObject{
@@ -354,18 +413,18 @@ void tst_QHttpServer::initTestCase()
         };
     });
 
-    httpserver.route("/data-and-custom-status-code/", []() {
+    httpserver.route("/data-and-custom-status-code/", this, []() {
         return QHttpServerResponse(QJsonObject{ { "key", "value" } },
                                    QHttpServerResponder::StatusCode::Accepted);
     });
 
-    httpserver.route("/chunked/", [](QHttpServerResponder &&responder) {
+    httpserver.route("/chunked/", this, [](QHttpServerResponder &responder) {
         responder.writeBeginChunked("text/plain", QHttpServerResponder::StatusCode::Ok);
         responder.writeChunk("part 1 of the message, ");
         responder.writeEndChunked("part 2 of the message");
     });
 
-    httpserver.route("/longChunks/", [](QHttpServerResponder &&responder) {
+    httpserver.route("/longChunks/", this, [](QHttpServerResponder &responder) {
         responder.writeBeginChunked("text/plain", QHttpServerResponder::StatusCode::Ok);
         constexpr qsizetype chunkLength = 8 * 1024 * 1024;
         QByteArray a(chunkLength, 'a');
@@ -376,7 +435,7 @@ void tst_QHttpServer::initTestCase()
         responder.writeEndChunked(c);
     });
 
-    httpserver.route("/extra-headers", [] () {
+    httpserver.route("/extra-headers", this, [] () {
         QHttpServerResponse resp("");
         auto h = resp.headers();
 
@@ -390,7 +449,7 @@ void tst_QHttpServer::initTestCase()
         return resp;
     });
 
-    httpserver.route("/processing", [](QHttpServerResponder &&responder) {
+    httpserver.route("/processing", this, [](QHttpServerResponder &responder) {
         responder.sendResponse(QHttpServerResponse(QHttpServerResponder::StatusCode::Processing));
         responder.sendResponse(QHttpServerResponse("done"));
     });
@@ -400,7 +459,7 @@ void tst_QHttpServer::initTestCase()
     });
 
 #if QT_CONFIG(concurrent)
-    httpserver.route("/future/", [] (int id) {
+    httpserver.route("/future/", this, [] (int id) {
         return QtConcurrent::run([id] () -> QHttpServerResponse {
              if (id == 0)
                 return QHttpServerResponse::StatusCode::NotFound;
@@ -410,7 +469,7 @@ void tst_QHttpServer::initTestCase()
         });
     });
 
-    httpserver.route("/user/<arg>/delayed/", [](const QString &user, unsigned long delayMs) {
+    httpserver.route("/user/<arg>/delayed/", this, [](const QString &user, unsigned long delayMs) {
         return QtConcurrent::run([user, delayMs]() -> QHttpServerResponse {
             QThread::msleep(delayMs);
             return user;
@@ -498,6 +557,18 @@ void tst_QHttpServer::routeGet_data()
         << 404
         << "application/x-empty"
         << "";
+
+    QTest::addRow("qstring-from-object")
+        << "/qstring-from-object"
+        << 200
+        << "text/plain"
+        << "ReplyAsHtml::replyNoArgs";
+
+    QTest::addRow("qstring-from-const-object")
+        << "/qstring-from-const-object"
+        << 200
+        << "text/plain"
+        << "ReplyAsHtml::replyNoArgs";
 
     QTest::addRow("arg:int")
         << "/page/10"
@@ -713,7 +784,8 @@ void tst_QHttpServer::routeKeepAlive()
     if (useHttp2)
         QSKIP("Keep-alive header is not allowed for HTTP 2");
 
-    httpserver.route("/keep-alive", [] (const QHttpServerRequest &req) -> QHttpServerResponse {
+    httpserver.route("/keep-alive", this,
+                    [] (const QHttpServerRequest &req) -> QHttpServerResponse {
         return QString("header: %1, query: %2, body: %3, method: %4")
             .arg(req.value("CustomHeader"),
                  req.url().query(),
@@ -819,7 +891,43 @@ void tst_QHttpServer::routePost_data()
         << "text/html"
         << "test"
         << "test";
+
+    QTest::addRow("resp-and-req-from-object")
+        << "/resp-and-req-from-object"
+        << 200
+        << "text/plain"
+        << "test"
+        << "test";
+
+    QTest::addRow("req-and-resp-from-object")
+        << "/req-and-resp-from-object"
+        << 200
+        << "text/plain"
+        << "test"
+        << "test";
+
+    QTest::addRow("resp-and-req-from-const-object")
+        << "/resp-and-req-from-const-object"
+        << 200
+        << "text/plain"
+        << "test"
+        << "test";
+
+    QTest::addRow("req-and-resp-from-const-object")
+        << "/req-and-resp-from-const-object"
+        << 200
+        << "text/plain"
+        << "test"
+        << "test";
+
+    QTest::addRow("deleted-route")
+        << "/deleted-route"
+        << 404
+        << "application/x-empty"
+        << ""
+        << "";
 }
+
 
 void tst_QHttpServer::routePost()
 {
@@ -969,7 +1077,7 @@ void tst_QHttpServer::invalidRouterArguments()
 {
     QTest::ignoreMessage(QtWarningMsg, "Can not find converter for type: QDateTime");
     QCOMPARE(
-        httpserver.route("/datetime/", [] (const QDateTime &datetime) {
+        httpserver.route("/datetime/", this, [] (const QDateTime &datetime) {
             return QString("datetime: %1").arg(datetime.toString());
         }),
         nullptr);
@@ -979,6 +1087,7 @@ void tst_QHttpServer::invalidRouterArguments()
                          "Use QHttpServerRouter::addConveter<Type>(converter).");
     QCOMPARE(
         httpserver.route("/implicit-conversion-to-qstring-has-no-registered/",
+                         this,
                          [] (const CustomType &) {
             return "";
         }),
@@ -993,12 +1102,12 @@ void tst_QHttpServer::checkRouteLambdaCapture()
     QNetworkRequest request;
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
 
-    httpserver.route("/capture-this/", [&urlBase] () {
+    httpserver.route("/capture-this/", this, [&urlBase] () {
         return urlBase;
     });
 
     QString msg = urlBase + "/pod";
-    httpserver.route("/capture-non-pod-data/", [&msg] () {
+    httpserver.route("/capture-non-pod-data/", this, [&msg] () {
         return msg;
     });
 
@@ -1088,7 +1197,7 @@ void tst_QHttpServer::disconnectedInEventLoop()
     QNetworkRequest request(urlBase.arg("/event-loop/"));
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
 
-    httpserver.route("/event-loop/", [] () {
+    httpserver.route("/event-loop/", this, [] () {
         QEventLoop loop;
         QTimer::singleShot(1000, &loop, &QEventLoop::quit);
         loop.exec();
@@ -1112,7 +1221,7 @@ void tst_QHttpServer::multipleRequests()
     QNetworkRequest request(urlBase.arg("/do-not-move"));
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
 
-    httpserver.route("/do-not-move", [v = std::vector<int>{1, 2, 3}] () {
+    httpserver.route("/do-not-move", this, [v = std::vector<int>{1, 2, 3}] () {
         return QString::number(v.size());
     });
 
@@ -1255,6 +1364,16 @@ void tst_QHttpServer::multipleResponses()
     QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 200);
     QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader), "text/plain");
     QCOMPARE(reply->readAll(), "done");
+}
+
+void tst_QHttpServer::contextObjectInOtherThreadWarning()
+{
+    QThread newThread;
+    ReplyObject replyObject;
+    replyObject.moveToThread(&newThread);
+
+    QTest::ignoreMessage(QtWarningMsg, QRegularExpression(".*context object.*same thread"));
+    QCOMPARE(httpserver.route("/otherThread", &replyObject, &ReplyObject::replyReqResp), nullptr);
 }
 
 #if QT_CONFIG(localserver)

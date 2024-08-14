@@ -86,13 +86,6 @@ Q_STATIC_LOGGING_CATEGORY(lcRouterRule, "qt.httpserver.router.rule")
 
     \sa QHttpServerRequest::Methods
 */
-QHttpServerRouterRule::QHttpServerRouterRule(const QString &pathPattern,
-                                             RouterHandler routerHandler)
-    : QHttpServerRouterRule(pathPattern,
-                            QHttpServerRequest::Method::AnyKnown,
-                            std::move(routerHandler))
-{
-}
 
 /*!
     Constructs a rule with pathPattern \a pathPattern, methods \a methods
@@ -104,12 +97,12 @@ QHttpServerRouterRule::QHttpServerRouterRule(const QString &pathPattern,
 */
 QHttpServerRouterRule::QHttpServerRouterRule(const QString &pathPattern,
                                              const QHttpServerRequest::Methods methods,
-                                             RouterHandler routerHandler)
-    : QHttpServerRouterRule(
-        new QHttpServerRouterRulePrivate{pathPattern,
-                                         methods,
-                                         std::move(routerHandler), {}})
+                                             const QObject *context,
+                                             QtPrivate::QSlotObjectBase *slotObjRaw)
+    : QHttpServerRouterRule(new QHttpServerRouterRulePrivate{
+              pathPattern, methods, QtPrivate::SlotObjUniquePtr(slotObjRaw), QPointer(context), {}})
 {
+    Q_ASSERT(slotObjRaw);
 }
 
 /*!
@@ -127,6 +120,14 @@ QHttpServerRouterRule::~QHttpServerRouterRule()
 {
 }
 
+/*!
+    Returns the context object of this rule.
+*/
+const QObject *QHttpServerRouterRule::contextObject() const
+{
+    Q_D(const QHttpServerRouterRule);
+    return d->context;
+}
 /*!
     Returns \c true if the methods is valid
 */
@@ -148,16 +149,16 @@ bool QHttpServerRouterRule::exec(const QHttpServerRequest &request,
                                  QHttpServerResponder &responder) const
 {
     Q_D(const QHttpServerRouterRule);
+    if (!d->routerHandler)
+        return false;
 
     QRegularExpressionMatch match;
     if (!matches(request, &match))
         return false;
 
-    // Ensure that original responder object is destroyed even if the route
-    // handler does not explicitly move out of it. The websocket handler code
-    // assumes this is the case (see also QTBUG-120746).
-    auto r = std::move(responder);
-    d->routerHandler(match, request, std::move(r));
+    void *args[] = { nullptr, &match, const_cast<QHttpServerRequest *>(&request), &responder };
+    Q_ASSERT(d->routerHandler);
+    d->routerHandler->call(nullptr, args);
     return true;
 }
 
