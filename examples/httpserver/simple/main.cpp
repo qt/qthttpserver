@@ -104,13 +104,13 @@ int main(int argc, char *argv[])
         return std::move(resp);
     });
 
-    //! [Using afterRequest()]
+    //! [Using addAfterRequestHandler()]
     httpServer.addAfterRequestHandler(&httpServer, [](const QHttpServerRequest &, QHttpServerResponse &resp) {
         auto h = resp.headers();
         h.append(QHttpHeaders::WellKnownHeader::Server, "Qt HTTP Server");
         resp.setHeaders(std::move(h));
     });
-    //! [Using afterRequest()]
+    //! [Using addAfterRequestHandler()]
 
     auto tcpserver = std::make_unique<QTcpServer>();
     if (!tcpserver->listen() || !httpServer.bind(tcpserver.get())) {

@@ -27,7 +27,8 @@
     This can be simplified even further by using the QHttpServer class.
     The QHttpServer class is a subclass of QAbstractHttpServer and defines an
     overloaded route function to bind callables to different incoming URLs,
-    and an \l{QHttpServer::}{afterRequest()} function to process the response further.
+    and an \l{QHttpServer::}{addAfterRequestHandler()} function to process the response
+    further.
 
     Runtime logging can be configured as described \l{qthttpserver-logging.html}{here}.
 

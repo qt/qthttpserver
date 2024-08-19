@@ -103,6 +103,9 @@ void QAbstractHttpServerPrivate::handleNewLocalConnections()
     Subclass this class and override handleRequest() and missingHandler() to
     create an HTTP server. Use bind() to start listening to all the incoming
     connections to a server.
+
+    This is a low level API, see \l QHttpServer for a highler level API to
+    implement an HTTP server.
 */
 
 /*!
@@ -113,7 +116,7 @@ QAbstractHttpServer::QAbstractHttpServer(QObject *parent)
 {}
 
 /*!
-    \internal
+    Destroys an instance of QAbstractHttpServer.
 */
 QAbstractHttpServer::~QAbstractHttpServer()
     = default;
@@ -163,8 +166,6 @@ QList<quint16> QAbstractHttpServer::serverPorts() const
     It is the user's responsibility to call QTcpServer::listen() on
     the \a server before calling this function. If \a server is not
     listening, nothing will happen and \c false will be returned.
-
-    If the \a server is nullptr false is returned.
 
     If successful the \a server will be parented to this HTTP server
     and \c true is returned.
@@ -232,7 +233,7 @@ bool QAbstractHttpServer::bind(QLocalServer *server)
 #endif
 
 /*!
-    Returns list of child TCP servers of this HTTP server.
+    Returns the TCP servers of this HTTP server.
 
     \sa serverPorts()
  */
@@ -243,7 +244,7 @@ QList<QTcpServer *> QAbstractHttpServer::servers() const
 
 #if QT_CONFIG(localserver)
 /*!
-    Returns list of child TCP servers of this HTTP server.
+    Returns the local servers of this HTTP server.
 
     \sa serverPorts()
  */
@@ -323,7 +324,7 @@ QAbstractHttpServer::verifyWebSocketUpgrade(const QHttpServerRequest &request) c
     it. If no handlers are registered or all return \c PassToNext,
     missingHandler() is called. The callback functions are executed in the
     order they are registered. The callbacks cannot call
-    registerWebSocketUpgradeVerifier().
+    addWebSocketUpgradeVerifier().
 
     \note The WebSocket upgrades fail if no callbacks has been registered.
     \note This overload participates in overload resolution only if the
@@ -331,7 +332,7 @@ QAbstractHttpServer::verifyWebSocketUpgrade(const QHttpServerRequest &request) c
     and returns a QHttpServerWebSocketUpgradeResponse.
 
     \code
-    server.registerWebSocketUpgradeVerifier(
+    server.addWebSocketUpgradeVerifier(
             &server, [](const QHttpServerRequest &request) {
                 if (request.url().path() == "/allowed"_L1)
                     return QHttpServerWebSocketUpgradeResponse::accept();
@@ -366,7 +367,7 @@ void QAbstractHttpServer::addWebSocketUpgradeVerifierImpl(const QObject *context
 /*!
     \fn QAbstractHttpServer::handleRequest(const QHttpServerRequest &request,
                                            QHttpServerResponder &responder)
-    Overload this function to handle each incoming \a request, by examining
+    Override this function to handle each incoming \a request, by examining
     the \a request and sending the appropriate response back to \a responder.
     Return \c true if the \a request was handled successfully. If this method
     returns \c false, missingHandler() will be called afterwards.
@@ -376,15 +377,16 @@ void QAbstractHttpServer::addWebSocketUpgradeVerifierImpl(const QObject *context
 
 /*!
     \fn QAbstractHttpServer::missingHandler(const QHttpServerRequest &request,
-                                            QHttpServerResponder &&responder)
+                                            QHttpServerResponder &responder)
 
-    This function is called whenever handleRequest() returns \c false, or if
-    there is a WebSocket upgrade attempt and either there are no connections
-    to newWebSocketConnection() or there are no matching WebSocket verifiers.
-    The \a request and \a responder parameters are the same as
-    handleRequest() was called with.
+    Override this function to handle each incoming \a request that was not
+    handled by \l handleRequest(). This function is called whenever \l
+    handleRequest() returns \c false, or if there is a WebSocket upgrade
+    attempt and either there are no connections to newWebSocketConnection() or
+    there are no matching WebSocket verifiers. The \a request and \a responder
+    parameters are the same as handleRequest() was called with.
 
-    \sa handleRequest(), registerWebSocketUpgradeVerifier()
+    \sa handleRequest(), addWebSocketUpgradeVerifier()
 */
 
 #if QT_CONFIG(ssl)
