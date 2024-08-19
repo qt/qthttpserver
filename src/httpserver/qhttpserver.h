@@ -62,6 +62,25 @@ public:
     QHttpServerRouter *router();
     const QHttpServerRouter *router() const;
 
+#ifdef Q_QDOC
+    template <typename Rule = QHttpServerRouterRule, typename Functor>
+    Rule *route(const QString &pathPattern, QHttpServerRequest::Methods method,
+                const QObject *receiver,
+                Functor &&slot);
+
+    template <typename Rule = QHttpServerRouterRule, typename Functor>
+    Rule *route(const QString &pathPattern,
+                const QObject *receiver,
+                Functor &&slot);
+
+    template <typename Rule = QHttpServerRouterRule, typename Functor>
+    Rule *route(const QString &pathPattern, QHttpServerRequest::Methods method,
+                Functor &&handler);
+
+    template <typename Rule = QHttpServerRouterRule, typename Functor>
+    Rule *route(const QString &pathPattern,
+                Functor &&handler);
+#else
     template<typename Rule = QHttpServerRouterRule, typename ViewHandler>
     Rule *route(const QString &pathPattern, QHttpServerRequest::Methods method,
                 const typename QtPrivate::ContextTypeForFunctor<ViewHandler>::ContextType *context,
@@ -101,7 +120,12 @@ public:
         return route<Rule>(pathPattern, method,
                            this, std::forward<ViewHandler>(viewHandler));
     }
+#endif
 
+#ifdef Q_QDOC
+    template <typename Functor>
+    void setMissingHandler(const QObject *receiver, Functor &&slot);
+#else
     template <typename Handler, if_missinghandler_prototype_compatible<Handler> = true>
     void setMissingHandler(const typename QtPrivate::ContextTypeForFunctor<Handler>::ContextType *context,
                            Handler &&handler)
@@ -110,7 +134,12 @@ public:
                               QtPrivate::makeCallableObject<MissingHandlerPrototype>(
                                   std::forward<Handler>(handler)));
     }
+#endif
 
+#ifdef Q_QDOC
+    template <typename Functor>
+    void addAfterRequestHandler(const QObject *receiver, Functor &&slot);
+#else
     template <typename Handler, if_after_request_prototype_compatible<Handler> = true>
     void addAfterRequestHandler(const typename QtPrivate::ContextTypeForFunctor<Handler>::ContextType *context,
                                 Handler &&handler)
@@ -119,6 +148,7 @@ public:
                                    QtPrivate::makeCallableObject<AfterRequestPrototype>(
                                    std::forward<Handler>(handler)));
     }
+#endif
 
     void clearMissingHandler();
 

@@ -40,6 +40,19 @@ private:
                           const QObject *context, QtPrivate::QSlotObjectBase *slotObjRaw);
 
 public:
+#ifdef Q_QDOC
+    template <typename Functor>
+    QHttpServerRouterRule(
+            const QString &pathPattern, const QHttpServerRequest::Methods methods,
+            const QObject *receiver,
+            Functor &&slot);
+
+    template <typename Functor>
+    QHttpServerRouterRule(
+            const QString &pathPattern,
+            const QObject *receiver,
+            Functor &&slot);
+#else
     template <typename Handler, if_routerhandler_prototype_compatible<Handler> = true>
     QHttpServerRouterRule(
             const QString &pathPattern,
@@ -61,7 +74,15 @@ public:
                   QtPrivate::makeCallableObject<RouterHandlerPrototype>(std::forward<Handler>(func)))
     {
     }
+#endif
 
+#ifdef Q_QDOC
+    template <typename Functor, typename ViewTraits = QHttpServerRouterViewTraits<Functor>>
+    static typename ViewTraits::BindableType bindCaptured(
+                    QObject *receiver,
+                    Functor &&slot,
+                    const QRegularExpressionMatch &match) const;
+# else
     template<typename ViewHandler, typename ViewTraits = QHttpServerRouterViewTraits<ViewHandler>>
     static typename ViewTraits::BindableType bindCaptured(
                     const typename QtPrivate::ContextTypeForFunctor<ViewHandler>::ContextType *context,
@@ -72,6 +93,7 @@ public:
                 context, std::forward<ViewHandler>(handler), match,
                 typename ViewTraits::Arguments::CapturableIndexes{});
     }
+#endif
 
     const QObject *contextObject() const;
 
