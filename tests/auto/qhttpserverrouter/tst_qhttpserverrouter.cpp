@@ -46,7 +46,7 @@ struct HttpServer : QAbstractHttpServer {
         return router.handleRequest(request, responder);
     }
 
-    void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&responder) override
+    void missingHandler(const QHttpServerRequest &, QHttpServerResponder &responder) override
     {
         responder.write(QHttpServerResponder::StatusCode::NotFound);
     }

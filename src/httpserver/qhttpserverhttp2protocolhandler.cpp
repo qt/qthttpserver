@@ -270,7 +270,7 @@ void QHttpServerHttp2ProtocolHandler::onStreamHalfClosed(quint32 streamId)
     responder.d_ptr->m_streamId = streamId;
 
     if (!m_server->handleRequest(m_request, responder))
-        m_server->missingHandler(m_request, std::move(responder));
+        m_server->missingHandler(m_request, responder);
 }
 
 void QHttpServerHttp2ProtocolHandler::onStreamClosed(quint32 streamId)

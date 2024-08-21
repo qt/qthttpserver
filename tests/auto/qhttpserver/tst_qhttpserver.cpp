@@ -1147,6 +1147,17 @@ void tst_QHttpServer::pipelinedRequests()
         checkReply(replies[i], QString::number(i));
 }
 
+class OkResponder : public QObject
+{
+    Q_OBJECT
+
+public:
+    void operator()(const QHttpServerRequest &, QHttpServerResponder &responder)
+    {
+        responder.write(QHttpServerResponder::StatusCode::Ok);
+    }
+};
+
 void tst_QHttpServer::missingHandler()
 {
     QFETCH_GLOBAL(bool, useSsl);
@@ -1161,12 +1172,25 @@ void tst_QHttpServer::missingHandler()
     QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 404);
 
     {
-        auto guard = QScopeGuard([this]() { httpserver.setMissingHandler({}); });
+        auto guard = QScopeGuard([this]() { httpserver.clearMissingHandler(); });
 
         httpserver.setMissingHandler(
-                [](const QHttpServerRequest &, QHttpServerResponder &&responder) {
+                this, [](const QHttpServerRequest &, QHttpServerResponder &responder) {
                     responder.write(QHttpServerResponder::StatusCode::Ok);
                 });
+
+        reply.reset(networkAccessManager.get(request));
+        QTRY_VERIFY(reply->isFinished());
+        QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 200);
+    }
+
+    reply.reset(networkAccessManager.get(request));
+    QTRY_VERIFY(reply->isFinished());
+    QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 404);
+
+    {
+        OkResponder responder;
+        httpserver.setMissingHandler(&responder, &OkResponder::operator());
 
         QNetworkRequest request2(requestUrl);
         request2.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);

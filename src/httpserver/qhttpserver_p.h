@@ -36,9 +36,13 @@ public:
 
     QHttpServerRouter router;
     std::vector<QHttpServer::AfterRequestHandler> afterRequestHandlers;
-    QHttpServer::MissingHandler missingHandler;
+    struct MissingHandler
+    {
+        QPointer<const QObject> context = nullptr;
+        QtPrivate::SlotObjUniquePtr slotObject;
+    } missingHandler;
 
-    void callMissingHandler(const QHttpServerRequest &request, QHttpServerResponder &&responder);
+    void callMissingHandler(const QHttpServerRequest &request, QHttpServerResponder &responder);
 };
 
 QT_END_NAMESPACE

@@ -313,7 +313,7 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
                                   "WebSocket received but no slots connected to "
                                   "QWebSocketServer::newConnection");
                     }
-                    server->missingHandler(request, std::move(responder));
+                    server->missingHandler(request, responder);
                     tcpSocket->disconnectFromHost();
                 }
                 return;
@@ -325,7 +325,7 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
     socket->commitTransaction();
 
     if (!server->handleRequest(request, responder))
-        server->missingHandler(request, std::move(responder));
+        server->missingHandler(request, responder);
 
     if (handlingRequest)
         disconnect(socket, &QIODevice::readyRead, this, &QHttpServerHttp1ProtocolHandler::handleReadyRead);

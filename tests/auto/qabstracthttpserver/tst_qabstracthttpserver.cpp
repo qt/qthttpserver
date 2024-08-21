@@ -208,7 +208,7 @@ void tst_QAbstractHttpServer::request()
             return true;
         }
 
-        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&) override
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override
         {
             Q_ASSERT(false);
         }
@@ -240,7 +240,7 @@ void tst_QAbstractHttpServer::checkListenWarns()
             return true;
         }
 
-        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&) override
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override
         {
             Q_ASSERT(false);
         }
@@ -264,7 +264,7 @@ void tst_QAbstractHttpServer::websocket()
             return true;
         }
 
-        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&) override
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override
         {
             Q_ASSERT(false);
         }
@@ -338,7 +338,7 @@ void tst_QAbstractHttpServer::verifyWebSocketUpgrades()
         }
 
         bool missingHandlerExpected = false;
-        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&) override
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override
         {
             Q_ASSERT(missingHandlerExpected);
         }
@@ -435,7 +435,7 @@ void tst_QAbstractHttpServer::servers()
             return true;
         }
 
-        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&) override
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override
         {
             Q_ASSERT(false);
         }
@@ -466,7 +466,7 @@ void tst_QAbstractHttpServer::qtbug82053()
             return false;
         }
 
-        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&) override { }
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override { }
     } server;
     auto tcpServer = new QTcpServer;
     tcpServer->listen();
@@ -525,7 +525,7 @@ void tst_QAbstractHttpServer::http2handshake()
     {
         bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &) override
         { return false; }
-        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&) override { }
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override { }
     } server;
 
     auto sslserver = std::make_unique<QSslServer>();
@@ -622,7 +622,7 @@ void tst_QAbstractHttpServer::http2request()
             return true;
         }
 
-        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&) override
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override
         {
             Q_ASSERT(false);
         }
@@ -706,7 +706,7 @@ void tst_QAbstractHttpServer::socketDisconnected()
             return true;
         }
 
-        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&) override
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override
         {
             Q_ASSERT(false);
         }

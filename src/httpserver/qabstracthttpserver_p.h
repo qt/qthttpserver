@@ -50,6 +50,7 @@ public:
 #endif // defined(QT_WEBSOCKETS_LIB)
 
     void handleNewConnections();
+    bool verifyThreadAffinity(const QObject *contextObject) const;
 
 #if QT_CONFIG(localserver)
     void handleNewLocalConnections();
