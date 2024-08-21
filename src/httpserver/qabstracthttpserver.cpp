@@ -65,6 +65,19 @@ void QAbstractHttpServerPrivate::handleNewConnections()
         new QHttpServerHttp1ProtocolHandler(q, socket);
 }
 
+/*!
+    \internal
+*/
+bool QAbstractHttpServerPrivate::verifyThreadAffinity(const QObject *contextObject) const {
+    Q_Q(const QAbstractHttpServer);
+    if (contextObject && (contextObject->thread() != q->thread())) {
+        qCWarning(lcHttpServer, "QAbstractHttpServer: "
+                                "the context object must reside in the same thread");
+        return false;
+    }
+    return true;
+}
+
 
 #if QT_CONFIG(localserver)
 /*!

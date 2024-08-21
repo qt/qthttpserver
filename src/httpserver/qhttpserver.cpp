@@ -19,12 +19,14 @@ QT_BEGIN_NAMESPACE
 Q_LOGGING_CATEGORY(lcHS, "qt.httpserver");
 
 void QHttpServerPrivate::callMissingHandler(const QHttpServerRequest &request,
-                                            QHttpServerResponder &&responder)
+                                            QHttpServerResponder &responder)
 {
     Q_Q(QHttpServer);
 
-    if (missingHandler) {
-        missingHandler(request, std::move(responder));
+    if (missingHandler.context && missingHandler.slotObject &&
+        verifyThreadAffinity(missingHandler.context)) {
+        void *args[] = { nullptr, const_cast<QHttpServerRequest *>(&request), &responder };
+        missingHandler.slotObject->call(const_cast<QObject *>(missingHandler.context.data()), args);
     } else {
         qCDebug(lcHS) << "missing handler:" << request.url().path();
         q->sendResponse(QHttpServerResponder::StatusCode::NotFound, request, std::move(responder));
@@ -190,25 +192,37 @@ const QHttpServerRouter *QHttpServer::router() const
     return &d->router;
 }
 
-/*!
-    \typealias QHttpServer::MissingHandler
+/*! \fn template <typename Handler, QHttpServer::if_missinghandler_prototype_compatible<Handler> = true>
+    void QHttpServer::setMissingHandler(typename QtPrivate::ContextTypeForFunctor<Handler>::ContextType *context,
+                                        Handler &&handler)
 
-    Type alias for std::function<void(const QHttpServerRequest &request,
-                                      QHttpServerResponder &&responder)>.
-*/
-
-/*!
     Set a handler to call for unhandled paths.
 
-    The invocable passed as \a handler will be invoked for each request
-    that cannot be handled by any of registered route handlers. Passing a
-    default-constructed std::function resets the handler to the default one
-    that produces replies with status 404 Not Found.
+    The invocable passed as \a handler will be invoked on \a context for
+    each request that cannot be handled by any of registered route handlers.
+    The default one replies with status 404 Not Found.
 */
-void QHttpServer::setMissingHandler(QHttpServer::MissingHandler handler)
+
+/*!
+    \internal
+*/
+void QHttpServer::setMissingHandlerImpl(const QObject *context, QtPrivate::QSlotObjectBase *handler)
 {
     Q_D(QHttpServer);
-    d->missingHandler = handler;
+    auto slot = QtPrivate::SlotObjUniquePtr(handler);
+    if (!d->verifyThreadAffinity(context))
+        return;
+    d->missingHandler = {context, std::move(slot)};
+}
+
+/*!
+    Resets the handler to the default one that produces replies with
+    status 404 Not Found.
+*/
+void QHttpServer::clearMissingHandler()
+{
+    Q_D(QHttpServer);
+    d->missingHandler.slotObject.reset();
 }
 
 /*!
@@ -256,11 +270,10 @@ bool QHttpServer::handleRequest(const QHttpServerRequest &request, QHttpServerRe
 /*!
     \internal
 */
-void QHttpServer::missingHandler(const QHttpServerRequest &request,
-                                 QHttpServerResponder &&responder)
+void QHttpServer::missingHandler(const QHttpServerRequest &request, QHttpServerResponder &responder)
 {
     Q_D(QHttpServer);
-    return d->callMissingHandler(request, std::move(responder));
+    return d->callMissingHandler(request, responder);
 }
 
 QT_END_NAMESPACE

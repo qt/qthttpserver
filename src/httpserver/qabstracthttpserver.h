@@ -91,7 +91,7 @@ protected:
     virtual bool handleRequest(const QHttpServerRequest &request,
                                QHttpServerResponder &responder) = 0;
     virtual void missingHandler(const QHttpServerRequest &request,
-                                QHttpServerResponder &&responder) = 0;
+                                QHttpServerResponder &responder) = 0;
 
 private:
     Q_DECLARE_PRIVATE(QAbstractHttpServer)

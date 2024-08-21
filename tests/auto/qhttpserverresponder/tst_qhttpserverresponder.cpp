@@ -62,7 +62,7 @@ struct HttpServer : QAbstractHttpServer {
     }
 
     bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &) override;
-    void missingHandler(const QHttpServerRequest &, QHttpServerResponder &&) override
+    void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override
     {
         Q_ASSERT(false);
     }

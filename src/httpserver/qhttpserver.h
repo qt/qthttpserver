@@ -44,6 +44,12 @@ class Q_HTTPSERVER_EXPORT QHttpServer final : public QAbstractHttpServer
         QHttpServerResponse;
 #endif
 
+    using MissingHandlerPrototype = void (*)(const QHttpServerRequest &request,
+                                             QHttpServerResponder &responder);
+    template <typename T>
+    using if_missinghandler_prototype_compatible = typename std::enable_if<
+            QtPrivate::AreFunctionsCompatible<MissingHandlerPrototype, T>::value, bool>::type;
+
 public:
     explicit QHttpServer(QObject *parent = nullptr);
     ~QHttpServer() override;
@@ -78,12 +84,19 @@ public:
         afterRequestHelper<ViewTraits, ViewHandler>(std::move(viewHandler));
     }
 
-    using MissingHandler = std::function<void(const QHttpServerRequest &request,
-                                              QHttpServerResponder &&responder)>;
+    template <typename Handler, if_missinghandler_prototype_compatible<Handler> = true>
+    void setMissingHandler(const typename QtPrivate::ContextTypeForFunctor<Handler>::ContextType *context,
+                           Handler &&handler)
+    {
+        setMissingHandlerImpl(context,
+                              QtPrivate::makeCallableObject<MissingHandlerPrototype>(
+                                  std::forward<Handler>(handler)));
+    }
 
-    void setMissingHandler(MissingHandler handler);
+    void clearMissingHandler();
 
 private:
+    void setMissingHandlerImpl(const QObject *context, QtPrivate::QSlotObjectBase *handler);
     using AfterRequestHandler =
         std::function<QHttpServerResponse(QHttpServerResponse &&response,
                       const QHttpServerRequest &request)>;
@@ -174,7 +187,7 @@ private:
     bool handleRequest(const QHttpServerRequest &request,
                        QHttpServerResponder &responder) override;
     void missingHandler(const QHttpServerRequest &request,
-                        QHttpServerResponder &&responder) override;
+                        QHttpServerResponder &responder) override;
 
     void sendResponse(QHttpServerResponse &&response, const QHttpServerRequest &request,
                       QHttpServerResponder &&responder);
