@@ -65,7 +65,7 @@ public:
         static_assert(ViewTraits::Arguments::StaticAssert,
                       "ViewHandler arguments are in the wrong order or not supported");
         return routeHelper<Rule, ViewHandler, ViewTraits>(
-                QtPrivate::makeIndexSequence<sizeof ... (Args) - 1>{},
+                std::make_index_sequence<sizeof ... (Args) - 1>{},
                 std::forward<Args>(args)...);
     }
 
@@ -114,8 +114,8 @@ private:
 
     void afterRequestImpl(AfterRequestHandler afterRequestHandler);
 
-    template<typename Rule, typename ViewHandler, typename ViewTraits, int ... I, typename ... Args>
-    bool routeHelper(QtPrivate::IndexesList<I...>, Args &&... args)
+    template<typename Rule, typename ViewHandler, typename ViewTraits, size_t ... I, typename ... Args>
+    bool routeHelper(std::index_sequence<I...>, Args &&... args)
     {
         return routeImpl<Rule,
                          ViewHandler,

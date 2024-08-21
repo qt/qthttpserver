@@ -50,7 +50,7 @@ struct AfterRequestViewTraitsHelper : ViewTraits<ViewHandler, DisableStaticAsser
     };
 
     struct Arguments {
-        template<int ... I>
+        template<size_t ... I>
         struct ArgumentsReturn {
             template<int Idx>
             using Arg = ArgumentChecker<Idx>;
@@ -60,8 +60,8 @@ struct AfterRequestViewTraitsHelper : ViewTraits<ViewHandler, DisableStaticAsser
             static constexpr std::size_t Count = FunctionTraits::ArgumentCount;
         };
 
-        template<int ... I>
-        static constexpr ArgumentsReturn<I...> eval(QtPrivate::IndexesList<I...>) noexcept
+        template<size_t ... I>
+        static constexpr ArgumentsReturn<I...> eval(std::index_sequence<I...>) noexcept
         {
             return ArgumentsReturn<I...>{};
         }

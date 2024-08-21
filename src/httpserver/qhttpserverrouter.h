@@ -74,9 +74,9 @@ public:
                                            QHttpServerResponder &responder) const;
 
 private:
-    template<typename ViewTraits, int ... Idx>
+    template<typename ViewTraits, size_t ... Idx>
     bool addRuleHelper(std::unique_ptr<QHttpServerRouterRule> rule,
-                       QtPrivate::IndexesList<Idx...>)
+                       std::index_sequence<Idx...>)
     {
         return addRuleImpl(std::move(rule), {ViewTraits::Arguments::template metaType<Idx>()...});
     }
@@ -97,10 +97,10 @@ private:
         };
     }
 
-    template<typename ViewHandler, typename ViewTraits, int... Cx>
+    template<typename ViewHandler, typename ViewTraits, size_t... Cx>
     typename ViewTraits::BindableType bindCapturedImpl(ViewHandler &&handler,
                                                        const QRegularExpressionMatch &match,
-                                                       QtPrivate::IndexesList<Cx...>) const
+                                                       std::index_sequence<Cx...>) const
     {
         return bind_front(
                 std::forward<ViewHandler>(handler),

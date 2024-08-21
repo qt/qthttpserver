@@ -24,7 +24,7 @@ struct FunctionTraitsHelper
     static constexpr const int ArgumentIndexMax = ArgumentCount - 1;
     using ReturnType = ReturnT;
 
-    template <int I>
+    template <size_t I>
     struct Arg {
         using Type = typename std::tuple_element<I, std::tuple<Args...>>::type;
 
@@ -66,7 +66,7 @@ struct CheckAny {
 template<typename ViewHandler, bool DisableStaticAssert>
 struct ViewTraits {
     using FTraits = FunctionTraits<ViewHandler>;
-    using ArgumentIndexes = typename Indexes<FTraits::ArgumentCount>::Value;
+    using ArgumentIndexes = typename std::make_index_sequence<FTraits::ArgumentCount>;
 
     template<int I, typename Special>
     struct SpecialHelper {
