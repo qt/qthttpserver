@@ -20,7 +20,6 @@ qt_internal_add_module(HttpServer
         qhttpserverrouterrule.cpp qhttpserverrouterrule.h qhttpserverrouterrule_p.h
         qhttpserverrouterviewtraits.h
         qhttpserverstream.cpp qhttpserverstream_p.h
-        qhttpserverviewtraits.h
         qhttpserverviewtraits_impl.h
         qhttpserverwebsocketupgraderesponse.cpp qhttpserverwebsocketupgraderesponse.h
         qthttpserverglobal.h

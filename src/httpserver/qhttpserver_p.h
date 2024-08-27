@@ -35,7 +35,12 @@ public:
     QHttpServerPrivate() = default;
 
     QHttpServerRouter router;
-    std::vector<QHttpServer::AfterRequestHandler> afterRequestHandlers;
+    struct AfterRequestHandler
+    {
+        QPointer<const QObject> context;
+        QtPrivate::SlotObjUniquePtr slotObject;
+    };
+    std::vector<AfterRequestHandler> afterRequestHandlers;
     struct MissingHandler
     {
         QPointer<const QObject> context = nullptr;

@@ -228,10 +228,13 @@ void QHttpServer::clearMissingHandler()
 /*!
     \internal
 */
-void QHttpServer::afterRequestImpl(AfterRequestHandler afterRequestHandler)
+void QHttpServer::addAfterRequestHandlerImpl(const QObject *context, QtPrivate::QSlotObjectBase *handler)
 {
     Q_D(QHttpServer);
-    d->afterRequestHandlers.push_back(std::move(afterRequestHandler));
+    auto slot = QtPrivate::SlotObjUniquePtr(handler);
+    if (!d->verifyThreadAffinity(context))
+        return;
+    d->afterRequestHandlers.push_back({context, std::move(slot)});
 }
 
 /*!
@@ -241,8 +244,13 @@ void QHttpServer::sendResponse(QHttpServerResponse &&response, const QHttpServer
                                QHttpServerResponder &&responder)
 {
     Q_D(QHttpServer);
-    for (auto afterRequestHandler : d->afterRequestHandlers)
-        response = afterRequestHandler(std::move(response), request);
+    for (auto &afterRequestHandler : d->afterRequestHandlers) {
+        if (afterRequestHandler.context && afterRequestHandler.slotObject &&
+            d->verifyThreadAffinity(afterRequestHandler.context)) {
+            void *args[] = { nullptr, const_cast<QHttpServerRequest *>(&request), &response };
+            afterRequestHandler.slotObject->call(const_cast<QObject *>(afterRequestHandler.context.data()), args);
+        }
+    }
     responder.sendResponse(response);
 }
 
