@@ -395,8 +395,8 @@ void tst_QHttpServer::initTestCase()
         responder.sendResponse(QHttpServerResponse("done"));
     });
 
-    httpserver.afterRequest([] (QHttpServerResponse &&resp) {
-        return std::move(resp);
+    httpserver.addAfterRequestHandler(this, [] (const QHttpServerRequest &, QHttpServerResponse &) {
+
     });
 
 #if QT_CONFIG(concurrent)
@@ -1021,27 +1021,24 @@ void tst_QHttpServer::afterRequest()
     QNetworkRequest request(urlBase.arg("/test-after-request"));
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
 
-    httpserver.afterRequest([] (QHttpServerResponse &&resp,
-                                const QHttpServerRequest &request) {
+    httpserver.addAfterRequestHandler(this, [] (const QHttpServerRequest &request,
+                                QHttpServerResponse &resp) {
         if (request.url().path() == "/test-after-request") {
             auto h = resp.headers();
             h.removeAll("Arguments-Order-1");
             h.append("Arguments-Order-1", "resp, request");
             resp.setHeaders(std::move(h));
         }
-
-        return std::move(resp);
     });
 
-    httpserver.afterRequest([] (const QHttpServerRequest &request,
-                                QHttpServerResponse &&resp) {
+    httpserver.addAfterRequestHandler(this, [] (const QHttpServerRequest &request,
+                                QHttpServerResponse &resp) {
         if (request.url().path() == "/test-after-request") {
             auto h = resp.headers();
             h.removeAll("Arguments-Order-2");
             h.append("Arguments-Order-2", "request, resp");
             resp.setHeaders(std::move(h));
         }
-        return std::move(resp);
     });
 
     std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(request));

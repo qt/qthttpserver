@@ -10,7 +10,6 @@
 #include <QtHttpServer/qhttpserverrouterrule.h>
 #include <QtHttpServer/qhttpserverresponse.h>
 #include <QtHttpServer/qhttpserverrouterviewtraits.h>
-#include <QtHttpServer/qhttpserverviewtraits.h>
 
 #if QT_CONFIG(future)
 #  include <QtCore/qfuture.h>
@@ -50,6 +49,12 @@ class Q_HTTPSERVER_EXPORT QHttpServer final : public QAbstractHttpServer
     using if_missinghandler_prototype_compatible = typename std::enable_if<
             QtPrivate::AreFunctionsCompatible<MissingHandlerPrototype, T>::value, bool>::type;
 
+    using AfterRequestPrototype = void (*)(const QHttpServerRequest &request,
+                                             QHttpServerResponse &responder);
+    template <typename T>
+    using if_after_request_prototype_compatible = typename std::enable_if<
+            QtPrivate::AreFunctionsCompatible<AfterRequestPrototype, T>::value, bool>::type;
+
 public:
     explicit QHttpServer(QObject *parent = nullptr);
     ~QHttpServer() override;
@@ -75,15 +80,6 @@ public:
         return routeImpl<Rule, ViewHandler, ViewTraits>(pathPattern, method, std::forward<ViewHandler>(viewHandler));
     }
 
-    template<typename ViewHandler>
-    void afterRequest(ViewHandler &&viewHandler)
-    {
-        using ViewTraits = QHttpServerAfterRequestViewTraits<ViewHandler>;
-        static_assert(ViewTraits::Arguments::StaticAssert,
-                      "ViewHandler arguments are in the wrong order or not supported");
-        afterRequestHelper<ViewTraits, ViewHandler>(std::move(viewHandler));
-    }
-
     template <typename Handler, if_missinghandler_prototype_compatible<Handler> = true>
     void setMissingHandler(const typename QtPrivate::ContextTypeForFunctor<Handler>::ContextType *context,
                            Handler &&handler)
@@ -93,39 +89,21 @@ public:
                                   std::forward<Handler>(handler)));
     }
 
+    template <typename Handler, if_after_request_prototype_compatible<Handler> = true>
+    void addAfterRequestHandler(const typename QtPrivate::ContextTypeForFunctor<Handler>::ContextType *context,
+                                Handler &&handler)
+    {
+        addAfterRequestHandlerImpl(context,
+                                   QtPrivate::makeCallableObject<AfterRequestPrototype>(
+                                   std::forward<Handler>(handler)));
+    }
+
     void clearMissingHandler();
 
 private:
     void setMissingHandlerImpl(const QObject *context, QtPrivate::QSlotObjectBase *handler);
-    using AfterRequestHandler =
-        std::function<QHttpServerResponse(QHttpServerResponse &&response,
-                      const QHttpServerRequest &request)>;
 
-    template<typename ViewTraits, typename ViewHandler>
-    void afterRequestHelper(ViewHandler &&viewHandler) {
-        auto handler = [viewHandler](QHttpServerResponse &&resp,
-                                     const QHttpServerRequest &request) {
-            if constexpr (ViewTraits::Arguments::Last::IsRequest::Value) {
-                if constexpr (ViewTraits::Arguments::Count == 2)
-                    return viewHandler(std::move(resp), request);
-                else
-                    static_assert(dependent_false_v<ViewTraits>);
-            } else if constexpr (ViewTraits::Arguments::Last::IsResponse::Value) {
-                if constexpr (ViewTraits::Arguments::Count == 1)
-                    return viewHandler(std::move(resp));
-                else if constexpr (ViewTraits::Arguments::Count == 2)
-                    return viewHandler(request, std::move(resp));
-                else
-                    static_assert(dependent_false_v<ViewTraits>);
-            } else {
-                static_assert(dependent_false_v<ViewTraits>);
-            }
-        };
-
-        afterRequestImpl(std::move(handler));
-    }
-
-    void afterRequestImpl(AfterRequestHandler afterRequestHandler);
+    void addAfterRequestHandlerImpl(const QObject *context, QtPrivate::QSlotObjectBase *handler);
 
     template<typename ViewHandler, typename ViewTraits>
     auto createRouteHandler(ViewHandler &&viewHandler)

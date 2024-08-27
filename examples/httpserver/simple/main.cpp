@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
     });
 
     //! [Using afterRequest()]
-    httpServer.afterRequest([](QHttpServerResponse &&resp) {
+    httpServer.addAfterRequestHandler(&httpServer, [](const QHttpServerRequest &, QHttpServerResponse &resp) {
         auto h = resp.headers();
         h.append(QHttpHeaders::WellKnownHeader::Server, "Qt HTTP Server");
         resp.setHeaders(std::move(h));
