@@ -58,7 +58,12 @@ public:
 
 #if defined(QT_WEBSOCKETS_LIB)
     mutable bool handlingWebSocketUpgrade = false;
-    std::vector<QtPrivate::SlotObjUniquePtr> webSocketUpgradeVerifiers;
+    struct WebSocketUpgradeVerifier
+    {
+        QPointer<const QObject> context;
+        QtPrivate::SlotObjUniquePtr slotObject;
+    };
+    std::vector<WebSocketUpgradeVerifier> webSocketUpgradeVerifiers;
 #endif // defined(QT_WEBSOCKETS_LIB)
 #if QT_CONFIG(ssl)
     QHttp2Configuration h2Configuration;

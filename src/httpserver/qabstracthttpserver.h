@@ -66,18 +66,22 @@ private:
             QtPrivate::AreFunctionsCompatible<WebSocketUpgradeVerifierPrototype, T>::value,
             bool>::type;
 
-    void registerWebSocketUpgradeVerifierImpl(QtPrivate::QSlotObjectBase *slotObjRaw);
+    void addWebSocketUpgradeVerifierImpl(const QObject *context,
+                                         QtPrivate::QSlotObjectBase *slotObjRaw);
 
 public:
     bool hasPendingWebSocketConnections() const;
     std::unique_ptr<QWebSocket> nextPendingWebSocketConnection();
 
-    template <typename Functor, if_compatible_callable<Functor> = true>
-    void registerWebSocketUpgradeVerifier(Functor &&func)
+    template <typename Handler, if_compatible_callable<Handler> = true>
+    void addWebSocketUpgradeVerifier(
+            const typename QtPrivate::ContextTypeForFunctor<Handler>::ContextType *context,
+            Handler &&func)
     {
-        registerWebSocketUpgradeVerifierImpl(
+        addWebSocketUpgradeVerifierImpl(
+                context,
                 QtPrivate::makeCallableObject<WebSocketUpgradeVerifierPrototype>(
-                        std::forward<Functor>(func)));
+                        std::forward<Handler>(func)));
     }
 
 private:
