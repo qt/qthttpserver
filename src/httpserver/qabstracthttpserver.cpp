@@ -260,7 +260,7 @@ QList<QLocalServer *> QAbstractHttpServer::localServers() const
     available.
 
     \sa hasPendingWebSocketConnections(), nextPendingWebSocketConnection(),
-    registerWebSocketUpgradeVerifier()
+    addWebSocketUpgradeVerifier()
 */
 
 /*!
@@ -268,7 +268,7 @@ QList<QLocalServer *> QAbstractHttpServer::localServers() const
     otherwise returns \c false.
 
     \sa newWebSocketConnection(), nextPendingWebSocketConnection(),
-    registerWebSocketUpgradeVerifier()
+    addWebSocketUpgradeVerifier()
 */
 bool QAbstractHttpServer::hasPendingWebSocketConnections() const
 {
@@ -285,7 +285,7 @@ bool QAbstractHttpServer::hasPendingWebSocketConnections() const
     thread.
 
     \sa newWebSocketConnection(), hasPendingWebSocketConnections(),
-    registerWebSocketUpgradeVerifier()
+    addWebSocketUpgradeVerifier()
 */
 std::unique_ptr<QWebSocket> QAbstractHttpServer::nextPendingWebSocketConnection()
 {
@@ -302,25 +302,28 @@ QAbstractHttpServer::verifyWebSocketUpgrade(const QHttpServerRequest &request) c
     Q_D(const QAbstractHttpServer);
     QScopedValueRollback guard(d->handlingWebSocketUpgrade, true);
     for (auto &verifier : d->webSocketUpgradeVerifiers) {
-        auto response = QHttpServerWebSocketUpgradeResponse::passToNext();
-        void *args[] = { &response, const_cast<QHttpServerRequest *>(&request) };
-        verifier->call(nullptr, args);
-        if (response.type() != QHttpServerWebSocketUpgradeResponse::ResponseType::PassToNext)
-            return response;
+        if (verifier.context && verifier.slotObject && d->verifyThreadAffinity(verifier.context)) {
+            auto response = QHttpServerWebSocketUpgradeResponse::passToNext();
+            void *args[] = { &response, const_cast<QHttpServerRequest *>(&request) };
+            verifier.slotObject->call(const_cast<QObject *>(verifier.context.data()), args);
+            if (response.type() != QHttpServerWebSocketUpgradeResponse::ResponseType::PassToNext)
+                return response;
+        }
     }
     return QHttpServerWebSocketUpgradeResponse::passToNext();
 }
 
 /*!
-    \fn template <typename Functor, QAbstractHttpServer::if_compatible_callable<Functor>> void QAbstractHttpServer::registerWebSocketUpgradeVerifier(Functor &&func)
+    \fn template <typename Handler, QAbstractHttpServer::if_compatible_callable<Handler> = true> void QAbstractHttpServer::addWebSocketUpgradeVerifier(const typename QtPrivate::ContextTypeForFunctor<Handler>::ContextType *context, Handler &&func)
 
-    Register a callback function \a func that verifies incoming
-    WebSocket upgrades. Upgrade attempts succeed if at least one of the
-    registered callback functions returns \c Accept and a handler returning
-    \c Deny has not been executed before it. If no handlers are registered
-    or all return \c PassToNext, missingHandler() is called. The callback
-    functions are executed in the order they are registered. The callbacks
-    cannot call registerWebSocketUpgradeVerifier().
+    Adds a callback function \a func that verifies incoming WebSocket
+    upgrades using the context object \a context. Upgrade attempts
+    succeed if at least one of the registered callback functions returns
+    \c Accept and a handler returning \c Deny has not been executed before
+    it. If no handlers are registered or all return \c PassToNext,
+    missingHandler() is called. The callback functions are executed in the
+    order they are registered. The callbacks cannot call
+    registerWebSocketUpgradeVerifier().
 
     \note The WebSocket upgrades fail if no callbacks has been registered.
     \note This overload participates in overload resolution only if the
@@ -329,7 +332,7 @@ QAbstractHttpServer::verifyWebSocketUpgrade(const QHttpServerRequest &request) c
 
     \code
     server.registerWebSocketUpgradeVerifier(
-            [](const QHttpServerRequest &request) {
+            &server, [](const QHttpServerRequest &request) {
                 if (request.url().path() == "/allowed"_L1)
                     return QHttpServerWebSocketUpgradeResponse::accept();
                 else
@@ -337,6 +340,7 @@ QAbstractHttpServer::verifyWebSocketUpgrade(const QHttpServerRequest &request) c
             });
     \endcode
 
+    \since 6.8
     \sa QHttpServerRequest, QHttpServerWebSocketUpgradeResponse, hasPendingWebSocketConnections(),
     nextPendingWebSocketConnection(), newWebSocketConnection(), missingHandler()
 */
@@ -344,8 +348,8 @@ QAbstractHttpServer::verifyWebSocketUpgrade(const QHttpServerRequest &request) c
 /*!
     \internal
 */
-void QAbstractHttpServer::registerWebSocketUpgradeVerifierImpl(
-        QtPrivate::QSlotObjectBase *slotObjRaw)
+void QAbstractHttpServer::addWebSocketUpgradeVerifierImpl(const QObject *context,
+                                                          QtPrivate::QSlotObjectBase *slotObjRaw)
 {
     QtPrivate::SlotObjUniquePtr slotObj{slotObjRaw}; // adopts
     Q_ASSERT(slotObj);
@@ -354,7 +358,7 @@ void QAbstractHttpServer::registerWebSocketUpgradeVerifierImpl(
         qWarning("Registering WebSocket upgrade verifiers while handling them is not allowed");
         return;
     }
-    d->webSocketUpgradeVerifiers.push_back(std::move(slotObj));
+    d->webSocketUpgradeVerifiers.push_back({context, std::move(slotObj)});
 }
 
 #endif

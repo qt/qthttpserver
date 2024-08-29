@@ -22,7 +22,7 @@ using namespace Qt::Literals::StringLiterals;
     If all handlers return \l PassToNext or none exist,
     QAbstractHttpServer::missingHandler() is executed.
 
-    \sa QAbstractHttpServer::registerWebSocketUpgradeVerifier(),
+    \sa QAbstractHttpServer::addWebSocketUpgradeVerifier(),
     QAbstractHttpServer::missingHandler()
 */
 
@@ -34,7 +34,7 @@ using namespace Qt::Literals::StringLiterals;
     \value Accept       Accept the WebSocket upgrade request.
     \value Deny         Deny the WebSocket upgrade request.
     \value PassToNext   Pass the Websocket upgrade decision to the next verifier if any.
-    \sa QAbstractHttpServer::registerWebSocketUpgradeVerifier(), type()
+    \sa QAbstractHttpServer::addWebSocketUpgradeVerifier(), type()
 */
 
 /*!

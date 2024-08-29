@@ -145,6 +145,7 @@ private slots:
     void websocket();
     void verifyWebSocketUpgrades_data();
     void verifyWebSocketUpgrades();
+    void verifyWebSocketUpgradesGoesOutOfScope();
     void servers();
     void qtbug82053();
     void http2handshake();
@@ -269,8 +270,8 @@ void tst_QAbstractHttpServer::websocket()
             Q_ASSERT(false);
         }
     } server;
-    server.registerWebSocketUpgradeVerifier( // Accept all websocket connections
-            [](const QHttpServerRequest &request) {
+    server.addWebSocketUpgradeVerifier( // Accept all websocket connections
+            &server, [](const QHttpServerRequest &request) {
                 Q_UNUSED(request);
                 return QHttpServerWebSocketUpgradeResponse::accept();
             });
@@ -344,13 +345,13 @@ void tst_QAbstractHttpServer::verifyWebSocketUpgrades()
         }
     } server(missingHandlerExpected);
 
-    server.registerWebSocketUpgradeVerifier([](const QHttpServerRequest &request) {
+    server.addWebSocketUpgradeVerifier(&server, [](const QHttpServerRequest &request) {
         if (request.url().path() == "/allowed"_L1)
             return QHttpServerWebSocketUpgradeResponse::accept();
         else
             return QHttpServerWebSocketUpgradeResponse::passToNext();
     });
-    server.registerWebSocketUpgradeVerifier([](const QHttpServerRequest &request) {
+    server.addWebSocketUpgradeVerifier(&server, [](const QHttpServerRequest &request) {
         // Explicitly deny
         if (request.url().path() == "/denied"_L1)
             return QHttpServerWebSocketUpgradeResponse::deny();
@@ -358,7 +359,7 @@ void tst_QAbstractHttpServer::verifyWebSocketUpgrades()
             return QHttpServerWebSocketUpgradeResponse::passToNext();
     });
 #if QT_CONFIG(ssl)
-    server.registerWebSocketUpgradeVerifier([](const QHttpServerRequest &request) {
+    server.addWebSocketUpgradeVerifier(&server, [](const QHttpServerRequest &request) {
         if (request.url().path() == "/ssl"_L1) {
             // The QSslConfiguration of a request is null if connection is not using SSL
             if (request.sslConfiguration().isNull())
@@ -421,6 +422,77 @@ void tst_QAbstractHttpServer::verifyWebSocketUpgrades()
     } else {
         QTest::qWait(useSslPort ? 2s : 1s);
         QCOMPARE(newConnectionSpy.size(), 0);
+    }
+#endif // defined(QT_WEBSOCKETS_LIB)
+}
+
+void tst_QAbstractHttpServer::verifyWebSocketUpgradesGoesOutOfScope()
+{
+#if defined(QT_WEBSOCKETS_LIB)
+    const QString url("ws://localhost:%1/allowed");
+    int port = 0;
+
+    struct HttpServer : QAbstractHttpServer
+    {
+        bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &responder) override
+        {
+            auto _responder = std::move(responder);
+            return true;
+        }
+        bool missingHandlerExpected = false;
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override
+        {
+            Q_ASSERT(missingHandlerExpected);
+        }
+
+    } server;
+
+    auto makeWebSocket = [&, this]() mutable {
+        auto s = std::make_unique<QWebSocket>(QString::fromUtf8(""),
+                                              QWebSocketProtocol::VersionLatest, this);
+        const QUrl qurl(url.arg(port));
+
+        s->open(qurl);
+        return s;
+    };
+
+    QTcpServer tcpServer;
+    tcpServer.listen();
+    server.bind(&tcpServer);
+    port = tcpServer.serverPort();
+
+    { // Verifier is in scope
+        struct WebSocketVerifier : public QObject
+        {
+            QHttpServerWebSocketUpgradeResponse verify(const QHttpServerRequest &request)
+            {
+                if (request.url().path() == "/allowed"_L1)
+                    return QHttpServerWebSocketUpgradeResponse::accept();
+                else
+                    return QHttpServerWebSocketUpgradeResponse::passToNext();
+            }
+        } verifier;
+
+        server.addWebSocketUpgradeVerifier(&verifier, &WebSocketVerifier::verify);
+
+        auto s1 = makeWebSocket();
+        auto s2 = makeWebSocket();
+
+        QSignalSpy newConnectionSpy(&server, &HttpServer::newWebSocketConnection);
+        QTRY_COMPARE(newConnectionSpy.size(), 2); // Success
+        server.nextPendingWebSocketConnection();
+        server.nextPendingWebSocketConnection();
+    }
+
+    { // Verifier is out of scope
+        server.missingHandlerExpected = true;
+
+        auto s1 = makeWebSocket();
+        auto s2 = makeWebSocket();
+
+        QSignalSpy newConnectionSpy(&server, &HttpServer::newWebSocketConnection);
+        QTest::qWait(2s);
+        QCOMPARE(newConnectionSpy.size(), 0); // Failure
     }
 #endif // defined(QT_WEBSOCKETS_LIB)
 }
