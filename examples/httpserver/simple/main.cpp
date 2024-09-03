@@ -109,7 +109,6 @@ int main(int argc, char *argv[])
         auto h = resp.headers();
         h.append(QHttpHeaders::WellKnownHeader::Server, "Qt HTTP Server");
         resp.setHeaders(std::move(h));
-        return std::move(resp);
     });
     //! [Using afterRequest()]
 
