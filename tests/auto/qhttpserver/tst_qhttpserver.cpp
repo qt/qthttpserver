@@ -236,6 +236,9 @@ private slots:
     void missingHandler();
     void pipelinedFutureRequests();
     void requestNotOverwritten();
+    void parallelFutureRequests();
+    void slowReader();
+    void concurrentRequestBack();
     void multipleResponses();
     void contextObjectInOtherThreadWarning();
     void keepAliveTimeout();
@@ -255,7 +258,8 @@ private:
     QHttpServer httpserver;
     QString clearUrlBase;
     QString sslUrlBase;
-    QNetworkAccessManager networkAccessManager;
+    std::array<QNetworkAccessManager, 10> networkAccessManagers;
+    QNetworkAccessManager &networkAccessManager = networkAccessManagers[0];
     ReplyObject replyObject;
     std::optional<QSemaphore> readySem, routeSem;
 };
@@ -272,7 +276,12 @@ static void reqAndRespHandler(QHttpServerResponder &resp, const QHttpServerReque
     resp.write(req.body(), "text/html"_ba);
 }
 
-static void testHandler(QHttpServerResponder &responder)
+static void respHandler(QHttpServerResponder &responder)
+{
+    responder.write("test msg", "text/html"_ba);
+}
+
+static void respRvalueHandler(QHttpServerResponder &&responder)
 {
     responder.write("test msg", "text/html"_ba);
 }
@@ -309,16 +318,18 @@ class SequentialIODevice : public QIODevice
     Q_OBJECT
 
 public:
-    SequentialIODevice() : SequentialIODevice(QByteArray(), 0, 1) { }
+    SequentialIODevice() : SequentialIODevice(QByteArray(), 0, 1, 50ms) { }
 
-    SequentialIODevice(const QByteArray &data, int times, int repetitions)
+    SequentialIODevice(const QByteArray &data, int times, int repetitions,
+                       std::chrono::milliseconds readInterval)
         : message(data.repeated(repetitions)), times(times)
     {
         setOpenMode(QIODeviceBase::ReadWrite);
-        timer.callOnTimeout(this, &SequentialIODevice::onTimeout);
-        timer.setSingleShot(false);
-        timer.setInterval(50ms);
-        timer.start();
+        timer = new QTimer(this);
+        timer->callOnTimeout(this, &SequentialIODevice::onTimeout);
+        timer->setSingleShot(false);
+        timer->setInterval(readInterval);
+        timer->start();
     }
 
     bool isSequential() const override { return true; }
@@ -362,14 +373,14 @@ public:
             write(message);
 
         if (--times <= 0) {
-            timer.stop();
+            timer->stop();
             finishedReading = true;
             emit readChannelFinished();
         }
     }
 
 private:
-    QTimer timer;
+    QTimer *timer;
     QByteArray message;
     QByteArray buffer;
     qsizetype readPos = 0;
@@ -392,13 +403,17 @@ void tst_QHttpServer::initTestCase()
 
     httpserver.route("/req-and-resp", this, reqAndRespHandler);
 
-    httpserver.route("/resp-and-req", this, [] (const QHttpServerRequest &req,
-                                          QHttpServerResponder &resp) {
+    httpserver.route("/resp-and-req", this,
+                     [](QHttpServerResponder &resp,
+                        const QHttpServerRequest &req) {
         resp.write(req.body(), "text/html"_ba);
     });
 
-    auto testHandlerPtr = testHandler;
-    httpserver.route("/test", this, testHandlerPtr);
+    auto respHandlerPtr = respHandler;
+    httpserver.route("/resp", this, respHandlerPtr);
+
+    auto respRvalueHandlerPtr = respRvalueHandler;
+    httpserver.route("/resp2", this, respRvalueHandlerPtr);
 
     auto l = []() -> QString { return "Hello world get"; };
 
@@ -590,6 +605,59 @@ void tst_QHttpServer::initTestCase()
                     response.setHeaders(std::move(h));
                 }
             });
+
+    httpserver.route("/sleepingfuture/<arg>", this, [](int ms, QHttpServerResponder &&responder) {
+        // Use shared ptr to responder to pass it by value instead of moving the responder into
+        // the lambda, which would force the lambda to be mutable.
+        return QtConcurrent::run(
+                [=, r = std::make_shared<QHttpServerResponder>(std::move(responder))]() {
+                    QThread::msleep(ms);
+                    QHttpHeaders headers;
+                    headers.append(QHttpHeaders::WellKnownHeader::ContentType, "text/plain"_L1);
+                    r->write(u"%1"_s.arg(ms).toUtf8(), headers);
+                });
+    });
+
+    httpserver.route(
+            "/slowreader/<arg>/<arg>", this,
+            [](const QString message, int repeats, QHttpServerResponder &&responder) {
+                return QtConcurrent::run(
+                        [=, r = std::make_shared<QHttpServerResponder>(std::move(responder))] {
+                            using namespace std::chrono_literals;
+                            QByteArray msg = message.toUtf8();
+                            QHttpHeaders headers;
+                            headers.append(QHttpHeaders::WellKnownHeader::ContentType,
+                                           "text/plain"_L1);
+                            auto reader = new SequentialIODevice(msg, repeats, 1, 100ms);
+                            r->write(reader, headers);
+                        });
+            });
+
+    httpserver.route("/concurrent-request-back", this,
+                     [](QHttpServerRequest request, QHttpServerResponder &&responder) {
+                         return QtConcurrent::run([request,
+                                                   r = std::make_shared<QHttpServerResponder>(
+                                                           std::move(responder))] {
+                             r->write(request.body(), "text/plain"_ba);
+                         });
+                     });
+
+httpserver.route("/concurrent-request-back2", this,
+                     [](QHttpServerResponder &&responder, QHttpServerRequest request) {
+                         return QtConcurrent::run([request,
+                                                   r = std::make_shared<QHttpServerResponder>(
+                                                           std::move(responder))] {
+                             r->write(request.body(), "text/plain"_ba);
+                         });
+                     });
+
+    httpserver.route("/concurrent-body-back-delay/<arg>", this,
+                     [](int ms, QHttpServerRequest request) {
+                         return QtConcurrent::run([=]() -> QHttpServerResponse {
+                             QThread::msleep(ms);
+                             return request.body();
+                         });
+                     });
 #endif
 
 #if QT_CONFIG(localserver)
@@ -634,21 +702,24 @@ void tst_QHttpServer::initTestCase()
             QSslError(QSslError::HostNameMismatch, QSslCertificate(g_certificate)),
         };
 
-        connect(&networkAccessManager, &QNetworkAccessManager::sslErrors, this,
-                [expectedSslErrors](QNetworkReply *reply, const QList<QSslError> &errors) {
-                    for (const auto &error : errors) {
-                        if (!expectedSslErrors.contains(error)) {
-                            qCritical()
-                                    << "Got unexpected ssl error:" << error << error.certificate();
+        for (size_t i = 0; i < networkAccessManagers.size(); ++i) {
+            connect(&networkAccessManagers[i], &QNetworkAccessManager::sslErrors, this,
+                    [expectedSslErrors](QNetworkReply *reply, const QList<QSslError> &errors) {
+                        for (const auto &error : errors) {
+                            if (!expectedSslErrors.contains(error)) {
+                                qCritical() << "Got unexpected ssl error:" << error
+                                            << error.certificate();
+                            }
                         }
-                    }
-                    reply->ignoreSslErrors(expectedSslErrors);
-                });
+                        reply->ignoreSslErrors(expectedSslErrors);
+                    });
+        }
     }
 #endif
     httpserver.route("/sequential-iodevice/<arg>/<arg>/<arg>", this,
                      [](QString message, int times, int repeats, QHttpServerResponder &responder) {
-                         auto device = new SequentialIODevice(message.toUtf8(), times, repeats);
+                         auto device = new SequentialIODevice(message.toUtf8(), times, repeats,
+                                                              50ms);
                          responder.write(device, "text/plain");
                      });
 
@@ -656,6 +727,107 @@ void tst_QHttpServer::initTestCase()
         auto device = new SequentialIODevice;
         responder.write(device, "text/plain");
     });
+
+#ifdef COMPILE_ROUTES_THAT_STATIC_ASSERT
+    // Every one of the QHttpServer::route() calls below static_assert
+    // because they should not be supported. To see the static_assert messages,
+    // thereby making compilation fail, define COMPILE_ROUTES_THAT_STATIC_ASSERT.
+    // The comments in the lambdas are the first resulting static_assert messages.
+
+    httpserver.route("/neither-responder-nor-response/", this, []() {
+        // Handlers without responder argument must have return value
+        return;
+    });
+
+    httpserver.route("/simple-and-special-switched-order/<arg>", this,
+                     [](QHttpServerRequest request, int ms) {
+                         // Request or responder must be the last argument
+                         Q_UNUSED(ms);
+                         Q_UNUSED(request);
+                         return QHttpServerResponse::StatusCode::InternalServerError;
+                     });
+
+    httpserver.route("/simple-and-special-switched-order2/<arg>/<arg>", this,
+                     [](QHttpServerRequest request, int ms, int repeats) {
+                         // QHttpServerRequest or QHttpServerResponder can only be one of the two
+                         // last arguments
+                         Q_UNUSED(ms);
+                         Q_UNUSED(repeats);
+                         Q_UNUSED(request);
+                         return QHttpServerResponse::StatusCode::InternalServerError;
+                     });
+
+    httpserver.route("/two-requests/", this,
+                     [](QHttpServerRequest request1, QHttpServerRequest request2) {
+                         // Cannot have multiple request arguments
+                         Q_UNUSED(request1);
+                         Q_UNUSED(request2);
+                         return QHttpServerResponse::StatusCode::InternalServerError;
+                     });
+
+    httpserver.route("/two-responders/", this,
+                     [](QHttpServerResponder &responder1, QHttpServerResponder &responder2) {
+                         // Cannot have multiple responder arguments
+                         Q_UNUSED(responder1);
+                         Q_UNUSED(responder2);
+                         return QHttpServerResponse::StatusCode::InternalServerError;
+                     });
+
+    httpserver.route("/three-specials/", this,
+                     [](QHttpServerRequest request1, QHttpServerRequest request2,
+                        QHttpServerResponder &&responder) {
+                         // QHttpServerRequest or QHttpServerResponder can only be one of the two
+                         // last arguments
+                         Q_UNUSED(request1);
+                         Q_UNUSED(request2);
+                         responder.write(QHttpServerResponse::StatusCode::InternalServerError);
+                     });
+
+    httpserver.route("/responder-and-response/", this, [](QHttpServerResponder &responder) {
+        // Depending on whether future support is enabled:
+        // Either: Handlers with responder argument must have void or QFuture<void> return type
+        // Or: Handlers with responder argument must have void return type
+        Q_UNUSED(responder);
+        return QHttpServerResponse::StatusCode::InternalServerError;
+    });
+
+#if QT_CONFIG(concurrent)
+    httpserver.route("/future-request-const-ref/", this,
+                     [](const QHttpServerRequest &request, QHttpServerResponder &&responder) {
+                         // Request argument must be captured by value when returning QFuture<void>
+                         return QtConcurrent::run([=, r = std::move(responder)]() mutable {
+                             Q_UNUSED(request);
+                             r.write(QHttpServerResponse::StatusCode::InternalServerError);
+                         });
+                     });
+
+    httpserver.route("/responder-argument-returning-future-response/", this,
+                     [](QHttpServerRequest request, QHttpServerResponder &&responder) {
+                         // Handlers with responder argument must have void or QFuture<void> return
+                         // type
+                         Q_UNUSED(responder);
+                         return QtConcurrent::run([request]() -> QHttpServerResponse {
+                             Q_UNUSED(request);
+                             return QHttpServerResponse::StatusCode::InternalServerError;
+                         });
+                     });
+
+    httpserver.route("/future-responder-lvalue-ref/", this, [](QHttpServerResponder &responder) {
+        // Responder argument must be captured as Rvalue reference when returning QFuture<void>
+        return QtConcurrent::run([r = std::move(responder)]() mutable {
+            r.write(QHttpServerResponse::StatusCode::InternalServerError);
+        });
+    });
+
+    httpserver.route("/request-returning-future-void/", this, [](QHttpServerRequest request) {
+        return QtConcurrent::run([=]() {
+            // Handlers without responder argument must have return value
+            Q_UNUSED(request);
+            return;
+        });
+    });
+#endif
+#endif
 }
 
 void tst_QHttpServer::init()
@@ -681,7 +853,13 @@ void tst_QHttpServer::routeGet_data()
         << "Hello world get";
 
     QTest::addRow("test msg")
-        << "/test"
+        << "/resp"
+        << 200
+        << "text/html"
+        << "test msg";
+
+    QTest::addRow("test msg2")
+        << "/resp2"
         << 200
         << "text/html"
         << "test msg";
@@ -1546,6 +1724,89 @@ void tst_QHttpServer::requestNotOverwritten()
 #endif // QT_CONFIG(concurrent)
 }
 
+void tst_QHttpServer::parallelFutureRequests()
+{
+#if QT_CONFIG(concurrent)
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+
+    constexpr qsizetype NumberOfTasks = 10;
+    std::array<QNetworkReply *, NumberOfTasks> replies;
+    QThreadPool::globalInstance()->setMaxThreadCount(NumberOfTasks);
+    QCOMPARE(networkAccessManagers.size(), NumberOfTasks);
+    for (qsizetype i = 0; i < NumberOfTasks; ++i) {
+        int delayMs = NumberOfTasks - i;
+        QString path = u"/sleepingfuture/%1"_s.arg(delayMs);
+        QNetworkRequest req(QUrl(urlBase.arg(path)));
+        req.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
+        req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+        replies[i] = networkAccessManagers[i].get(req);
+    }
+
+    for (qint64 i = 0; i < NumberOfTasks; i++) {
+        checkReply(replies[i], QString::number(NumberOfTasks - i));
+    }
+#else
+    QSKIP("QtConcurrent is not available, skipping test");
+#endif // QT_CONFIG(concurrent)
+}
+
+void tst_QHttpServer::slowReader()
+{
+#if QT_CONFIG(concurrent)
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    constexpr qsizetype NumberOfTasks = 10;
+    constexpr qsizetype NumberOfRepeats = 5;
+    std::array<QNetworkReply *, NumberOfTasks> replies;
+    QThreadPool::globalInstance()->setMaxThreadCount(NumberOfTasks);
+    for (qsizetype i = 0; i < NumberOfTasks; ++i) {
+        QString path = u"/slowreader/Message%1/%2"_s.arg(i).arg(NumberOfRepeats);
+        QNetworkRequest req(QUrl(urlBase.arg(path)));
+        req.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
+        req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+        replies[i] = networkAccessManager.get(req);
+    }
+
+    for (qint64 i = 0; i < NumberOfTasks; i++) {
+        checkReply(replies[i], u"Message%1"_s.arg(i).repeated(NumberOfRepeats));
+    }
+#else
+    QSKIP("QtConcurrent is not available, skipping test");
+#endif // QT_CONFIG(concurrent)
+}
+
+void tst_QHttpServer::concurrentRequestBack()
+{
+#if QT_CONFIG(concurrent)
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+
+    constexpr qsizetype NumberOfTasks = 10;
+    std::array<QNetworkReply *, NumberOfTasks> replies;
+    QThreadPool::globalInstance()->setMaxThreadCount(NumberOfTasks);
+    for (qsizetype i = 0; i < NumberOfTasks; ++i) {
+        auto url = i % 2 == 0 ? "/concurrent-request-back"_L1 : "/concurrent-request-back2"_L1;
+        QNetworkRequest req(QUrl(urlBase.arg(url)));
+        req.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
+        req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+        req.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain"_ba);
+        QByteArray body = "RepeatMe"_ba.repeated(i + 1);
+        replies[i] = networkAccessManager.post(req, body);
+    }
+
+    for (qint64 i = 0; i < NumberOfTasks; i++) {
+        QByteArray body = "RepeatMe"_ba.repeated(i + 1);
+        checkReply(replies[i], QString::fromUtf8(body));
+    }
+#else
+    QSKIP("QtConcurrent is not available, skipping test");
+#endif // QT_CONFIG(concurrent)
+}
+
 void tst_QHttpServer::multipleResponses()
 {
     QFETCH_GLOBAL(bool, useSsl);
@@ -1594,7 +1855,7 @@ void tst_QHttpServer::localSocket()
 
         qApp->processEvents();
 
-        socket.write("GET /test HTTP/1.1\r\n"
+        socket.write("GET /resp HTTP/1.1\r\n"
                      "Host: local\r\n"
                      "User-Agent: curl/7.88.1\r\n"
                      "Accept: */*\r\n\r\n");

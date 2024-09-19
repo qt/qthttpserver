@@ -198,29 +198,149 @@ private:
     void responseImpl(T &boundViewHandler, const QHttpServerRequest &request,
                       QHttpServerResponder &&responder)
     {
+#if !QT_CONFIG(future)
         if constexpr (ViewTraits::Arguments::SpecialsCount == 0) {
+            // No specials, only capturables
+            static_assert(!std::is_void_v<typename ViewTraits::ReturnType>,
+                          "Handlers without responder argument must have return value");
             ResponseType<typename ViewTraits::ReturnType> response(boundViewHandler());
             sendResponse(std::move(response), request, std::move(responder));
         } else if constexpr (ViewTraits::Arguments::SpecialsCount == 1) {
+            // One special
+            static_assert(ViewTraits::Arguments::Last::IsSpecial::Value,
+                          "Request or responder must be the last argument");
             if constexpr (ViewTraits::Arguments::Last::IsRequest::Value) {
+                // One special: A request
+                static_assert(!std::is_void_v<typename ViewTraits::ReturnType>,
+                              "Handlers without responder argument must have return value");
                 ResponseType<typename ViewTraits::ReturnType> response(boundViewHandler(request));
                 sendResponse(std::move(response), request, std::move(responder));
             } else {
-                static_assert(std::is_same_v<typename ViewTraits::ReturnType, void>,
-                    "Handlers with responder argument must have void return type.");
-                boundViewHandler(responder);
+                // One special: A responder
+                static_assert(std::is_void_v<typename ViewTraits::ReturnType>,
+                              "Handlers with responder argument must have void return type");
+                if constexpr (ViewTraits::Arguments::Last::IsResponderRvalue::Value)
+                    boundViewHandler(std::move(responder));
+                else
+                    boundViewHandler(responder);
             }
         } else if constexpr (ViewTraits::Arguments::SpecialsCount == 2) {
-            static_assert(std::is_same_v<typename ViewTraits::ReturnType, void>,
-                "Handlers with responder argument must have void return type.");
-            if constexpr (ViewTraits::Arguments::Last::IsRequest::Value) {
-                boundViewHandler(responder, request);
+            // Both specials: A request and a responder
+            static_assert(ViewTraits::Arguments::Last::IsSpecial::Value
+                                  && ViewTraits::Arguments::SecondLast::IsSpecial::Value,
+                          "The two specials must be the two last arguments");
+            static_assert(!(ViewTraits::Arguments::Last::IsRequest::Value
+                            && ViewTraits::Arguments::SecondLast::IsRequest::Value),
+                          "Cannot have multiple request arguments");
+            static_assert(!(ViewTraits::Arguments::Last::IsResponder::Value
+                            && ViewTraits::Arguments::SecondLast::IsResponder::Value),
+                          "Cannot have multiple responder arguments");
+            static_assert(std::is_void_v<typename ViewTraits::ReturnType>,
+                          "Handlers with a responder argument must have void return type");
+
+            if constexpr (ViewTraits::Arguments::Last::IsResponder::Value) {
+                // Both specials: Responder last
+                if constexpr (ViewTraits::Arguments::Last::IsResponderRvalue::Value)
+                    boundViewHandler(request, std::move(responder));
+                else
+                    boundViewHandler(request, responder);
             } else {
-                boundViewHandler(request, responder);
+                // Both specials: Request last
+                if constexpr (ViewTraits::Arguments::SecondLast::IsResponderRvalue::Value)
+                    boundViewHandler(std::move(responder), request);
+                else
+                    boundViewHandler(responder, request);
             }
         } else {
-            static_assert(dependent_false_v<ViewTraits>);
+            static_assert(dependent_false_v<ViewTraits>, "Handlers will accept up to two specials");
         }
+#else // QT_CONFIG(future)
+        constexpr bool returnsVoidOrFutureVoid =
+                std::disjunction_v<std::is_void<typename ViewTraits::ReturnType>,
+                                   std::is_same<typename ViewTraits::ReturnType, QFuture<void>>>;
+        if constexpr (ViewTraits::Arguments::SpecialsCount == 0) {
+            // No specials, only capturables
+            static_assert(!returnsVoidOrFutureVoid,
+                          "Handlers without responder argument must have return value");
+            ResponseType<typename ViewTraits::ReturnType> response(boundViewHandler());
+            sendResponse(std::move(response), request, std::move(responder));
+        } else if constexpr (ViewTraits::Arguments::SpecialsCount == 1) {
+            // One special
+            static_assert(ViewTraits::Arguments::Last::IsSpecial::Value,
+                          "Request or responder must be the last argument");
+            if constexpr (ViewTraits::Arguments::Last::IsRequest::Value) {
+                // One special: A request
+                static_assert(!returnsVoidOrFutureVoid,
+                              "Handlers without responder argument must have return value");
+                ResponseType<typename ViewTraits::ReturnType> response(boundViewHandler(request));
+                sendResponse(std::move(response), request, std::move(responder));
+            } else {
+                // One special: A responder
+                static_assert(
+                        returnsVoidOrFutureVoid,
+                        "Handlers with responder argument must have void or QFuture<void> return "
+                        "type");
+                if constexpr (std::is_same_v<typename ViewTraits::ReturnType, QFuture<void>>) {
+                    static_assert(ViewTraits::Arguments::Last::IsResponderRvalue::Value,
+                                  "Responder argument must be captured as Rvalue reference when "
+                                  "returning QFuture<void>");
+                    (void)boundViewHandler(std::move(responder));
+                } else if constexpr (ViewTraits::Arguments::Last::IsResponderRvalue::Value) {
+                    boundViewHandler(std::move(responder));
+                } else {
+                    boundViewHandler(responder);
+                }
+            }
+        } else if constexpr (ViewTraits::Arguments::SpecialsCount == 2) {
+            // Both specials: A request and a responder
+            static_assert(ViewTraits::Arguments::Last::IsSpecial::Value
+                                  && ViewTraits::Arguments::SecondLast::IsSpecial::Value,
+                          "The two specials must be the two last arguments");
+            static_assert(!(ViewTraits::Arguments::Last::IsRequest::Value
+                            && ViewTraits::Arguments::SecondLast::IsRequest::Value),
+                          "Cannot have multiple request arguments");
+            static_assert(!(ViewTraits::Arguments::Last::IsResponder::Value
+                            && ViewTraits::Arguments::SecondLast::IsResponder::Value),
+                          "Cannot have multiple responder arguments");
+            static_assert(returnsVoidOrFutureVoid,
+                          "Handlers with responder argument must have void or QFuture<void> "
+                          "return type");
+
+            if constexpr (ViewTraits::Arguments::Last::IsResponder::Value) {
+                // Both specials: Responder last
+                if constexpr (std::is_same_v<typename ViewTraits::ReturnType, QFuture<void>>) {
+                    static_assert(ViewTraits::Arguments::SecondLast::IsRequestValue::Value,
+                                  "Request argument must be passed by value when returning "
+                                  "QFuture<void>");
+                    static_assert(ViewTraits::Arguments::Last::IsResponderRvalue::Value,
+                                  "Responder argument must be captured as Rvalue reference when "
+                                  "returning QFuture<void>");
+                    (void)boundViewHandler(request, std::move(responder));
+                } else if constexpr (ViewTraits::Arguments::Last::IsResponderRvalue::Value) {
+                    boundViewHandler(request, std::move(responder));
+                } else {
+                    boundViewHandler(request, responder);
+                }
+            } else {
+                // Both specials: Request last
+                if constexpr (std::is_same_v<typename ViewTraits::ReturnType, QFuture<void>>) {
+                    static_assert(ViewTraits::Arguments::Last::IsRequestValue::Value,
+                                  "Request argument must be captured by value when returning "
+                                  "QFuture<void>");
+                    static_assert(ViewTraits::Arguments::SecondLast::IsResponderRvalue::Value,
+                                  "Responder argument must be captured as Rvalue reference when "
+                                  "returning QFuture<void>");
+                    (void)boundViewHandler(std::move(responder), request);
+                } else if constexpr (ViewTraits::Arguments::SecondLast::IsResponderRvalue::Value) {
+                    boundViewHandler(std::move(responder), request);
+                } else {
+                    boundViewHandler(responder, request);
+                }
+            }
+        } else {
+            static_assert(dependent_false_v<ViewTraits>, "Handlers will accept up to two specials");
+        }
+#endif
     }
 
     bool handleRequest(const QHttpServerRequest &request,
