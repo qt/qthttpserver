@@ -131,7 +131,9 @@ enum ServerType
 };
 
 static int port = 0;
+#if QT_CONFIG(ssl)
 static int sslPort = 0;
+#endif
 static QString local = u"tst_qhttpservermultithreaded_local"_s;
 // Simple HTTP 1.1 client
 class LocalHttpClient
