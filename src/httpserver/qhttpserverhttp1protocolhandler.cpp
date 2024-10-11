@@ -248,6 +248,10 @@ QHttpServerHttp1ProtocolHandler::QHttpServerHttp1ProtocolHandler(QAbstractHttpSe
 void QHttpServerHttp1ProtocolHandler::responderDestroyed()
 {
     Q_ASSERT(QThread::currentThread() == thread());
+    if (protocolChanged) {
+        deleteLater();
+        return;
+    }
     Q_ASSERT(handlingRequest);
     handlingRequest = false;
 
@@ -322,8 +326,10 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
                     if (upgradeResponse.type()
                         == QHttpServerWebSocketUpgradeResponse::ResponseType::Accept) {
                         // Socket will now be managed by websocketServer
+                        protocolChanged = true;
                         socket->disconnect();
                         socket->rollbackTransaction();
+                        socket->setParent(nullptr);
                         server->d_func()->websocketServer.handleConnection(tcpSocket);
                         Q_EMIT socket->readyRead();
                     } else {

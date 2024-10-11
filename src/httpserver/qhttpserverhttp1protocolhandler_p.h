@@ -79,6 +79,7 @@ private:
    // To avoid destroying the object when socket object is destroyed while
    // a request is still being handled.
     bool handlingRequest = false;
+    bool protocolChanged = false;
 };
 
 QT_END_NAMESPACE

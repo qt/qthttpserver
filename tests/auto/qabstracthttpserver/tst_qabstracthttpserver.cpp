@@ -288,13 +288,54 @@ void tst_QAbstractHttpServer::websocket()
 
     // We have to send two requests to make sure that swapping between
     // QTcpSocket and QWebSockets works correctly
-    auto s1 = makeWebSocket();
-    auto s2 = makeWebSocket();
+    auto clientSocket1 = makeWebSocket();
+    auto clientSocket2 = makeWebSocket();
+    QVERIFY(clientSocket1);
+    QVERIFY(clientSocket2);
 
     QSignalSpy newConnectionSpy(&server, &HttpServer::newWebSocketConnection);
     QTRY_COMPARE(newConnectionSpy.size(), 2);
-    server.nextPendingWebSocketConnection();
-    server.nextPendingWebSocketConnection();
+
+    std::unique_ptr<QWebSocket> serverSocket1(server.nextPendingWebSocketConnection());
+    QVERIFY(serverSocket1);
+    std::unique_ptr<QWebSocket> serverSocket2(server.nextPendingWebSocketConnection());
+    QVERIFY(serverSocket2);
+
+    QSignalSpy serverSocket1Spy(serverSocket1.get(), &QWebSocket::textMessageReceived);
+    QSignalSpy serverSocket2Spy(serverSocket2.get(), &QWebSocket::textMessageReceived);
+    QSignalSpy clientSocket1Spy(clientSocket1.get(), &QWebSocket::textMessageReceived);
+    QSignalSpy clientSocket2Spy(clientSocket2.get(), &QWebSocket::textMessageReceived);
+
+    // Check that all WebSockets are ready for read/write
+    QTRY_VERIFY(serverSocket1->isValid());
+    QTRY_VERIFY(serverSocket2->isValid());
+    QTRY_VERIFY(clientSocket1->isValid());
+    QTRY_VERIFY(clientSocket2->isValid());
+
+    serverSocket1->sendTextMessage("Server to Client");
+    serverSocket2->sendTextMessage("Server to Client");
+    clientSocket1->sendTextMessage("Client to Server");
+    clientSocket2->sendTextMessage("Client to Server");
+
+    QTRY_COMPARE(clientSocket1Spy.size(), 1);
+    QList<QVariant> clientSocket1Incoming = clientSocket1Spy.takeFirst();
+    QCOMPARE(clientSocket1Incoming.at(0).typeId(), QMetaType::QString);
+    QCOMPARE(clientSocket1Incoming.at(0).toString(), "Server to Client");
+
+    QTRY_COMPARE(clientSocket2Spy.size(), 1);
+    QList<QVariant> clientSocket2Incoming = clientSocket2Spy.takeFirst();
+    QCOMPARE(clientSocket2Incoming.at(0).typeId(), QMetaType::QString);
+    QCOMPARE(clientSocket2Incoming.at(0).toString(), "Server to Client");
+
+    QTRY_COMPARE(serverSocket1Spy.size(), 1);
+    QList<QVariant> serverSocket1Incoming = serverSocket1Spy.takeFirst();
+    QCOMPARE(serverSocket1Incoming.at(0).typeId(), QMetaType::QString);
+    QCOMPARE(serverSocket1Incoming.at(0).toString(), "Client to Server");
+
+    QTRY_COMPARE(serverSocket2Spy.size(), 1);
+    QList<QVariant> serverSocket2Incoming = serverSocket2Spy.takeFirst();
+    QCOMPARE(serverSocket2Incoming.at(0).typeId(), QMetaType::QString);
+    QCOMPARE(serverSocket2Incoming.at(0).toString(), "Client to Server");
 #endif // defined(QT_WEBSOCKETS_LIB)
 }
 
