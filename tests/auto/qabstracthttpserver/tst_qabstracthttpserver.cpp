@@ -804,10 +804,11 @@ void tst_QAbstractHttpServer::socketDisconnected()
     QSignalSpy settingsFrameReceivedSpy{ connection, &QHttp2Connection::settingsFrameReceived };
     connect(socket.get(), &QIODevice::readyRead, connection, &QHttp2Connection::handleReadyRead);
     connection->handleReadyRead();
-    QVERIFY(settingsFrameReceivedSpy.wait());
 
     auto stream = connection->createStream().unwrap();
     QVERIFY(stream);
+
+    QVERIFY(settingsFrameReceivedSpy.wait());
 
     // disconnect while request is being processed on server
     QTimer timer;
