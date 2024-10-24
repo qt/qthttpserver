@@ -19,3 +19,6 @@ android
 android
 [routeDelete:any, delete, ssl]
 android
+
+[pipelinedRequests]
+macos-15 # QTBUG-130500
