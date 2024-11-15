@@ -26,6 +26,7 @@ class QHttpServerRequestPrivate;
 class QHttpServerRequest final
 {
     friend class QHttpServerResponse;
+    friend class QHttpServerParser;
     friend class QHttpServerStream;
     friend class QHttpServerHttp1ProtocolHandler;
     friend class QHttpServerHttp2ProtocolHandler;
