@@ -47,9 +47,7 @@ public:
         AllDone,
     } state = State::NothingDone;
 
-    QUrl url;
-    QHttpServerRequest::Method method;
-    QHttpHeaderParser parser;
+    QHttpHeaderParser headerParser;
 
     bool parseRequestLine(QByteArrayView line);
     qsizetype readRequestLine(QIODevice *socket);
@@ -68,15 +66,8 @@ public:
 
     qint64 contentLength() const;
     QByteArray headerField(const QByteArray &name) const
-    { return parser.combinedHeaderValue(name); }
+    { return headerParser.combinedHeaderValue(name); }
 
-    QHostAddress remoteAddress;
-    quint16 remotePort;
-    QHostAddress localAddress;
-    quint16 localPort;
-#if QT_CONFIG(ssl)
-    QSslConfiguration sslConfiguration;
-#endif
     bool handling{false};
     qsizetype bodyLength;
     qsizetype contentRead;
@@ -88,7 +79,6 @@ public:
 
     QByteArray fragment;
     QByteDataBuffer bodyBuffer;
-    QByteArray body;
 };
 
 QT_END_NAMESPACE

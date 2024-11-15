@@ -76,11 +76,11 @@ bool QHttpServerParser::parseRequestLine(QByteArrayView line)
     if (protocol.size() != 8 || !protocol.startsWith("HTTP"))
         return false;
 
-    parser.setMajorVersion(protocol[5] - '0');
-    parser.setMinorVersion(protocol[7] - '0');
+    headerParser.setMajorVersion(protocol[5] - '0');
+    headerParser.setMinorVersion(protocol[7] - '0');
 
-    method = parseRequestMethod(requestMethod);
-    url = QUrl::fromEncoded(requestUrl.toByteArray());
+    request.d->method = parseRequestMethod(requestMethod);
+    request.d->url = QUrl::fromEncoded(requestUrl.toByteArray());
     return true;
 }
 
@@ -139,7 +139,7 @@ qsizetype QHttpServerParser::readRequestLine(QIODevice *socket)
 qint64 QHttpServerParser::contentLength() const
 {
     bool ok = false;
-    QByteArray value = parser.firstHeaderField("content-length");
+    QByteArray value = headerParser.firstHeaderField("content-length");
     qint64 length = value.toULongLong(&ok);
     if (ok)
         return length;
@@ -193,33 +193,31 @@ qsizetype QHttpServerParser::readHeader(QIODevice *socket)
 
     // we received all headers now parse them
     if (allHeaders) {
-        parser.parseHeaders(fragment);
+        headerParser.parseHeaders(fragment);
+        request.d->headers = headerParser.headers();
         fragment.clear(); // next fragment
 
         auto hostUrl = QString::fromUtf8(headerField("host"));
         if (!hostUrl.isEmpty())
-            url.setAuthority(hostUrl);
+            request.d->url.setAuthority(hostUrl);
 
-        if (url.scheme().isEmpty()) {
+        if (request.d->url.scheme().isEmpty()) {
 #if QT_CONFIG(ssl)
             auto sslSocket = qobject_cast<QSslSocket *>(socket);
-            url.setScheme(sslSocket && sslSocket->isEncrypted() ? u"https"_s : u"http"_s);
+            request.d->url.setScheme(sslSocket && sslSocket->isEncrypted() ? u"https"_s
+                                                                           : u"http"_s);
 #else
-            url.setScheme(u"http"_s);
+            request.d->url.setScheme(u"http"_s);
 #endif
         }
 
-        if (url.host().isEmpty())
-            url.setHost(u"127.0.0.1"_s);
+        if (request.d->url.host().isEmpty())
+            request.d->url.setHost(u"127.0.0.1"_s);
 
-        if (url.port() == -1)
-            url.setPort(port);
+        if (request.d->url.port() == -1)
+            request.d->url.setPort(port);
 
         bodyLength = contentLength(); // cache the length
-        request.d->url = url;
-        request.d->method = method;
-        request.d->parser = parser;
-        request.d->body = body;
         // cache isChunked() since it is called often
         // FIXME: the RFC says that anything but "identity" should be interpreted as chunked (4.4
         // [2])
@@ -312,8 +310,7 @@ bool QHttpServerParser::parse(QIODevice *socket)
                 read = readBodyFast(socket);
 
             if (state == State::AllDone) {
-                body = bodyBuffer.readAll();
-                request.d->body = body;
+                request.d->body = bodyBuffer.readAll();
                 bodyBuffer.clear();
             }
 
@@ -328,41 +325,37 @@ bool QHttpServerParser::parse(QIODevice *socket)
 #if QT_CONFIG(http)
 bool QHttpServerParser::parse(QHttp2Stream *socket)
 {
-    parser.clear();
+    clear();
 
     for (const auto &pair : socket->receivedHeaders()) {
         if (pair.name == ":method") {
-            method = parseRequestMethod(pair.value);
+            request.d->method = parseRequestMethod(pair.value);
         } else if (pair.name == ":scheme") {
-            url.setScheme(QLatin1StringView(pair.value));
+            request.d->url.setScheme(QLatin1StringView(pair.value));
         } else if (pair.name == ":authority") {
-            url.setAuthority(QLatin1StringView(pair.value));
+            request.d->url.setAuthority(QLatin1StringView(pair.value));
         } else if (pair.name == ":path") {
             auto path = QUrl::fromEncoded(pair.value);
-            url.setPath(path.path());
-            url.setQuery(path.query());
+            request.d->url.setPath(path.path());
+            request.d->url.setQuery(path.query());
         } else {
-            parser.appendHeaderField(pair.name, pair.value);
+            headerParser.appendHeaderField(pair.name, pair.value);
         }
     }
+    request.d->headers = headerParser.headers();
 
-    if (url.scheme().isEmpty())
-        url.setScheme(u"https"_s);
+    if (request.d->url.scheme().isEmpty())
+        request.d->url.setScheme(u"https"_s);
 
-    if (url.host().isEmpty())
-        url.setHost(u"127.0.0.1"_s);
+    if (request.d->url.host().isEmpty())
+        request.d->url.setHost(u"127.0.0.1"_s);
 
-    if (url.port() == -1)
-        url.setPort(port);
+    if (request.d->url.port() == -1)
+        request.d->url.setPort(port);
 
     bodyLength = contentLength(); // cache the length
 
-    body = socket->downloadBuffer().readAll();
-
-    request.d->url = url;
-    request.d->method = method;
-    request.d->parser = parser;
-    request.d->body = body;
+    request.d->body = socket->downloadBuffer().readAll();
 
     return true;
 }
@@ -373,7 +366,7 @@ bool QHttpServerParser::parse(QHttp2Stream *socket)
 */
 void QHttpServerParser::clear()
 {
-    parser.clear();
+    headerParser.clear();
     bodyLength = -1;
     contentRead = 0;
     chunkedTransferEncoding = false;
@@ -384,7 +377,7 @@ void QHttpServerParser::clear()
 
     fragment.clear();
     bodyBuffer.clear();
-    body.clear();
+    request.d->body.clear();
 }
 
 // The body reading functions were mostly copied from QHttpNetworkReplyPrivate
