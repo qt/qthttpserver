@@ -239,6 +239,7 @@ private slots:
     void parallelFutureRequests();
     void slowReader();
     void concurrentRequestBack();
+    void concurrentMultipart();
     void multipleResponses();
     void contextObjectInOtherThreadWarning();
     void keepAliveTimeout();
@@ -658,6 +659,25 @@ httpserver.route("/concurrent-request-back2", this,
                              return request.body();
                          });
                      });
+
+    httpserver.route(
+            "/concurrent-multipart-back/<arg>/<arg>/<arg>", this,
+            [](int times, int ms, QString message, QHttpServerResponder &&responder) {
+                return QtConcurrent::run(
+                        [=, r = std::make_shared<QHttpServerResponder>(std::move(responder))] {
+                            if (times > 0) {
+                                QByteArray ba = message.toUtf8();
+                                r->writeBeginChunked("text/plain"_ba);
+                                for (int i = 1; i < times; ++i) {
+                                    r->writeChunk(ba);
+                                    QThread::msleep(ms);
+                                }
+                                r->writeEndChunked(ba);
+                            } else {
+                                r->write();
+                            }
+                        });
+            });
 #endif
 
 #if QT_CONFIG(localserver)
@@ -1801,6 +1821,37 @@ void tst_QHttpServer::concurrentRequestBack()
     for (qint64 i = 0; i < NumberOfTasks; i++) {
         QByteArray body = "RepeatMe"_ba.repeated(i + 1);
         checkReply(replies[i], QString::fromUtf8(body));
+    }
+#else
+    QSKIP("QtConcurrent is not available, skipping test");
+#endif // QT_CONFIG(concurrent)
+}
+
+void tst_QHttpServer::concurrentMultipart()
+{
+#if QT_CONFIG(concurrent)
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    constexpr qsizetype NumberOfTasks = 10;
+    std::array<QString, NumberOfTasks> messages = {
+        "First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eight", "Ninth", "Tenth"
+    };
+    QCOMPARE(messages.size(), NumberOfTasks);
+    std::array<QNetworkReply *, NumberOfTasks> replies;
+    QThreadPool::globalInstance()->setMaxThreadCount(NumberOfTasks);
+    for (qsizetype i = 0; i < NumberOfTasks; ++i) {
+        QString path = u"/concurrent-multipart-back/100/10/%1"_s.arg(messages[i]);
+        QNetworkRequest req(QUrl(urlBase.arg(path.toUtf8())));
+        req.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
+        req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+        req.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain"_ba);
+        replies[i] = networkAccessManager.get(req);
+    }
+
+    for (qsizetype i = 0; i < NumberOfTasks; i++) {
+        QString body = messages[i].repeated(100);
+        checkReply(replies[i], body);
     }
 #else
     QSKIP("QtConcurrent is not available, skipping test");
