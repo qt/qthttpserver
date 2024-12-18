@@ -250,7 +250,8 @@ void QHttpServerResponder::write(QIODevice *data,
     Answers a request with an HTTP status code \a status, JSON
     document \a document and HTTP headers \a headers.
 
-    Note: This function sets HTTP Content-Type header as "application/json".
+    Note: This function sets HTTP Content-Type header as
+    \c{"application/json"}.
 */
 void QHttpServerResponder::write(const QJsonDocument &document,
                                  const QHttpHeaders &headers,
@@ -270,7 +271,8 @@ void QHttpServerResponder::write(const QJsonDocument &document,
     Answers a request with an HTTP status code \a status, and JSON
     document \a document.
 
-    Note: This function sets HTTP Content-Type header as "application/json".
+    Note: This function sets HTTP Content-Type header as
+    \c{"application/json"}.
 */
 void QHttpServerResponder::write(const QJsonDocument &document,
                                  StatusCode status)
@@ -311,7 +313,8 @@ void QHttpServerResponder::write(const QByteArray &data,
 /*!
     Answers a request with an HTTP status code \a status.
 
-    Note: This function sets HTTP Content-Type header as "application/x-empty".
+    Note: This function sets HTTP Content-Type header as
+    \c{"application/x-empty"}.
 */
 void QHttpServerResponder::write(StatusCode status)
 {

@@ -50,7 +50,7 @@ class Q_HTTPSERVER_EXPORT QHttpServer final : public QAbstractHttpServer
             QtPrivate::AreFunctionsCompatible<MissingHandlerPrototype, T>::value, bool>::type;
 
     using AfterRequestPrototype = void (*)(const QHttpServerRequest &request,
-                                             QHttpServerResponse &responder);
+                                           QHttpServerResponse &response);
     template <typename T>
     using if_after_request_prototype_compatible = typename std::enable_if<
             QtPrivate::AreFunctionsCompatible<AfterRequestPrototype, T>::value, bool>::type;
@@ -65,12 +65,12 @@ public:
 #ifdef Q_QDOC
     template <typename Rule = QHttpServerRouterRule, typename Functor>
     Rule *route(const QString &pathPattern, QHttpServerRequest::Methods method,
-                const QObject *receiver,
+                const QObject *context,
                 Functor &&slot);
 
     template <typename Rule = QHttpServerRouterRule, typename Functor>
     Rule *route(const QString &pathPattern,
-                const QObject *receiver,
+                const QObject *context,
                 Functor &&slot);
 
     template <typename Rule = QHttpServerRouterRule, typename Functor>
@@ -124,7 +124,7 @@ public:
 
 #ifdef Q_QDOC
     template <typename Functor>
-    void setMissingHandler(const QObject *receiver, Functor &&slot);
+    void setMissingHandler(const QObject *context, Functor &&slot);
 #else
     template <typename Handler, if_missinghandler_prototype_compatible<Handler> = true>
     void setMissingHandler(const typename QtPrivate::ContextTypeForFunctor<Handler>::ContextType *context,
@@ -138,7 +138,7 @@ public:
 
 #ifdef Q_QDOC
     template <typename Functor>
-    void addAfterRequestHandler(const QObject *receiver, Functor &&slot);
+    void addAfterRequestHandler(const QObject *context, Functor &&slot);
 #else
     template <typename Handler, if_after_request_prototype_compatible<Handler> = true>
     void addAfterRequestHandler(const typename QtPrivate::ContextTypeForFunctor<Handler>::ContextType *context,

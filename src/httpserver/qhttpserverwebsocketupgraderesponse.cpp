@@ -114,7 +114,8 @@ QHttpServerWebSocketUpgradeResponse QHttpServerWebSocketUpgradeResponse::accept(
 
 /*!
     Creates an instance of QHttpServerWebSocketUpgradeResponse with
-    \l type() \l Deny, \l denyStatus() 403 and the \l denyMessage() "Forbidden".
+    \l type() \l Deny, \l denyStatus() \c 403 and the \l denyMessage()
+    \c "Forbidden".
 
     \sa ResponseType, type(), denyStatus(), denyMessage()
 */
