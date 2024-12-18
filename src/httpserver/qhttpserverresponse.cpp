@@ -209,9 +209,9 @@ QHttpServerResponse::StatusCode QHttpServerResponse::statusCode() const
 }
 
 /*!
-    Returns the value of the HTTP "Content-Type" header.
+    Returns the value of the HTTP \c "Content-Type" header.
 
-    \note Default value is "text/html"
+    \note Default value is \c{"text/html"}.
 */
 QByteArray QHttpServerResponse::mimeType() const
 {
