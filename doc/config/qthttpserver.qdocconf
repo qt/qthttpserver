@@ -13,7 +13,8 @@ sourcedirs  += .. \
     ../../src/httpserver
 
 exampledirs += \
-    ../../examples/httpserver/
+    ../../examples/httpserver/ \
+    ../snippets
 
 imagedirs += ../images
 

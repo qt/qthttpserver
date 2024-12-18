@@ -101,7 +101,7 @@ quint32 QHttpServerConfiguration::rateLimitPerSecond() const
     \endlist
 
     To allow only a specific IP address, use a prefix length of 32 for IPv4
-    (e.g., "192.168.1.100/32") or 128 for IPv6 (e.g., "2001:db8::1/128").
+    (e.g., \c "192.168.1.100/32") or 128 for IPv6 (e.g., \c "2001:db8::1/128").
 
     \sa whitelist(), setBlacklist(), QHostAddress::parseSubnet()
 */

@@ -77,10 +77,15 @@ public:
     bool hasPendingWebSocketConnections() const;
     std::unique_ptr<QWebSocket> nextPendingWebSocketConnection();
 
+#ifdef Q_QDOC
+    template <typename Handler>
+    void addWebSocketUpgradeVerifier(const QObject *context, Handler &&func)
+#else
     template <typename Handler, if_compatible_callable<Handler> = true>
     void addWebSocketUpgradeVerifier(
             const typename QtPrivate::ContextTypeForFunctor<Handler>::ContextType *context,
             Handler &&func)
+#endif
     {
         addWebSocketUpgradeVerifierImpl(
                 context,
