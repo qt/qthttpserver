@@ -11,7 +11,7 @@
 QT_BEGIN_NAMESPACE
 
 class QHttpServerConfigurationPrivate;
-QT_DECLARE_QESDP_SPECIALIZATION_DTOR_WITH_EXPORT(QHttpServerConfigurationPrivate, Q_HTTPSERVER_EXPORT)
+QT_DECLARE_QESDP_SPECIALIZATION_DTOR(QHttpServerConfigurationPrivate)
 
 class QHttpServerConfiguration
 {
