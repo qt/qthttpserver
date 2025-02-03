@@ -9,5 +9,5 @@ qt_internal_add_test(tst_qhttpservermultithreaded
     SOURCES
         tst_qhttpservermultithreaded.cpp
     LIBRARIES
-        Qt::HttpServer Qt::Concurrent
+        Qt::HttpServer Qt::Concurrent Qt::TestPrivate
 )

@@ -12,8 +12,6 @@
 #include <QtTest/qtesteventloop.h>
 
 #include <QtCore/qregularexpression.h>
-#include <QtCore/qoperatingsystemversion.h>
-#include <QtCore/qsystemdetection.h>
 #include <QtCore/qurl.h>
 #include <QtHttpServer/qhttpserverrequest.h>
 #include <QtHttpServer/qhttpserverresponder.h>
@@ -35,6 +33,8 @@
 #include <QtNetwork/qsslserver.h>
 #include <QtNetwork/private/qhttp2connection_p.h>
 #endif
+
+#include <QtTest/private/qtesthelpers_p.h>
 
 #if QT_CONFIG(ssl)
 
@@ -417,18 +417,10 @@ void tst_QAbstractHttpServer::verifyWebSocketUpgrades()
     tcpServer.listen();
     server.bind(&tcpServer);
 #if QT_CONFIG(ssl)
-#ifdef Q_OS_MACOS
-#if !QT_MACOS_IOS_PLATFORM_SDK_EQUAL_OR_ABOVE(150000, 180000)
-    // Starting from macOS 15 our temporary keychain is ignored.
-    // We have to use kSecImportToMemoryOnly/kCFBooleanTrue key/value
-    // instead. This way we don't have to use QT_SSL_USE_TEMPORARY_KEYCHAIN anymore.
-    if (QSslSocket::activeBackend() == QLatin1String("securetransport")
-        && QOperatingSystemVersion::current() >= QOperatingSystemVersion::MacOSSequoia) {
+    if (QTestPrivate::isSecureTransportBlockingTest()) {
         // We were built with SDK below 15, but a file-based keychains are not working anymore on macOS 15...
         QSKIP("This test will block in keychain access");
     }
-#endif // QT_MACOS_IOS_PLATFORM_SDK_EQUAL_OR_ABOVE
-#endif // Q_OS_MACOS
 
     QSslServer sslServer;
     QSslConfiguration sslConfiguration = QSslConfiguration::defaultConfiguration();
