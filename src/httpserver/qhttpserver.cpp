@@ -63,7 +63,7 @@ void QHttpServerPrivate::callMissingHandler(const QHttpServerRequest &request,
     });
 
     auto tcpserver = new QTcpServer();
-    if (!tcpserver->listen() || !server.bind(tcpserver.get())) {
+    if (!tcpserver->listen() || !server.bind(tcpserver)) {
         delete tcpserver;
         return -1;
     }
@@ -126,7 +126,7 @@ QHttpServer::QHttpServer(QObject *parent)
     \code
     server.route("/test3", this, [] (const QHttpServerRequest &request,
                                     QHttpServerResponder &responder) {
-                                    responder.write(req.body(), "text/plain"_ba);});
+                                    responder.write(request.body(), "text/plain"_ba);});
     \endcode
 
     Finally, the callback can contain an arbitrary amount of copiable
