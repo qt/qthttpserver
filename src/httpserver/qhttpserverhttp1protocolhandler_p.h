@@ -10,6 +10,8 @@
 #include <QtHttpServer/private/qhttpserverstream_p.h>
 #include <QtHttpServer/private/qhttpserverrequestfilter_p.h>
 
+#include <QtCore/qelapsedtimer.h>
+
 //
 //  W A R N I N G
 //  -------------
@@ -65,6 +67,8 @@ private:
     void write(const QByteArray &data);
     void write(const char *body, qint64 size);
 
+    void checkKeepAliveTimeout();
+
     QAbstractHttpServer *server;
     QIODevice *socket;
     QTcpSocket *tcpSocket;
@@ -83,6 +87,7 @@ private:
    // a request is still being handled.
     bool handlingRequest = false;
     bool protocolChanged = false;
+    QElapsedTimer lastActiveTimer;
 };
 
 QT_END_NAMESPACE

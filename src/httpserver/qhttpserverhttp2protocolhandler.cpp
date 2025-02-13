@@ -67,6 +67,8 @@ QHttpServerHttp2ProtocolHandler::QHttpServerHttp2ProtocolHandler(QAbstractHttpSe
             &QHttp2Connection::newIncomingStream,
             this,
             &QHttpServerHttp2ProtocolHandler::onStreamCreated);
+
+    lastActiveTimer.start();
 }
 
 void QHttpServerHttp2ProtocolHandler::responderDestroyed()
@@ -255,6 +257,8 @@ void QHttpServerHttp2ProtocolHandler::onStreamCreated(QHttp2Stream *stream)
 
     connections << connect(stream, &QHttp2Stream::uploadFinished, this,
                            [this, id]() { sendToStream(id); });
+
+    lastActiveTimer.restart();
 }
 
 void QHttpServerHttp2ProtocolHandler::onStreamHalfClosed(quint32 streamId)
@@ -294,6 +298,17 @@ void QHttpServerHttp2ProtocolHandler::onStreamClosed(quint32 streamId)
         disconnect(c);
 
     m_streamQueue.remove(streamId);
+}
+
+void QHttpServerHttp2ProtocolHandler::checkKeepAliveTimeout()
+{
+    if (m_streamQueue.size() > 0 || m_responderCounter > 0)
+        return;
+
+    if (lastActiveTimer.durationElapsed() > m_server->configuration().keepAliveTimeout()) {
+        m_connection->close();
+        m_tcpSocket->abort();
+    }
 }
 
 void QHttpServerHttp2ProtocolHandler::sendToStream(quint32 streamId)

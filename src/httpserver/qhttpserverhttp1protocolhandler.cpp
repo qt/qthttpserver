@@ -247,6 +247,8 @@ QHttpServerHttp1ProtocolHandler::QHttpServerHttp1ProtocolHandler(QAbstractHttpSe
                 this, &QHttpServerHttp1ProtocolHandler::socketDisconnected);
 #endif
     }
+
+    lastActiveTimer.start();
 }
 
 void QHttpServerHttp1ProtocolHandler::responderDestroyed()
@@ -295,6 +297,8 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
 {
     if (handlingRequest)
         return;
+
+    lastActiveTimer.restart();
 
     if (!socket->isTransactionStarted())
         socket->startTransaction();
@@ -538,6 +542,21 @@ void QHttpServerHttp1ProtocolHandler::write(const char *body, qint64 size)
 {
     Q_ASSERT(QThread::currentThread() == thread());
     socket->write(body, size);
+}
+
+void QHttpServerHttp1ProtocolHandler::checkKeepAliveTimeout()
+{
+    if (handlingRequest)
+        return;
+
+    if (lastActiveTimer.durationElapsed() > server->configuration().keepAliveTimeout()) {
+        if (tcpSocket)
+            tcpSocket->abort();
+#if QT_CONFIG(localserver)
+        else if (localSocket)
+            localSocket->abort();
+#endif
+    }
 }
 
 QT_END_NAMESPACE

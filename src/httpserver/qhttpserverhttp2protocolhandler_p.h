@@ -12,6 +12,8 @@
 #include <QtCore/qbytearray.h>
 #include <QtCore/qqueue.h>
 
+#include <QtCore/qelapsedtimer.h>
+
 //
 //  W A R N I N G
 //  -------------
@@ -72,6 +74,8 @@ private:
                                bool endStream,
                                quint32 streamId);
 
+    void checkKeepAliveTimeout();
+
 private slots:
     void onStreamCreated(QHttp2Stream *stream);
     void onStreamClosed(quint32 streamId);
@@ -91,6 +95,7 @@ private:
     QHash<quint32, QList<QMetaObject::Connection>> m_streamConnections;
     QHash<quint32, QHttpServerHttp2Queue> m_streamQueue;
     qint32 m_responderCounter = 0;
+    QElapsedTimer lastActiveTimer;
 };
 
 QT_END_NAMESPACE

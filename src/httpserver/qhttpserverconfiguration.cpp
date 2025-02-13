@@ -15,6 +15,7 @@ class QHttpServerConfigurationPrivate : public QSharedData
 {
 public:
     quint32 rateLimit = 0;
+    std::chrono::seconds keepAliveTimeout = std::chrono::seconds(15);
     QList<QPair<QHostAddress, int>> whitelist;
     QList<QPair<QHostAddress, int>> blacklist;
 };
@@ -85,6 +86,35 @@ void QHttpServerConfiguration::setRateLimitPerSecond(quint32 maxRequests)
 quint32 QHttpServerConfiguration::rateLimitPerSecond() const
 {
     return d->rateLimit;
+}
+
+/*!
+    \since 6.10
+
+    Sets \a timeout as keep-alive timeout for QHttpServer.
+
+    The keep-alive timeout determines how long an idle connection is kept
+    open before being closed.
+    By default, the timeout is set to 15 seconds.
+
+    \sa keepAliveTimeout()
+*/
+void QHttpServerConfiguration::setKeepAliveTimeout(std::chrono::seconds timeout)
+{
+    d.detach();
+    d->keepAliveTimeout = timeout;
+}
+
+/*!
+    \since 6.10
+
+    Returns the keep-alive timeout used by QHttpServer.
+
+    \sa setKeepAliveTimeout()
+*/
+std::chrono::seconds QHttpServerConfiguration::keepAliveTimeout() const
+{
+    return d->keepAliveTimeout;
 }
 
 /*!
