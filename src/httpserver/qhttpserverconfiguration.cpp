@@ -51,7 +51,7 @@ QHttpServerConfiguration::QHttpServerConfiguration(const QHttpServerConfiguratio
 QHttpServerConfiguration &QHttpServerConfiguration::operator=(const QHttpServerConfiguration &) = default;
 
 /*!
-    \fn QNetworkRequestFactory &QNetworkRequestFactory::operator=(QNetworkRequestFactory &&other) noexcept
+    \fn QHttpServerConfiguration &QHttpServerConfiguration::operator=(QHttpServerConfiguration &&other) noexcept
 
     Move-assigns \a other to this QHttpServerConfiguration.
 */
