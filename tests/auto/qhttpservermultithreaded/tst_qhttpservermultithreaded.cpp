@@ -473,9 +473,10 @@ void tst_QHttpServerMultithreaded::initTestCase()
 
     httpserver.route("/headers/", QHttpServerRequest::Method::Post,
                      [this](const QHttpServerRequest &request) {
-                         return QtConcurrent::run(&threadPool, [&request]() {
+                         auto headers = request.headers().toListOfPairs();
+                         return QtConcurrent::run(&threadPool, [headers]() {
                              QString result;
-                             for (auto header : request.headers().toListOfPairs())
+                             for (auto header : headers)
                                  result += QString::fromUtf8(header.first) + "\n";
                              return QHttpServerResponse(result);
                          });
