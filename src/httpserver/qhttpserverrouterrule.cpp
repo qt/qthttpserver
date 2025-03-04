@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only
 
 #include <QtHttpServer/qhttpserverrouterrule.h>
+#include <QtHttpServer/qhttpserverresponder.h>
 
 #include <private/qhttpserverrouterrule_p.h>
 #include <private/qhttpserverrequest_p.h>
@@ -152,7 +153,11 @@ bool QHttpServerRouterRule::exec(const QHttpServerRequest &request,
     if (!matches(request, &match))
         return false;
 
-    d->routerHandler(match, request, std::move(responder));
+    // Ensure that original responder object is destroyed even if the route
+    // handler does not explicitly move out of it. The websocket handler code
+    // assumes this is the case (see also QTBUG-120746).
+    auto r = std::move(responder);
+    d->routerHandler(match, request, std::move(r));
     return true;
 }
 
