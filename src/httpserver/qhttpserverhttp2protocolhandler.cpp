@@ -38,7 +38,7 @@ QHttpServerHttp2ProtocolHandler::QHttpServerHttp2ProtocolHandler(QAbstractHttpSe
       m_socket(socket),
       m_tcpSocket(qobject_cast<QTcpSocket *>(socket)),
       m_filter(filter),
-      m_request(QHttpServerStream::initRequestFromSocket(m_tcpSocket))
+      m_parser(QHttpServerStream::initParserFromSocket(m_tcpSocket))
 {
     socket->setParent(this);
 
@@ -265,22 +265,19 @@ void QHttpServerHttp2ProtocolHandler::onStreamHalfClosed(quint32 streamId)
     if (!stream)
         return;
 
-    m_request.d->parse(stream);
+    m_parser.parse(stream);
 
-    qCDebug(lcHttpServerHttp2Handler) << "Request:" << m_request;
+    const QHttpServerRequest &request = m_parser.getRequest();
+    qCDebug(lcHttpServerHttp2Handler) << "Request:" << request;
 
     QHttpServerResponder responder(this);
     responder.d_ptr->m_streamId = streamId;
 
-    if (!m_filter->isRequestAllowed(m_tcpSocket->peerAddress())) {
-        responder.sendResponse(
-                QHttpServerResponse(QHttpServerResponder::StatusCode::Forbidden));
-    }
     if (!m_filter->isRequestWithinRate(m_tcpSocket->peerAddress())) {
         responder.sendResponse(
                 QHttpServerResponse(QHttpServerResponder::StatusCode::TooManyRequests));
-    } else if (!m_server->handleRequest(m_request, responder)) {
-        m_server->missingHandler(m_request, responder);
+    } else if (!m_server->handleRequest(request, responder)) {
+        m_server->missingHandler(request, responder);
     }
 }
 

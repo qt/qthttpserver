@@ -6,6 +6,7 @@
 
 #include <QtHttpServer/qthttpserverglobal.h>
 #include <QtHttpServer/qhttpserverrequest.h>
+#include <QtHttpServer/private/qhttpserverparser_p.h>
 #include <QtHttpServer/private/qhttpserverstream_p.h>
 #include <QtHttpServer/private/qhttpserverrequestfilter_p.h>
 
@@ -78,7 +79,7 @@ private:
         ChunkedTransferBegun
     } state = TransferState::Ready;
 
-    QHttpServerRequest request;
+    QHttpServerParser parser;
 
    // To avoid destroying the object when socket object is destroyed while
    // a request is still being handled.

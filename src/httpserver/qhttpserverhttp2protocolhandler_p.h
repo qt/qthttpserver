@@ -87,7 +87,7 @@ private:
     QIODevice *m_socket;
     QTcpSocket *m_tcpSocket;
     QHttpServerRequestFilter *m_filter;
-    QHttpServerRequest m_request;
+    QHttpServerParser m_parser;
     QHttp2Connection *m_connection;
     QHash<quint32, QList<QMetaObject::Connection>> m_streamConnections;
     QHash<quint32, QHttpServerHttp2Queue> m_streamQueue;

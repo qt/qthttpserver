@@ -33,6 +33,8 @@ public:
                       const QSslConfiguration &sslConfiguration);
 #endif
 
+    const QHttpServerRequest &getRequest() const;
+
     QHttpServerRequest request;
     quint16 port = 0;
 

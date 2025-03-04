@@ -229,7 +229,7 @@ QHttpServerHttp1ProtocolHandler::QHttpServerHttp1ProtocolHandler(QAbstractHttpSe
       localSocket(qobject_cast<QLocalSocket*>(socket)),
 #endif
       m_filter(filter),
-      request(initRequestFromSocket(tcpSocket))
+      parser(initParserFromSocket(tcpSocket))
 {
     socket->setParent(this);
 
@@ -300,7 +300,7 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
     if (!socket->isTransactionStarted())
         socket->startTransaction();
 
-    if (!request.d->parse(socket)) {
+    if (!parser.parse(socket)) {
         if (tcpSocket)
             tcpSocket->disconnectFromHost();
 #if QT_CONFIG(localserver)
@@ -310,16 +310,17 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
         return;
     }
 
-    if (request.d->state != QHttpServerRequestPrivate::State::AllDone)
+    if (parser.state != QHttpServerParser::State::AllDone)
         return; // Partial read
 
+    const QHttpServerRequest &request = parser.getRequest();
     qCDebug(lcHttpServerHttp1Handler) << "Request:" << request;
 
     QHttpServerResponder responder(this);
 
 #if defined(QT_WEBSOCKETS_LIB)
     if (auto *tcpSocket = qobject_cast<QTcpSocket*>(socket)) {
-        if (request.d->upgrade) { // Upgrade
+        if (parser.upgrade) { // Upgrade
             const auto &upgradeValue = request.value(QByteArrayLiteral("upgrade"));
             if (upgradeValue.compare(QByteArrayLiteral("websocket"), Qt::CaseInsensitive) == 0) {
                 const auto upgradeResponse = server->verifyWebSocketUpgrade(request);

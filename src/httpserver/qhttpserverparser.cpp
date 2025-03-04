@@ -216,7 +216,10 @@ qsizetype QHttpServerParser::readHeader(QIODevice *socket)
             url.setPort(port);
 
         bodyLength = contentLength(); // cache the length
-
+        request.d->url = url;
+        request.d->method = method;
+        request.d->parser = parser;
+        request.d->body = body;
         // cache isChunked() since it is called often
         // FIXME: the RFC says that anything but "identity" should be interpreted as chunked (4.4
         // [2])
@@ -273,6 +276,14 @@ QHttpServerParser::QHttpServerParser(const QHostAddress &remoteAddress, quint16 
 /*!
     \internal
 */
+const QHttpServerRequest &QHttpServerParser::getRequest() const
+{
+    return request;
+}
+
+/*!
+    \internal
+*/
 bool QHttpServerParser::parse(QIODevice *socket)
 {
     qsizetype read;
@@ -302,6 +313,7 @@ bool QHttpServerParser::parse(QIODevice *socket)
 
             if (state == State::AllDone) {
                 body = bodyBuffer.readAll();
+                request.d->body = body;
                 bodyBuffer.clear();
             }
 
@@ -346,6 +358,11 @@ bool QHttpServerParser::parse(QHttp2Stream *socket)
     bodyLength = contentLength(); // cache the length
 
     body = socket->downloadBuffer().readAll();
+
+    request.d->url = url;
+    request.d->method = method;
+    request.d->parser = parser;
+    request.d->body = body;
 
     return true;
 }

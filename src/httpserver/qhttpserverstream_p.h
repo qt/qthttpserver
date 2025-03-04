@@ -8,7 +8,7 @@
 
 #include <QtHttpServer/qthttpserverglobal.h>
 #include <QtHttpServer/qhttpserverresponder.h>
-#include <QtHttpServer/qhttpserverrequest.h>
+#include <QtHttpServer/private/qhttpserverparser_p.h>
 
 //
 //  W A R N I N G
@@ -32,6 +32,7 @@ class QHttpServerStream : public QObject
 
 protected:
     QHttpServerStream(QObject *parent = nullptr);
+    static QHttpServerParser initParserFromSocket(QTcpSocket *socket);
 
     virtual void responderDestroyed() = 0;
     virtual void startHandlingRequest() = 0;
@@ -51,7 +52,6 @@ protected:
                                  QHttpHeaders &trailers,
                                  quint32 streamId) = 0;
 
-    static QHttpServerRequest initRequestFromSocket(QTcpSocket *socket);
 };
 
 QT_END_NAMESPACE
