@@ -79,8 +79,6 @@ private:
         ChunkedTransferBegun
     } state = TransferState::Ready;
 
-    QHttpServerParser parser;
-
    // To avoid destroying the object when socket object is destroyed while
    // a request is still being handled.
     bool handlingRequest = false;

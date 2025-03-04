@@ -3,6 +3,7 @@
 
 #include "qhttpserverrequest_p.h"
 
+#include <QtHttpServer/private/qhttpserverparser_p.h>
 #include <QtHttpServer/qhttpserverrequest.h>
 #include <QtNetwork/qhttpheaders.h>
 
@@ -19,6 +20,8 @@
 QT_BEGIN_NAMESPACE
 
 using namespace Qt::StringLiterals;
+
+QT_DEFINE_QESDP_SPECIALIZATION_DTOR(QHttpServerRequestPrivate)
 
 #if !defined(QT_NO_DEBUG_STREAM)
 
@@ -134,6 +137,51 @@ QHttpServerRequest::QHttpServerRequest(const QHostAddress &remoteAddress, quint1
 #endif
 
 /*!
+    Constructs a QHttpServerRequest.
+
+    \since 6.10
+*/
+QHttpServerRequest::QHttpServerRequest() = default;
+
+/*!
+    Copy constructs a QHttpServerRequest using \a other.
+
+    \since 6.10
+*/
+QHttpServerRequest::QHttpServerRequest(const QHttpServerRequest &other) = default;
+
+/*!
+    Assigns a QHttpServerRequest using \a other.
+
+    \since 6.10
+*/
+QHttpServerRequest &QHttpServerRequest::operator=(const QHttpServerRequest &other) = default;
+
+/*!
+    \fn QHttpServerRequest::QHttpServerRequest(QHttpServerRequest &&other) noexcept
+
+    Move constructs a QHttpServerRequest using \a other.
+
+    \since 6.10
+*/
+
+/*!
+    \fn QHttpServerRequest &QHttpServerRequest::operator=(QHttpServerRequest &&other) noexcept
+
+    Move assigns a QHttpServerRequest using \a other.
+
+    \since 6.10
+*/
+
+/*!
+    \fn void QHttpServerRequest::swap(QHttpServerRequest &other) noexcept
+
+    Swaps values between this and \a other.
+
+    \since 6.10
+*/
+
+/*!
     Destroys a QHttpServerRequest
 */
 QHttpServerRequest::~QHttpServerRequest() { }
@@ -243,6 +291,33 @@ quint16 QHttpServerRequest::localPort() const
 QSslConfiguration QHttpServerRequest::sslConfiguration() const
 {
     return d->sslConfiguration;
+}
+#endif
+
+/*!
+    \internal
+*/
+QHttpServerRequest QHttpServerRequest::create(const QHttpServerParser &parser)
+{
+    QHttpServerRequest request(parser.remoteAddress, parser.remotePort, parser.localAddress,
+                               parser.localPort);
+    request.d->url = parser.url;
+    request.d->method = parser.method;
+    request.d->headers = parser.headers;
+    request.d->body = parser.body;
+    return request;
+}
+
+#if QT_CONFIG(ssl)
+/*!
+    \internal
+*/
+QHttpServerRequest QHttpServerRequest::create(const QHttpServerParser &parser,
+                                              const QSslConfiguration &configuration)
+{
+    QHttpServerRequest request = create(parser);
+    request.d->sslConfiguration = configuration;
+    return request;
 }
 #endif
 

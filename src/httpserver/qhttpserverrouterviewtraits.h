@@ -37,7 +37,8 @@ struct RouterViewTraitsHelper : ViewTraits<ViewHandler, DisableStaticAssert> {
             static constexpr bool Value = !IsSpecial::Value &&
                                            I < FunctionTraits::ArgumentCount &&
                                            FunctionTraits::ArgumentIndexMax != -1;
-            static constexpr bool Valid = FunctionTraits::template Arg<I>::CopyConstructible;
+            static constexpr bool Valid =
+                    !IsSpecial::Valid && FunctionTraits::template Arg<I>::CopyConstructible;
 
             static constexpr bool StaticAssert =
                 DisableStaticAssert || !Value || Valid;
@@ -65,8 +66,9 @@ struct RouterViewTraitsHelper : ViewTraits<ViewHandler, DisableStaticAssert> {
             static constexpr QMetaType metaType() noexcept
             {
                 using Type = typename FunctionTraits::template Arg<Idx>::CleanType;
+                constexpr bool Simple = Arg<Idx>::IsSimple::Valid;
 
-                if constexpr (std::conjunction_v<std::is_copy_constructible<Type>, std::is_copy_assignable<Type>>)
+                if constexpr (Simple && std::is_copy_assignable_v<Type>)
                     return QMetaType::fromType<Type>();
                 else
                     return QMetaType::fromType<void>();
@@ -74,7 +76,7 @@ struct RouterViewTraitsHelper : ViewTraits<ViewHandler, DisableStaticAssert> {
 
             static constexpr std::size_t Count = FunctionTraits::ArgumentCount;
             static constexpr std::size_t CapturableCount =
-                    (0 + ... + static_cast<std::size_t>(FunctionTraits::template Arg<I>::CopyConstructible));
+                    (0 + ... + static_cast<std::size_t>(!Arg<I>::IsSpecial::Value));
 
             static constexpr std::size_t PlaceholdersCount = Count - CapturableCount;
 

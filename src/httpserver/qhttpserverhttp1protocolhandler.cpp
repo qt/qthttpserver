@@ -221,15 +221,14 @@ struct IOChunkedTransfer
 QHttpServerHttp1ProtocolHandler::QHttpServerHttp1ProtocolHandler(QAbstractHttpServer *server,
                                                                  QIODevice *socket,
                                                                  QHttpServerRequestFilter *filter)
-    : QHttpServerStream(server),
+    : QHttpServerStream(socket, server),
       server(server),
       socket(socket),
       tcpSocket(qobject_cast<QTcpSocket *>(socket)),
 #if QT_CONFIG(localserver)
       localSocket(qobject_cast<QLocalSocket*>(socket)),
 #endif
-      m_filter(filter),
-      parser(initParserFromSocket(tcpSocket))
+      m_filter(filter)
 {
     socket->setParent(this);
 
@@ -300,7 +299,8 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
     if (!socket->isTransactionStarted())
         socket->startTransaction();
 
-    if (!parser.parse(socket)) {
+    auto requestReceived = parser.parse(socket);
+    if (!requestReceived) {
         if (tcpSocket)
             tcpSocket->disconnectFromHost();
 #if QT_CONFIG(localserver)
@@ -310,10 +310,15 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
         return;
     }
 
+#if QT_CONFIG(ssl)
+    auto request = QHttpServerRequest::create(parser, sslConfiguration);
+#else
+    auto request = QHttpServerRequest::create(parser);
+#endif
+
     if (parser.state != QHttpServerParser::State::AllDone)
         return; // Partial read
 
-    const QHttpServerRequest &request = parser.getRequest();
     qCDebug(lcHttpServerHttp1Handler) << "Request:" << request;
 
     QHttpServerResponder responder(this);

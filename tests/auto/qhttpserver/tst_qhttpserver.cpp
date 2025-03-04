@@ -1441,10 +1441,6 @@ void tst_QHttpServer::requestNotOverwritten()
         QVERIFY(ok);
         bodySizes.insert(bodySize);
     }
-    if (useHttp2) {
-        QEXPECT_FAIL("", "QTBUG-133519: QHttpServerRequest overwritten during concurrent handling",
-                     Continue);
-    }
     QCOMPARE(bodySizes.size(), NumberProcessed);
     QCOMPARE(readySem->available(), 0);
     QCOMPARE(routeSem->available(), 0);

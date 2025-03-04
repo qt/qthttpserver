@@ -363,7 +363,7 @@ void QHttpServer::sendResponse(QFuture<QHttpServerResponse> &&response,
                                const QHttpServerRequest &request, QHttpServerResponder &&responder)
 {
     response.then(this,
-                  [this, &request,
+                  [this, request,
                    responder = std::move(responder)](QHttpServerResponse &&response) mutable {
                       sendResponse(std::move(response), request, std::move(responder));
                   });

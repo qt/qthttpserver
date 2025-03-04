@@ -4,11 +4,15 @@
 #ifndef QHTTPSERVERSTREAM_P_H
 #define QHTTPSERVERSTREAM_P_H
 
-#include <QtCore/qobject.h>
-
 #include <QtHttpServer/qthttpserverglobal.h>
 #include <QtHttpServer/qhttpserverresponder.h>
 #include <QtHttpServer/private/qhttpserverparser_p.h>
+
+#if QT_CONFIG(ssl)
+#include <QtNetwork/qsslsocket.h>
+#endif
+
+#include <QtCore/qobject.h>
 
 //
 //  W A R N I N G
@@ -31,8 +35,7 @@ class QHttpServerStream : public QObject
     friend class QHttpServerResponderPrivate;
 
 protected:
-    QHttpServerStream(QObject *parent = nullptr);
-    static QHttpServerParser initParserFromSocket(QTcpSocket *socket);
+    QHttpServerStream(QIODevice *socket, QObject *parent = nullptr);
 
     virtual void responderDestroyed() = 0;
     virtual void startHandlingRequest() = 0;
@@ -51,6 +54,11 @@ protected:
     virtual void writeEndChunked(const QByteArray &data, const
                                  QHttpHeaders &trailers,
                                  quint32 streamId) = 0;
+
+    QHttpServerParser parser;
+#if QT_CONFIG(ssl)
+    QSslConfiguration sslConfiguration;
+#endif
 
 };
 

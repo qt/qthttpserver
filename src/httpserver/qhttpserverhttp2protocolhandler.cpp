@@ -33,12 +33,11 @@ void toHeaderPairs(HPack::HttpHeader &fields, const QHttpHeaders &headers)
 QHttpServerHttp2ProtocolHandler::QHttpServerHttp2ProtocolHandler(QAbstractHttpServer *server,
                                                                  QIODevice *socket,
                                                                  QHttpServerRequestFilter *filter)
-    : QHttpServerStream(server),
+    : QHttpServerStream(socket, server),
       m_server(server),
       m_socket(socket),
       m_tcpSocket(qobject_cast<QTcpSocket *>(socket)),
-      m_filter(filter),
-      m_parser(QHttpServerStream::initParserFromSocket(m_tcpSocket))
+      m_filter(filter)
 {
     socket->setParent(this);
 
@@ -265,9 +264,16 @@ void QHttpServerHttp2ProtocolHandler::onStreamHalfClosed(quint32 streamId)
     if (!stream)
         return;
 
-    m_parser.parse(stream);
+    auto requestReceived = parser.parse(stream);
+    if (!requestReceived)
+        return;
 
-    const QHttpServerRequest &request = m_parser.getRequest();
+#if QT_CONFIG(ssl)
+    auto request = QHttpServerRequest::create(parser, sslConfiguration);
+#else
+    auto request = QHttpServerRequest::create(parser);
+#endif
+
     qCDebug(lcHttpServerHttp2Handler) << "Request:" << request;
 
     QHttpServerResponder responder(this);

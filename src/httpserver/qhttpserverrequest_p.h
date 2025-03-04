@@ -22,8 +22,10 @@ QT_BEGIN_NAMESPACE
 
 class QHttp2Stream;
 
-class QHttpServerRequestPrivate
+class QHttpServerRequestPrivate : public QSharedData
 {
+    friend class QHttpServerParser;
+
 public:
     QHttpServerRequestPrivate(const QHostAddress &remoteAddress, quint16 remotePort,
                               const QHostAddress &localAddress, quint16 localPort);
@@ -34,7 +36,6 @@ public:
 #endif
     QHttpServerRequestPrivate() = default;
     QHttpServerRequestPrivate(const QHttpServerRequestPrivate &other) = default;
-    QHttpServerRequestPrivate &operator=(const QHttpServerRequestPrivate &other) = default;
 
     QUrl url;
     QHttpServerRequest::Method method;

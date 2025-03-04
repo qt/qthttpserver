@@ -24,18 +24,12 @@ class QHttp2Stream;
 
 class QHttpServerParser
 {
+    friend class QHttpServerRequest;
+
 public:
     QHttpServerParser(const QHostAddress &remoteAddress, quint16 remotePort,
                       const QHostAddress &localAddress, quint16 localPort);
-#if QT_CONFIG(ssl)
-    QHttpServerParser(const QHostAddress &remoteAddress, quint16 remotePort,
-                      const QHostAddress &localAddress, quint16 localPort,
-                      const QSslConfiguration &sslConfiguration);
-#endif
 
-    const QHttpServerRequest &getRequest() const;
-
-    QHttpServerRequest request;
     quint16 port = 0;
 
     enum class State {
@@ -67,6 +61,15 @@ public:
     qint64 contentLength() const;
     QByteArray headerField(const QByteArray &name) const
     { return headerParser.combinedHeaderValue(name); }
+
+    QHostAddress remoteAddress;
+    quint16 remotePort;
+    QHostAddress localAddress;
+    quint16 localPort;
+    QUrl url;
+    QHttpServerRequest::Method method;
+    QHttpHeaders headers;
+    QByteArray body;
 
     bool handling{false};
     qsizetype bodyLength;
