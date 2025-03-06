@@ -61,9 +61,8 @@ bool QHttpServerRequestFilter::isRequestWithinRate(QHostAddress peerAddress,
     QHash<QHostAddress, IpInfo>::iterator it = ipInfo.find(peerAddress);
     if (it == ipInfo.end())
         it = ipInfo.emplace(peerAddress, currTimeMSec + cPeriodDurationMSec);
-    // clean more garbage then we create
-    cleanIpInfoGarbage(it, currTimeMSec);
 
+    bool result = true;
     if (it->isGarbage(currTimeMSec)) {
         // did not make any requests for a whole period? start the new one.
         it->m_thisPeriodEnd = currTimeMSec + cPeriodDurationMSec;
@@ -75,10 +74,13 @@ bool QHttpServerRequestFilter::isRequestWithinRate(QHostAddress peerAddress,
     } else {
         // check whether we exceeded
         if (++it->m_nRequests > maxRequestPerPeriod())
-            return false;  // too many requests
+            result = false;  // too many requests
     }
 
-    return true;
+    // clean more garbage then we create
+    cleanIpInfoGarbage(it, currTimeMSec);
+
+    return result;
 }
 
 void QHttpServerRequestFilter::cleanIpInfoGarbage(QHash<QHostAddress, IpInfo>::iterator it,
