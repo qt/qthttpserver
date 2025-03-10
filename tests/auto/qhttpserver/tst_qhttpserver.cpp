@@ -19,6 +19,7 @@
 #include <QtCore/qjsonobject.h>
 #include <QtCore/qjsonvalue.h>
 #include <QtCore/qjsonarray.h>
+#include <QtCore/qsemaphore.h>
 #include <QtCore/qtimer.h>
 
 #include <QtNetwork/qnetworkaccessmanager.h>
@@ -231,6 +232,7 @@ private slots:
     void pipelinedRequests();
     void missingHandler();
     void pipelinedFutureRequests();
+    void requestNotOverwritten();
     void multipleResponses();
     void contextObjectInOtherThreadWarning();
 
@@ -247,6 +249,7 @@ private:
     QString sslUrlBase;
     QNetworkAccessManager networkAccessManager;
     ReplyObject replyObject;
+    std::optional<QSemaphore> readySem, routeSem;
 };
 
 struct CustomArg {
@@ -479,6 +482,26 @@ void tst_QHttpServer::initTestCase()
             return user;
         });
     });
+
+    httpserver.route("/wait-and-return-body/", [this](const QHttpServerRequest &request) {
+        auto body = request.body();
+        return QtConcurrent::run([=]() {
+            Q_ASSERT(readySem);
+            readySem->release();
+            Q_ASSERT(routeSem);
+            routeSem->acquire();
+            return QHttpServerResponse("text/plain", body);
+        });
+    });
+
+    httpserver.addAfterRequestHandler(
+            this, [](const QHttpServerRequest &request, QHttpServerResponse &response) {
+                if (request.url().path().startsWith("/wait-and-return-body/")) {
+                    auto h = response.headers();
+                    h.append("X-REQUEST-BODY-SIZE", QString::number(request.body().size()));
+                    response.setHeaders(std::move(h));
+                }
+            });
 #endif
 
 #if QT_CONFIG(localserver)
@@ -1356,6 +1379,77 @@ void tst_QHttpServer::pipelinedFutureRequests()
     for (std::size_t i = 0; i < replies.size(); i++)
         checkReply(replies[i], QString::number(i));
 }
+
+void tst_QHttpServer::requestNotOverwritten()
+{
+    using namespace std::chrono_literals;
+    readySem.emplace();
+    routeSem.emplace();
+
+    auto cleanup = qScopeGuard([this] {
+        readySem.reset();
+        routeSem.reset();
+    });
+
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+
+    constexpr qsizetype NumberProcessed = 6;
+    std::array<QNetworkReply *, NumberProcessed> replies;
+    QThreadPool::globalInstance()->setMaxThreadCount(static_cast<int>(NumberProcessed));
+
+    for (std::size_t i = 0; i < NumberProcessed; i++) {
+        auto bodySize = i + 1; // All requests have different body sizes
+        QByteArray body(bodySize, 'a');
+        QString path = u"/wait-and-return-body/"_s;
+        QNetworkRequest req(QUrl(urlBase.arg(path)));
+        req.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
+        req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+        req.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
+        replies[i] = networkAccessManager.post(req, body);
+    }
+
+    auto waitUntilFuturesStarted = [this, &replies] {
+        if (QTest::qWaitFor([this]() { return readySem->available() == NumberProcessed; })) {
+            return true;
+        } else {
+            routeSem->release(NumberProcessed);
+            for (std::size_t i = 0; i < NumberProcessed; i++) {
+                if (replies[i] != nullptr) {
+                    std::unique_ptr<QNetworkReply> replyPtr(replies[i]);
+                    replyPtr->abort();
+                }
+            }
+            return false;
+        }
+    };
+
+    QVERIFY(waitUntilFuturesStarted());
+    readySem->acquire(NumberProcessed);
+    routeSem->release(NumberProcessed); // Let them complete and execute the afterrequest handlers
+
+    QSet<int> bodySizes;
+    for (std::size_t i = 0; i < NumberProcessed; i++) {
+        QVERIFY(replies[i] != nullptr);
+        std::unique_ptr<QNetworkReply> replyPtr(replies[i]);
+        QTRY_VERIFY(replyPtr->isFinished());
+        QVERIFY(replyPtr->hasRawHeader("X-REQUEST-BODY-SIZE"));
+        QByteArray header = replyPtr->rawHeader("X-REQUEST-BODY-SIZE");
+        bool ok;
+        int bodySize = header.toInt(&ok);
+        QVERIFY(ok);
+        bodySizes.insert(bodySize);
+    }
+    if (useHttp2) {
+        QEXPECT_FAIL("", "QTBUG-133519: QHttpServerRequest overwritten during concurrent handling",
+                     Continue);
+    }
+    QCOMPARE(bodySizes.size(), NumberProcessed);
+    QCOMPARE(readySem->available(), 0);
+    QCOMPARE(routeSem->available(), 0);
+}
+
 #endif // QT_CONFIG(concurrent)
 
 void tst_QHttpServer::multipleResponses()
