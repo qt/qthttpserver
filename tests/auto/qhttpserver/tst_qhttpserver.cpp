@@ -485,7 +485,7 @@ void tst_QHttpServer::initTestCase()
 
     httpserver.route("/wait-and-return-body/", [this](const QHttpServerRequest &request) {
         auto body = request.body();
-        return QtConcurrent::run([=]() {
+        return QtConcurrent::run([body, this]() {
             Q_ASSERT(readySem);
             readySem->release();
             Q_ASSERT(routeSem);
