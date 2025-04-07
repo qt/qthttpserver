@@ -103,7 +103,7 @@ QHttpServer::QHttpServer(QObject *parent)
     The \a slot takes as arguments any number of capturables, that are
     extracted from the \a pathPattern by matching the \c "<arg>" capturable
     tokens, followed by an optional QHttpServerRequest and optional
-    QHttpServerResponder. These two classes are called placeholders.
+    QHttpServerResponder. These two classes are called specials.
 
     The \a slot can return a QHttpServerResponse or a convertible type:
 
@@ -192,7 +192,7 @@ QHttpServer::QHttpServer(QObject *parent)
     the callback. Extract all needed content before QtConcurrent::run()
     is called.
 
-    The \l{QHttpServerResponder}& placeholder argument is only available for
+    The \l{QHttpServerResponder}& special argument is only available for
     routes returning \c void. When using a responder object the response
     is returned using it.
 
