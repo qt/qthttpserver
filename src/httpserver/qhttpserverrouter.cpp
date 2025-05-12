@@ -54,9 +54,9 @@ static const QHash<QMetaType, QString> defaultConverters = {
     their appropriate handlers. You can add QHttpServerRouterRule
     instances, which define a request path and its corresponding handler.
 
-    Variable parts in the route can be specified with capturable tokens
+    Variable parts in the route can be specified with placeholders
     (\c{"<arg>"}) in the request path, but it is not needed at the end. The
-    handler receives the capturable values a \l QRegularExpressionMatch. The
+    handler receives the matched values as a \l QRegularExpressionMatch. The
     arguments can be of any type for which a \l{converters}{converter} is
     available. The handler creation can be simplified with
     \l QHttpServerRouterRule::bindCaptured().

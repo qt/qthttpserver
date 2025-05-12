@@ -100,9 +100,9 @@ QHttpServer::QHttpServer(QObject *parent)
     as long as context exists. The \a context must share the same thread
     affinity as QHttpServer.
 
-    The \a slot takes as arguments any number of capturables, that are
-    extracted from the \a pathPattern by matching the \c "<arg>" capturable
-    tokens, followed by an optional QHttpServerRequest and optional
+    The \a slot takes as arguments any number of parsed arguments, that are
+    extracted from the \a pathPattern by matching the \c "<arg>" placeholders,
+    followed by an optional QHttpServerRequest and optional
     QHttpServerResponder. These two classes are called specials.
 
     The \a slot can return a QHttpServerResponse or a convertible type:
@@ -130,16 +130,16 @@ QHttpServer::QHttpServer(QObject *parent)
                  });
     \endcode
 
-    Any capturable token ( \c{"<arg>"} ) in \a pathPattern is automatically
-    converted to match the handler's capturable argument types. Supported
-    types include integers, floating point numbers, QString, QByteArray, and
+    Any placeholder ( \c{"<arg>"} ) in \a pathPattern is automatically
+    converted to match the handler's argument types. Supported types
+    include integers, floating point numbers, QString, QByteArray, and
     QUrl. The QUrl class can be used as the last parameter to handle the end
     of the \a pathPattern, and by splitting it an arbitrary number of
     arguments can be supported. Custom converters can be added using
     \l{QHttpServerRouter::addConverter()}.
 
     Each registered type has an associated regex that is used to match and
-    convert capturable tokens in the \a pathPattern. These regex patterns
+    convert placeholders in the \a pathPattern. These regex patterns
     are combined to construct a parser for the entire path. The resulting
     parser is then used to verify if the path matches the pattern.
     If parsing succeeds, the corresponding function is called with the

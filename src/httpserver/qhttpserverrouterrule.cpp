@@ -32,7 +32,7 @@ Q_STATIC_LOGGING_CATEGORY(lcRouterRule, "qt.httpserver.router.rule")
     \section1 Paths and Patterns
 
     Each QHttpServerRouterRule includes a path or pattern that determines
-    which requests it can handle. Paths may contain capturable tokens that
+    which requests it can handle. Paths may contain placeholders that
     are passed to the handler. The examples below illustrate path patterns
     using the QHttpServer::route() convenience method, though they can also
     be set using the QHttpServerRouterRule constructor.
@@ -61,14 +61,14 @@ Q_STATIC_LOGGING_CATEGORY(lcRouterRule, "qt.httpserver.router.rule")
     \section2 Capturing Arguments in the Path
 
     You can place arguments anywhere in the path pattern using the \c "<arg>"
-    capturable token, and multiple of them are supported in the path:
+    placeholders, and multiple of them are supported in the path:
     \code
     server.route("/user/<arg>/history", [] (qint64 id){ return "hello user"; } );
     server.route("/user/<arg>/history/", [] (qint64 id, qint64 page){ return "hello user"; } );
     \endcode
     For example, this would match a request like \c "/user/1/history/2". Any
     data type registered in QHttpServerRouter::converters() can be used in
-    both the callback function and the corresponding capturable token in
+    both the callback function and the corresponding placeholders in
     the path.
 
     \section1 Request Method
