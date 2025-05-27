@@ -191,6 +191,9 @@ LocalHttpClient::LocalHttpClient(ServerType type)
 #if QT_CONFIG(localserver)
     } else if (type == LOCAL) {
         QLocalSocket *localSocket = new QLocalSocket();
+#ifdef Q_OS_LINUX
+        localSocket->setSocketOptions(QLocalSocket::AbstractNamespaceOption);
+#endif
         localSocket->connectToServer(local);
         if (!localSocket->waitForConnected()) {
             qCritical("Failed waiting for client local socket to be connected");
@@ -490,6 +493,9 @@ void tst_QHttpServerMultithreaded::initTestCase()
 
 #if QT_CONFIG(localserver)
     auto localserver = std::make_unique<QLocalServer>();
+#ifdef Q_OS_LINUX
+    localserver->setSocketOptions(QLocalServer::AbstractNamespaceOption);
+#endif
     localserver->removeServer(local);
     QVERIFY2(localserver->listen(local), "Local server listen failed");
     QVERIFY2(httpserver.bind(localserver.get()), "Local server bind failed");
