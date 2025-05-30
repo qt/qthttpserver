@@ -237,6 +237,7 @@ private slots:
     void multipleResponses();
     void contextObjectInOtherThreadWarning();
     void keepAliveTimeout();
+    void writeSequentialDevice();
 
 #if QT_CONFIG(localserver)
     void localSocket();
@@ -297,6 +298,55 @@ void tst_QHttpServer::initTestCase_data()
     }
 #endif
 }
+
+class SequentialIODevice : public QIODevice
+{
+    Q_OBJECT
+
+public:
+    SequentialIODevice(QByteArray &data) : buffer(data) { }
+
+    bool isSequential() const override { return true; }
+
+    bool atEnd() const override { return position == -1; }
+
+    qint64 pos() const override { return position; }
+
+    bool seek(qint64 pos) override
+    {
+        Q_UNUSED(pos);
+        return false; // No random accesss on sequential devices
+    }
+
+    qint64 readData(char *data, qint64 maxSize) override
+    {
+        if (position == -1 || maxSize < 0)
+            return -1;
+
+        qint64 length = qMin(maxSize, buffer.size() - position);
+        memcpy(data, buffer.constData() + position, length);
+        position += length;
+        if (position == buffer.size()) {
+            position = -1;
+            buffer.clear();
+        }
+        return length;
+    }
+
+    qint64 writeData(const char *data, qint64 maxSize) override
+    {
+        if (position == -1)
+            position = 0;
+
+        buffer.append(data, maxSize);
+        Q_EMIT bytesWritten(maxSize);
+        return maxSize;
+    }
+
+private:
+    QByteArray buffer;
+    qsizetype position = 0;
+};
 
 void tst_QHttpServer::initTestCase()
 {
@@ -567,6 +617,12 @@ void tst_QHttpServer::initTestCase()
                 });
     }
 #endif
+    httpserver.route("/sequential-iodevice/<arg>", this,
+                     [](QString message, QHttpServerResponder &responder) {
+                         QByteArray data(message.toUtf8());
+                         auto device = new SequentialIODevice(data);
+                         responder.write(device, "text/plain");
+                     });
 }
 
 void tst_QHttpServer::init()
@@ -1550,6 +1606,30 @@ void tst_QHttpServer::keepAliveTimeout()
 #else
     QSKIP("QtConcurrent is not available, skipping test");
 #endif // QT_CONFIG(concurrent)
+}
+
+void tst_QHttpServer::writeSequentialDevice()
+{
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    const QUrl requestUrl(urlBase.arg("/sequential-iodevice/hey"));
+    QNetworkRequest req(requestUrl);
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(req));
+
+    QSignalSpy spy(reply.get(), &QNetworkReply::finished);
+    spy.wait(2s);
+
+    if (!useHttp2) {
+        QEXPECT_FAIL(
+                "",
+                "QTBUG-137330: Writing from a Sequential QIODevice to HTTP/1.1 Hangs the Client",
+                Abort);
+    }
+    QCOMPARE(spy.count(), 1);
+    checkReply(reply.release(), "hey");
 }
 
 QT_END_NAMESPACE
