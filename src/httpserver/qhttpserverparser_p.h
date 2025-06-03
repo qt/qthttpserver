@@ -80,6 +80,8 @@ public:
     qsizetype currentChunkRead;
     qsizetype currentChunkSize;
     bool upgrade;
+    int majorVersion;
+    int minorVersion;
 
     QByteArray fragment;
     QByteDataBuffer bodyBuffer;

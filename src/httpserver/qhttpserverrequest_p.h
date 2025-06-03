@@ -48,6 +48,8 @@ public:
     quint16 remotePort;
     QHostAddress localAddress;
     quint16 localPort;
+    int majorVersion;
+    int minorVersion;
 #if QT_CONFIG(ssl)
     QSslConfiguration sslConfiguration;
 #endif
