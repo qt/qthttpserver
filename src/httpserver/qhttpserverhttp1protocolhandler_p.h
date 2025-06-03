@@ -85,6 +85,7 @@ private:
    // a request is still being handled.
     bool handlingRequest = false;
     bool protocolChanged = false;
+    bool useHttp1_1 = false;
 };
 
 QT_END_NAMESPACE

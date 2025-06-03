@@ -106,6 +106,8 @@ bool QHttpServerRequestPrivate::parseRequestLine(QByteArrayView line)
 
     parser.setMajorVersion(protocol[5] - '0');
     parser.setMinorVersion(protocol[7] - '0');
+    majorVersion = protocol[5] - '0';
+    minorVersion = protocol[7] - '0';
 
     method = parseRequestMethod(requestMethod);
     url = QUrl::fromEncoded(requestUrl.toByteArray());
@@ -357,6 +359,9 @@ bool QHttpServerRequestPrivate::parse(QHttp2Stream *socket)
 {
     parser.clear();
 
+    majorVersion = 2;
+    minorVersion = 0;
+
     for (const auto &pair : socket->receivedHeaders()) {
         if (pair.name == ":method") {
             method = parseRequestMethod(pair.value);
@@ -403,6 +408,8 @@ void QHttpServerRequestPrivate::clear()
     currentChunkRead = 0;
     currentChunkSize = 0;
     upgrade = false;
+    majorVersion = 0;
+    minorVersion = 0;
 
     fragment.clear();
     bodyBuffer.clear();
