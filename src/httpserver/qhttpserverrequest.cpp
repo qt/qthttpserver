@@ -306,6 +306,8 @@ QHttpServerRequest QHttpServerRequest::create(const QHttpServerParser &parser)
     request.d->method = parser.method;
     request.d->headers = parser.headers;
     request.d->body = parser.body;
+    request.d->majorVersion = parser.majorVersion;
+    request.d->minorVersion = parser.minorVersion;
     return request;
 }
 

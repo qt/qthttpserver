@@ -89,6 +89,7 @@ private:
     bool handlingRequest = false;
     bool protocolChanged = false;
     QElapsedTimer lastActiveTimer;
+    bool useHttp1_1 = false;
 };
 
 QT_END_NAMESPACE
