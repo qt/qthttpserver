@@ -1612,12 +1612,6 @@ void tst_QHttpServer::writeSequentialDevice()
     QSignalSpy spy(reply.get(), &QNetworkReply::finished);
     spy.wait(2s);
 
-    if (!useHttp2) {
-        QEXPECT_FAIL(
-                "",
-                "QTBUG-137330: Writing from a Sequential QIODevice to HTTP/1.1 Hangs the Client",
-                Abort);
-    }
     QCOMPARE(spy.count(), 1);
     checkReply(reply.release(), "GoGoGo");
 }
@@ -1638,12 +1632,6 @@ void tst_QHttpServer::writeMuchToSequentialDevice()
     QSignalSpy spy(reply.get(), &QNetworkReply::finished);
     spy.wait(2s);
 
-    if (!useHttp2) {
-        QEXPECT_FAIL(
-                "",
-                "QTBUG-137330: Writing from a Sequential QIODevice to HTTP/1.1 Hangs the Client",
-                Abort);
-    }
     QCOMPARE(spy.count(), 1);
     checkReply(reply.release(), u"a"_s.repeated(bufferSize * 2));
 }
@@ -1663,12 +1651,6 @@ void tst_QHttpServer::writeFromEmptySequentialDevice()
     QSignalSpy spy(reply.get(), &QNetworkReply::finished);
     spy.wait(2s);
 
-    if (!useHttp2) {
-        QEXPECT_FAIL(
-                "",
-                "QTBUG-137330: Writing from a Sequential QIODevice to HTTP/1.1 Hangs the Client",
-                Abort);
-    }
     QCOMPARE(spy.count(), 1);
     checkReply(reply.release(), "");
 }
