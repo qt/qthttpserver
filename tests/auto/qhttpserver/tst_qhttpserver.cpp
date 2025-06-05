@@ -1587,6 +1587,11 @@ void tst_QHttpServer::keepAliveTimeout()
     config.setKeepAliveTimeout(1s);
     httpserver.setConfiguration(config);
 
+    auto cleanup = qScopeGuard([this] {
+        QHttpServerConfiguration config;
+        httpserver.setConfiguration(config);
+    });
+
     const auto slowWaitTime = QString::number(6000);
     QNetworkRequest reqSlow(QUrl(urlBase.arg(u"/wait/"_s + slowWaitTime)));
     reqSlow.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
