@@ -40,7 +40,7 @@ public:
     Q_HTTPSERVER_EXPORT QHttpServerRequest();
     Q_HTTPSERVER_EXPORT QHttpServerRequest(const QHttpServerRequest &other);
     Q_HTTPSERVER_EXPORT QHttpServerRequest &operator=(const QHttpServerRequest &other);
-    QHttpServerRequest(QHttpServerRequest &&other) noexcept : d(std::move(other.d)) { }
+    QHttpServerRequest(QHttpServerRequest &&other) noexcept = default;
     QT_MOVE_ASSIGNMENT_OPERATOR_IMPL_VIA_MOVE_AND_SWAP(QHttpServerRequest)
     Q_HTTPSERVER_EXPORT ~QHttpServerRequest();
     void swap(QHttpServerRequest &other) noexcept { d.swap(other.d); }
