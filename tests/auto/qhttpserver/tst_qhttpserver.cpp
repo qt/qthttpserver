@@ -238,6 +238,7 @@ private slots:
     void contextObjectInOtherThreadWarning();
     void keepAliveTimeout();
     void writeSequentialDevice();
+    void writeFromEmptySequentialDevice();
 
 #if QT_CONFIG(localserver)
     void localSocket();
@@ -623,6 +624,12 @@ void tst_QHttpServer::initTestCase()
                          auto device = new SequentialIODevice(data);
                          responder.write(device, "text/plain");
                      });
+
+    httpserver.route("/empty-sequential-iodevice/", this, [](QHttpServerResponder &responder) {
+        QByteArray data;
+        auto device = new SequentialIODevice(data);
+        responder.write(device, "text/plain");
+    });
 }
 
 void tst_QHttpServer::init()
@@ -1635,6 +1642,30 @@ void tst_QHttpServer::writeSequentialDevice()
     }
     QCOMPARE(spy.count(), 1);
     checkReply(reply.release(), "hey");
+}
+
+void tst_QHttpServer::writeFromEmptySequentialDevice()
+{
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    const QUrl requestUrl(urlBase.arg("/empty-sequential-iodevice/"));
+    QNetworkRequest req(requestUrl);
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(req));
+
+    QSignalSpy spy(reply.get(), &QNetworkReply::finished);
+    spy.wait(2s);
+
+    if (!useHttp2) {
+        QEXPECT_FAIL(
+                "",
+                "QTBUG-137330: Writing from a Sequential QIODevice to HTTP/1.1 Hangs the Client",
+                Abort);
+    }
+    QCOMPARE(spy.count(), 1);
+    checkReply(reply.release(), "");
 }
 
 QT_END_NAMESPACE
