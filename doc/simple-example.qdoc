@@ -6,7 +6,7 @@
 \title Simple HTTP Server
 \examplecategory {Web Technologies}
 \brief Simple example of how to set up an HTTP server.
-\image browserwindow.png
+\image browserwindow.png {Simple HTTP server output in browser}
 
 The Simple HTTP Server shows how to set up an HTTP server using the
 QHttpServer class. It listens to two sockets: one TCP socket and one
