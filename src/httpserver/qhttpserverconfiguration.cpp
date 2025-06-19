@@ -136,10 +136,10 @@ std::chrono::seconds QHttpServerConfiguration::keepAliveTimeout() const
 
     \sa whitelist(), setBlacklist(), QHostAddress::parseSubnet()
 */
-void QHttpServerConfiguration::setWhitelist(const QList<std::pair<QHostAddress, int>> &subnetList)
+void QHttpServerConfiguration::setWhitelist(QSpan<const std::pair<QHostAddress, int>> subnetList)
 {
     d.detach();
-    d->whitelist = subnetList;
+    d->whitelist.assign(subnetList.begin(), subnetList.end());
 }
 
 /*!
@@ -147,7 +147,7 @@ void QHttpServerConfiguration::setWhitelist(const QList<std::pair<QHostAddress, 
 
     \sa setWhitelist()
 */
-QList<std::pair<QHostAddress, int>> QHttpServerConfiguration::whitelist() const
+QSpan<const std::pair<QHostAddress, int>> QHttpServerConfiguration::whitelist() const
 {
     return d->whitelist;
 }
@@ -160,10 +160,10 @@ QList<std::pair<QHostAddress, int>> QHttpServerConfiguration::whitelist() const
 
     \sa blacklist(), setWhitelist(), QHostAddress::parseSubnet()
 */
-void QHttpServerConfiguration::setBlacklist(const QList<std::pair<QHostAddress, int>> &subnetList)
+void QHttpServerConfiguration::setBlacklist(QSpan<const std::pair<QHostAddress, int>> subnetList)
 {
     d.detach();
-    d->blacklist = subnetList;
+    d->blacklist.assign(subnetList.begin(), subnetList.end());
 }
 
 /*!
@@ -171,7 +171,7 @@ void QHttpServerConfiguration::setBlacklist(const QList<std::pair<QHostAddress, 
 
     \sa setBlacklist()
 */
-QList<std::pair<QHostAddress, int>> QHttpServerConfiguration::blacklist() const
+QSpan<const std::pair<QHostAddress, int>> QHttpServerConfiguration::blacklist() const
 {
     return d->blacklist;
 }

@@ -37,11 +37,11 @@ public:
     Q_HTTPSERVER_EXPORT void setKeepAliveTimeout(std::chrono::seconds timeout);
     Q_HTTPSERVER_EXPORT std::chrono::seconds keepAliveTimeout() const;
 
-    Q_HTTPSERVER_EXPORT void setWhitelist(const QList<std::pair<QHostAddress, int>> &subnetList);
-    Q_HTTPSERVER_EXPORT QList<std::pair<QHostAddress, int>> whitelist() const;
+    Q_HTTPSERVER_EXPORT void setWhitelist(QSpan<const std::pair<QHostAddress, int>> subnetList);
+    Q_HTTPSERVER_EXPORT QSpan<const std::pair<QHostAddress, int>> whitelist() const;
 
-    Q_HTTPSERVER_EXPORT void setBlacklist(const QList<std::pair<QHostAddress, int>> &subnetList);
-    Q_HTTPSERVER_EXPORT QList<std::pair<QHostAddress, int>> blacklist() const;
+    Q_HTTPSERVER_EXPORT void setBlacklist(QSpan<const std::pair<QHostAddress, int>> subnetList);
+    Q_HTTPSERVER_EXPORT QSpan<const std::pair<QHostAddress, int>> blacklist() const;
 
 private:
     QExplicitlySharedDataPointer<QHttpServerConfigurationPrivate> d;
