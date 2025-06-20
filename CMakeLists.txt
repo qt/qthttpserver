@@ -13,12 +13,17 @@ project(QtHttpServer
     LANGUAGES CXX C
 )
 
-find_package(Qt6 ${PROJECT_VERSION} CONFIG REQUIRED COMPONENTS BuildInternals Core Network)
+find_package(Qt6 ${PROJECT_VERSION} CONFIG REQUIRED COMPONENTS BuildInternals)
+
+# This should be called as early as possible, just after find_package(BuildInternals) where it is
+# defined.
+qt_internal_project_setup()
+
+find_package(Qt6 ${PROJECT_VERSION} CONFIG REQUIRED COMPONENTS Core Network)
 find_package(Qt6 ${PROJECT_VERSION} CONFIG OPTIONAL_COMPONENTS Concurrent WebSockets Gui)
 if(NOT QT_FEATURE_mimetype)
     message(NOTICE "QHttpServer mimetype-dependency missing, skipping build")
     return()
 endif()
-qt_internal_project_setup()
 
 qt_build_repo()
