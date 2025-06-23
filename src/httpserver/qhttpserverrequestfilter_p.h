@@ -27,17 +27,17 @@ namespace QHttpServerRequestFilterPrivate {
 extern const Q_HTTPSERVER_EXPORT int cPeriodDurationMSec;
 }
 
-class Q_HTTPSERVER_EXPORT QHttpServerRequestFilter
+class QHttpServerRequestFilter
 {
 public:
-    QHttpServerRequestFilter();
+    // Rule Of Zero applies!
 
-    void setConfiguration(const QHttpServerConfiguration &config);
+    Q_HTTPSERVER_EXPORT void setConfiguration(const QHttpServerConfiguration &config);
 
-    bool isRequestAllowed(QHostAddress peerAddress);
+    Q_HTTPSERVER_EXPORT bool isRequestAllowed(const QHostAddress &peerAddress) const;
 
-    bool isRequestWithinRate(QHostAddress peerAddress);
-    bool isRequestWithinRate(QHostAddress peerAddress, const qint64 currTimeMSec);
+    Q_HTTPSERVER_EXPORT bool isRequestWithinRate(const QHostAddress &peerAddress);
+    Q_HTTPSERVER_EXPORT bool isRequestWithinRate(const QHostAddress &peerAddress, qint64 currTimeMSec);
 
 private:
     struct IpInfo
