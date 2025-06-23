@@ -18,23 +18,18 @@ unsigned int QHttpServerRequestFilter::maxRequestPerPeriod() const
     return m_config.rateLimitPerSecond();
 }
 
-QHttpServerRequestFilter::QHttpServerRequestFilter()
-{
-
-}
-
 void QHttpServerRequestFilter::setConfiguration(const QHttpServerConfiguration &config)
 {
     m_config = config;
 }
 
-bool QHttpServerRequestFilter::isRequestWithinRate(QHostAddress peerAddress)
+bool QHttpServerRequestFilter::isRequestWithinRate(const QHostAddress &peerAddress)
 {
     return isRequestWithinRate(peerAddress, QDateTime::currentMSecsSinceEpoch());
 }
 
-bool QHttpServerRequestFilter::isRequestWithinRate(QHostAddress peerAddress,
-                                                   const qint64 currTimeMSec)
+bool QHttpServerRequestFilter::isRequestWithinRate(const QHostAddress &peerAddress,
+                                                   qint64 currTimeMSec)
 {
     using namespace QHttpServerRequestFilterPrivate;
 
