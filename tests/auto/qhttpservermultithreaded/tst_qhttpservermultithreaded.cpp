@@ -136,7 +136,7 @@ static int port = 0;
 #if QT_CONFIG(ssl)
 static int sslPort = 0;
 #endif
-static const QString local = u"tst_qhttpservermultithreaded_local"_s + QString::number(QCoreApplication::applicationPid());
+static const QString local = u"tst_qhttpservermultithreaded"_s + QString::number(QCoreApplication::applicationPid());
 // Simple HTTP 1.1 client
 class LocalHttpClient
 {
