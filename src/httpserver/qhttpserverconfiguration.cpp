@@ -15,6 +15,14 @@ QT_BEGIN_NAMESPACE
 class QHttpServerConfigurationPrivate : public QSharedData
 {
 public:
+    bool equals(const QHttpServerConfigurationPrivate &other) const noexcept
+    {
+        return rateLimit == other.rateLimit
+            && keepAliveTimeout == other.keepAliveTimeout
+            && whitelist == other.whitelist
+            && blacklist == other.blacklist;
+    }
+
     quint32 rateLimit = 0;
     std::chrono::seconds keepAliveTimeout = std::chrono::seconds(15);
     QList<QPair<QHostAddress, int>> whitelist;
@@ -198,10 +206,7 @@ QSpan<const std::pair<QHostAddress, int>> QHttpServerConfiguration::blacklist() 
 */
 bool comparesEqual(const QHttpServerConfiguration &lhs, const QHttpServerConfiguration &rhs) noexcept
 {
-    if (lhs.d == rhs.d)
-        return true;
-
-    return lhs.d->rateLimit == rhs.d->rateLimit;
+    return lhs.d == rhs.d || lhs.d->equals(*rhs.d);
 }
 
 QT_END_NAMESPACE
