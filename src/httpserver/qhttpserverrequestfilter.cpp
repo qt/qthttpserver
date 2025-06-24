@@ -59,9 +59,7 @@ bool QHttpServerRequestFilter::isRequestWithinRate(QHostAddress peerAddress,
     if (m_config.rateLimitPerSecond() == 0)
         return true;
 
-    QHash<QHostAddress, IpInfo>::iterator it = ipInfo.find(peerAddress);
-    if (it == ipInfo.end())
-        it = ipInfo.emplace(peerAddress, currTimeMSec + cPeriodDurationMSec);
+    const auto it = ipInfo.tryEmplace(peerAddress, currTimeMSec + cPeriodDurationMSec).iterator;
 
     bool result = true;
     if (it->isGarbage(currTimeMSec)) {
