@@ -238,6 +238,7 @@ private slots:
     void contextObjectInOtherThreadWarning();
     void keepAliveTimeout();
     void writeSequentialDevice();
+    void writeMuchToSequentialDevice();
     void writeFromEmptySequentialDevice();
 
 #if QT_CONFIG(localserver)
@@ -305,13 +306,22 @@ class SequentialIODevice : public QIODevice
     Q_OBJECT
 
 public:
-    SequentialIODevice(QByteArray &data) : buffer(data) { }
+    SequentialIODevice() : SequentialIODevice(QByteArray(), 0, 1) { }
+
+    SequentialIODevice(const QByteArray &data, int times, int repetitions)
+        : message(data.repeated(repetitions)), times(times)
+    {
+        setOpenMode(QIODeviceBase::ReadWrite);
+        timer.callOnTimeout(this, &SequentialIODevice::onTimeout);
+        timer.setSingleShot(false);
+        timer.setInterval(50ms);
+        timer.start();
+    }
 
     bool isSequential() const override { return true; }
-
-    bool atEnd() const override { return position == -1; }
-
-    qint64 pos() const override { return position; }
+    qint64 bytesAvailable() const override { return buffer.size() - readPos; }
+    qint64 bytesToWrite() const override { return 0; }
+    qint64 pos() const override { return readPos; }
 
     bool seek(qint64 pos) override
     {
@@ -321,32 +331,47 @@ public:
 
     qint64 readData(char *data, qint64 maxSize) override
     {
-        if (position == -1 || maxSize < 0)
-            return -1;
+        qint64 length = qMin(maxSize, buffer.size() - readPos);
+        if (length == 0)
+            return finishedReading ? -1 : 0;
+        memcpy(data, buffer.constData() + readPos, length);
+        readPos += length;
 
-        qint64 length = qMin(maxSize, buffer.size() - position);
-        memcpy(data, buffer.constData() + position, length);
-        position += length;
-        if (position == buffer.size()) {
-            position = -1;
+        if (readPos == buffer.size()) {
+            readPos = 0;
             buffer.clear();
         }
+
         return length;
     }
 
     qint64 writeData(const char *data, qint64 maxSize) override
     {
-        if (position == -1)
-            position = 0;
-
         buffer.append(data, maxSize);
-        Q_EMIT bytesWritten(maxSize);
+        emit bytesWritten(maxSize);
+        emit readyRead();
         return maxSize;
     }
 
+    void onTimeout()
+    {
+        if (times > 0)
+            write(message);
+
+        if (--times <= 0) {
+            timer.stop();
+            finishedReading = true;
+            emit readChannelFinished();
+        }
+    }
+
 private:
+    QTimer timer;
+    QByteArray message;
     QByteArray buffer;
-    qsizetype position = 0;
+    qsizetype readPos = 0;
+    int times;
+    bool finishedReading = false;
 };
 
 void tst_QHttpServer::initTestCase()
@@ -618,16 +643,14 @@ void tst_QHttpServer::initTestCase()
                 });
     }
 #endif
-    httpserver.route("/sequential-iodevice/<arg>", this,
-                     [](QString message, QHttpServerResponder &responder) {
-                         QByteArray data(message.toUtf8());
-                         auto device = new SequentialIODevice(data);
+    httpserver.route("/sequential-iodevice/<arg>/<arg>/<arg>", this,
+                     [](QString message, int times, int repeats, QHttpServerResponder &responder) {
+                         auto device = new SequentialIODevice(message.toUtf8(), times, repeats);
                          responder.write(device, "text/plain");
                      });
 
     httpserver.route("/empty-sequential-iodevice/", this, [](QHttpServerResponder &responder) {
-        QByteArray data;
-        auto device = new SequentialIODevice(data);
+        auto device = new SequentialIODevice;
         responder.write(device, "text/plain");
     });
 }
@@ -1617,7 +1640,7 @@ void tst_QHttpServer::writeSequentialDevice()
     QFETCH_GLOBAL(bool, useHttp2);
 
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
-    const QUrl requestUrl(urlBase.arg("/sequential-iodevice/hey"));
+    const QUrl requestUrl(urlBase.arg("/sequential-iodevice/Go/3/1"));
     QNetworkRequest req(requestUrl);
     req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
     std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(req));
@@ -1632,8 +1655,35 @@ void tst_QHttpServer::writeSequentialDevice()
                 Abort);
     }
     QCOMPARE(spy.count(), 1);
-    checkReply(reply.release(), "hey");
+    checkReply(reply.release(), "GoGoGo");
 }
+
+void tst_QHttpServer::writeMuchToSequentialDevice()
+{
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    constexpr qsizetype bufferSize = 129 * 1024; // More than the HTTP1 write buffer
+    const QUrl requestUrl(
+            urlBase.arg(u"/sequential-iodevice/a/2/"_s + QString::number(bufferSize)));
+    QNetworkRequest req(requestUrl);
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(req));
+
+    QSignalSpy spy(reply.get(), &QNetworkReply::finished);
+    spy.wait(2s);
+
+    if (!useHttp2) {
+        QEXPECT_FAIL(
+                "",
+                "QTBUG-137330: Writing from a Sequential QIODevice to HTTP/1.1 Hangs the Client",
+                Abort);
+    }
+    QCOMPARE(spy.count(), 1);
+    checkReply(reply.release(), u"a"_s.repeated(bufferSize * 2));
+}
+
 
 void tst_QHttpServer::writeFromEmptySequentialDevice()
 {
