@@ -1074,19 +1074,16 @@ void tst_QHttpServer::routeDelete_data()
     QTest::addColumn<QString>("url");
     QTest::addColumn<int>("code");
     QTest::addColumn<QString>("type");
-    QTest::addColumn<QString>("data");
 
     QTest::addRow("post-and-get, delete")
         << "/post-and-get"
         << 404
-        << "application/x-empty"
-        << "";
+        << "application/x-empty";
 
     QTest::addRow("any, delete")
         << "/any"
         << 200
-        << "text/plain"
-        << "Delete";
+        << "text/plain";
 }
 
 void tst_QHttpServer::routeDelete()
@@ -1096,7 +1093,6 @@ void tst_QHttpServer::routeDelete()
     QFETCH(QString, url);
     QFETCH(int, code);
     QFETCH(QString, type);
-    QFETCH(QString, data);
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
     QNetworkRequest request(urlBase.arg(url));
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
