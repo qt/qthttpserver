@@ -155,11 +155,6 @@ void QHttpServerHttp2ProtocolHandler::write(QIODevice *data, const QHttpHeaders 
 
     writeHeadersAndStatus(headers, status, false, streamId);
 
-    if (input->atEnd()) {
-        qCDebug(lcHttpServerHttp2Handler, "No more data available.");
-        return;
-    }
-
     input->setParent(stream);
     connect(stream, &QHttp2Stream::uploadFinished, input.get(), &QObject::deleteLater);
     stream->sendDATA(input.release(), true);
