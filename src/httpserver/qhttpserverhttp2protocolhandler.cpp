@@ -121,11 +121,11 @@ void QHttpServerHttp2ProtocolHandler::write(QHttpServerResponder::StatusCode sta
 void QHttpServerHttp2ProtocolHandler::write(QIODevice *data, const QHttpHeaders &headers,
                                   QHttpServerResponder::StatusCode status, quint32 streamId)
 {
+    std::unique_ptr<QIODevice, QScopedPointerDeleteLater> input(data);
+
     QHttp2Stream *stream = getStream(streamId);
     if (!stream)
         return;
-
-    std::unique_ptr<QIODevice, QScopedPointerDeleteLater> input(data);
 
     if (!input->isOpen()) {
         if (!input->open(QIODevice::ReadOnly)) {
