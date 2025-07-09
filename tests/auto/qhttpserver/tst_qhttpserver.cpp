@@ -8,7 +8,9 @@
 #include <QtTest/qtest.h>
 #include <QtTest/qsignalspy.h>
 
+#if QT_CONFIG(concurrent)
 #include <QtConcurrent/qtconcurrentrun.h>
+#endif
 
 #include <QtCore/qurl.h>
 #include <QtCore/qstring.h>
@@ -1438,10 +1440,10 @@ void tst_QHttpServer::missingHandler()
     QCOMPARE(sslUsed.toBool(), useSsl);
 }
 
-#if QT_CONFIG(concurrent)
 // Test that responses to pipelined requests come in correct order, see also: QTBUG-105202
 void tst_QHttpServer::pipelinedFutureRequests()
 {
+#if QT_CONFIG(concurrent)
     QFETCH_GLOBAL(bool, useSsl);
     QFETCH_GLOBAL(bool, useHttp2);
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
@@ -1461,10 +1463,14 @@ void tst_QHttpServer::pipelinedFutureRequests()
 
     for (std::size_t i = 0; i < replies.size(); i++)
         checkReply(replies[i], QString::number(i));
+#else
+    QSKIP("QtConcurrent is not available, skipping test");
+#endif // QT_CONFIG(concurrent)
 }
 
 void tst_QHttpServer::requestNotOverwritten()
 {
+#if QT_CONFIG(concurrent)
     using namespace std::chrono_literals;
     readySem.emplace();
     routeSem.emplace();
@@ -1531,9 +1537,10 @@ void tst_QHttpServer::requestNotOverwritten()
     QCOMPARE(bodySizes.size(), NumberProcessed);
     QCOMPARE(readySem->available(), 0);
     QCOMPARE(routeSem->available(), 0);
-}
-
+#else
+    QSKIP("QtConcurrent is not available, skipping test");
 #endif // QT_CONFIG(concurrent)
+}
 
 void tst_QHttpServer::multipleResponses()
 {
