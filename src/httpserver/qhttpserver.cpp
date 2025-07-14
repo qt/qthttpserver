@@ -52,7 +52,7 @@ void QHttpServerPrivate::callMissingHandler(const QHttpServerRequest &request,
     server's \l QHttpServerRouter. To register a handler that is called after
     every request to further process the response use \l
     addAfterRequestHandler, but this mechanism only works for routes returning
-    \l QHttpServerResponse or \c {QFuture<QHttpServerResponse>}. To register a
+    \l QHttpServerResponse or QFuture<QHttpServerResponse>. To register a
     handler for all unhandled requests use \l setMissingHandler.
 
     Minimal example:
@@ -113,21 +113,38 @@ QHttpServer::QHttpServer(QObject *parent)
     server.route("/test/", this, [] () { return ""; });
     \endcode
 
-    Alternatively, if an optional \l{QHttpServerResponder}& argument is
+    \note This function, \l route(), must not be called from \a slot, so no
+    route handlers can register other route handlers.
+
+    Alternatively, if an optional \l{QHttpServerResponder} argument is
     provided, the response has to be written using it and the function
-    must return \c void.
+    must return \c void or QFuture<void>. QFuture<void> support was
+    added in Qt 6.11. The \l {QHttpServerResponder} is not copyable, and can
+    be passed as reference or rvalue reference, except when returning a
+    QFuture<void>, in which case it must be passed as a rvalue reference to
+    prevent it from going out of scope.
 
     \code
-    server.route("/test2", this, [] (QHttpServerResponder &responder) {
-                                    responder.write(QHttpServerResponder::StatusCode::Forbidden); });
+    server.route("/test2", this,
+                 [] (QHttpServerResponder &&responder) {
+                    responder.write(QHttpServerResponder::StatusCode::Forbidden);
+                 });
     \endcode
 
-    The QHttpServerRequest object can be used to access the body of the request:
+    \note If a request was processed by a \a slot accepting \l
+    {QHttpServerResponder} as an argument, none of the after request handlers
+    (see \l addAfterRequestHandler) will be called.
+
+    Furthermore \l{QHttpServerRequest} can be used as a last argument or,
+    if there is a QHttpServerResponder argument, as a second to last
+    argument to get detailed information of the request. It can be passed
+    as a const reference (only for non-concurrent callbacks) or by value, and
+    can be used to access the body of the request:
 
     \code
     server.route("/test3", QHttpServerRequest::Method::Post, this,
-                 [] (const QHttpServerRequest &request, QHttpServerResponder &responder) {
-                     responder.write(request.body(), "text/plain"_ba);
+                 [] (QHttpServerRequest request, QHttpServerResponder &&responder) {
+                    responder.write(request.body(), "text/plain"_ba);
                  });
     \endcode
 
@@ -166,20 +183,13 @@ QHttpServer::QHttpServer(QObject *parent)
     rule->setParameter("test");
     \endcode
 
-    \note This function, \l route(), must not be called from \a slot, so no
-    route handlers can register other route handlers.
-
-    \note If a request was processed by a \a slot accepting \l
-    {QHttpServerResponder}& as an argument, none of the after request handlers
-    (see \l addAfterRequestHandler) will be called.
-
     Requests are processed sequentially inside the \l {QHttpServer}'s thread
     by default. The request handler may return \c {QFuture<QHttpServerResponse>}
     if concurrent processing is desired:
 
     \code
     server.route("/feature/<arg>", [] (int ms) {
-        return QtConcurrent::run([ms] () {
+        return QtConcurrent::run(pool, [ms] () {
             QThread::msleep(ms);
             return QHttpServerResponse("the future is coming");
         });
@@ -187,15 +197,58 @@ QHttpServer::QHttpServer(QObject *parent)
     \endcode
 
     The lambda of the QtConcurrent::run() is executed concurrently,
-    but all the network communication is executed sequentially in the
-    thread the \c {QHttpServer} belongs to after the QFuture is done.
-    Be aware that any QHttpServerRequest object is passed by reference to
-    the callback. Extract all needed content before QtConcurrent::run()
-    is called.
+    but all the network communication is executed in the thread the
+    \c {QHttpServer} belongs.
 
-    The \l{QHttpServerResponder}& special argument is only available for
-    routes returning \c void. When using a responder object the response
-    is returned using it.
+    Routes returning futures are only executed fully concurrently on an
+    HTTP/2 connection. Earlier versions of HTTP do not support interleaving
+    parts of different responses: The responses must come back in full
+    in the same order as the requests come in. So even if a route handler
+    returns a QFuture<void> the next incoming request on that HTTP/1 connection
+    will not be processed until processing of the current one is done.
+    Route handlers on different connections can be executed concurrently
+    though.
+
+    Making a route handler perform its work in a concurrent run can
+    have benefits for all versions of HTTP because the thread that
+    \c {QHttpServer} belongs to will be relieved of the work that the
+    concurrent run performs.
+
+    QHttpServerRequest is copyable, and must be captured by value when
+    returning a future, because the variables passed to \a slot may go
+    out of scope before the future is finished.
+
+    \code
+    server.route("/test4", QHttpServerRequest::Method::Post, this,
+                 [] (QHttpServerRequest request) {
+                    return QtConcurrent::run(pool, [request]() {
+                        return QHttpServerResponse("text/plain"_ba, request.body());
+                    }
+                 });
+    \endcode
+
+    A \a slot that captures QHttpServerRequest or QHttpServerResponder by reference
+    when returning a future causes an assertion with an explanation of why it
+    forbidden.
+
+    Not all platforms support moving QHttpServerResponder into a mutable lambda
+    that is passed to QConcurrent::run, so the workaround is to move
+    QHttpServerResponder into a std::shared_ptr and copying that.
+
+    \code
+    server.route("/concurrent-multipart-back/<arg>",
+                 [](QString message, QHttpServerResponder &&responder) {
+                    return QtConcurrent::run(pool,
+                        [=, r = std::make_shared<QHttpServerResponder>(std::move(responder))] {
+                            QByteArray ba = message.toUtf8();
+                            r->writeBeginChunked("text/plain"_ba);
+                            for (ushort i = 1; i < 8; ++i) {
+                                r->writeChunk(ba);
+                            }
+                            r->writeEndChunked(ba);
+                        });
+                });
+    \endcode
 
     \sa QHttpServerRouter::addRule, addAfterRequestHandler
 */
@@ -319,10 +372,8 @@ void QHttpServer::clearMissingHandler()
     }
     \endcode
 
-    \note These handlers will only be called for requests that are processed
-    by route handlers that either return QHttpServerResponse or
-    QFuture<QHttpServerResponse>, and therefore do not take a
-    QHttpServerResponder argument.
+    \note These handlers will only be called for requests processed by route handlers
+    which return \l{QHttpServerResponse} or QFuture<QHttpServerResponse>.
 */
 
 /*!
