@@ -1720,17 +1720,9 @@ void tst_QHttpServer::concurrentRequestsToSequentialDevice()
 
     QSignalSpy spy(replies[NumberOfTasks - 1].get(), &QNetworkReply::finished);
     spy.wait(5s); // Wait for reply to last outgoing request
-    constexpr qsizetype NumberOfocketsQNAM = 6;
 
     for (qsizetype i = 0; i < NumberOfTasks; i++) {
         QTRY_VERIFY(replies[i]->isFinished());
-        if (!useHttp2 && i == NumberOfocketsQNAM) {
-            QEXPECT_FAIL(
-                    "",
-                    "QTBUG-138611: QtHttpServer has out of order writes because it starts "
-                    "handling the next HTTP/1 request before it's done writing from QIODevice",
-                    Abort);
-        }
         QCOMPARE(replies[i]->readAll(), QString(QChar('a' + (char)i)).repeated(NumberOfRepeats));
     }
 #else
