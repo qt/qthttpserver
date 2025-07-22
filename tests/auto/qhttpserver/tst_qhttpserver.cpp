@@ -242,6 +242,7 @@ private slots:
     void writeSequentialDevice();
     void writeMuchToSequentialDevice();
     void writeFromEmptySequentialDevice();
+    void concurrentRequestsToSequentialDevice();
 
 #if QT_CONFIG(localserver)
     void localSocket();
@@ -1701,6 +1702,45 @@ void tst_QHttpServer::writeFromEmptySequentialDevice()
 
     QCOMPARE(spy.count(), 1);
     checkReply(reply.release(), "");
+}
+
+void tst_QHttpServer::concurrentRequestsToSequentialDevice()
+{
+#if QT_CONFIG(concurrent)
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    constexpr qsizetype NumberOfTasks = 10;
+    constexpr qsizetype NumberOfRepeats = 3;
+    std::array<std::unique_ptr<QNetworkReply>, NumberOfTasks> replies;
+    QThreadPool::globalInstance()->setMaxThreadCount(NumberOfTasks);
+    for (qsizetype i = 0; i < NumberOfTasks; ++i) {
+        QString path =
+                u"/sequential-iodevice/%1/%2/1"_s.arg(QChar('a' + (char)i)).arg(NumberOfRepeats);
+        QNetworkRequest req(QUrl(urlBase.arg(path)));
+        req.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
+        req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+        replies[i].reset(networkAccessManager.get(req));
+    }
+
+    QSignalSpy spy(replies[NumberOfTasks - 1].get(), &QNetworkReply::finished);
+    spy.wait(5s); // Wait for reply to last outgoing request
+    constexpr qsizetype NumberOfocketsQNAM = 6;
+
+    for (qsizetype i = 0; i < NumberOfTasks; i++) {
+        QTRY_VERIFY(replies[i]->isFinished());
+        if (!useHttp2 && i == NumberOfocketsQNAM) {
+            QEXPECT_FAIL(
+                    "",
+                    "QTBUG-138611: QtHttpServer has out of order writes because it starts "
+                    "handling the next HTTP/1 request before it's done writing from QIODevice",
+                    Abort);
+        }
+        QCOMPARE(replies[i]->readAll(), QString(QChar('a' + (char)i)).repeated(NumberOfRepeats));
+    }
+#else
+    QSKIP("QtConcurrent is not available, skipping test");
+#endif // QT_CONFIG(concurrent)
 }
 
 QT_END_NAMESPACE
