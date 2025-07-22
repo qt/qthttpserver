@@ -106,7 +106,7 @@ QT_BEGIN_NAMESPACE
 QHttpServerResponderPrivate::QHttpServerResponderPrivate(QHttpServerStream *stream) : stream(stream)
 {
     Q_ASSERT(stream);
-    stream->startHandlingRequest();
+    QMetaObject::invokeMethod(stream, &QHttpServerStream::startHandlingRequest);
 }
 
 /*!
@@ -115,16 +115,17 @@ QHttpServerResponderPrivate::QHttpServerResponderPrivate(QHttpServerStream *stre
 QHttpServerResponderPrivate::~QHttpServerResponderPrivate()
 {
     Q_ASSERT(stream);
-    stream->responderDestroyed();
+    QMetaObject::invokeMethod(stream, &QHttpServerStream::responderDestroyed);
 }
-
 /*!
     \internal
 */
 void QHttpServerResponderPrivate::write(QHttpServerResponder::StatusCode status)
 {
     Q_ASSERT(stream);
-    stream->write(status, m_streamId);
+    QMetaObject::invokeMethod(
+            stream, qOverload<QHttpServerResponder::StatusCode, quint32>(&QHttpServerStream::write),
+            status, m_streamId);
 }
 
 /*!
@@ -134,7 +135,11 @@ void QHttpServerResponderPrivate::write(const QByteArray &body, const QHttpHeade
                                         QHttpServerResponder::StatusCode status)
 {
     Q_ASSERT(stream);
-    stream->write(body, headers, status, m_streamId);
+    QMetaObject::invokeMethod(
+            stream,
+            qOverload<const QByteArray &, const QHttpHeaders &, QHttpServerResponder::StatusCode,
+                      quint32>(&QHttpServerStream::write),
+            body, headers, status, m_streamId);
 }
 
 /*!
@@ -144,7 +149,14 @@ void QHttpServerResponderPrivate::write(QIODevice *data, const QHttpHeaders &hea
                                         QHttpServerResponder::StatusCode status)
 {
     Q_ASSERT(stream);
-    stream->write(data, headers, status, m_streamId);
+    Q_ASSERT(data);
+    data->setParent(nullptr);
+    data->moveToThread(stream->thread());
+    QMetaObject::invokeMethod(
+            stream,
+            qOverload<QIODevice *, const QHttpHeaders &, QHttpServerResponder::StatusCode, quint32>(
+                    &QHttpServerStream::write),
+            data, headers, status, m_streamId);
 }
 
 /*!
@@ -154,7 +166,8 @@ void QHttpServerResponderPrivate::writeBeginChunked(const QHttpHeaders &headers,
                                                     QHttpServerResponder::StatusCode status)
 {
     Q_ASSERT(stream);
-    stream->writeBeginChunked(headers, status, m_streamId);
+    QMetaObject::invokeMethod(stream, &QHttpServerStream::writeBeginChunked, headers, status,
+                              m_streamId);
 }
 
 /*!
@@ -163,7 +176,7 @@ void QHttpServerResponderPrivate::writeBeginChunked(const QHttpHeaders &headers,
 void QHttpServerResponderPrivate::writeChunk(const QByteArray &data)
 {
     Q_ASSERT(stream);
-    stream->writeChunk(data, m_streamId);
+    QMetaObject::invokeMethod(stream, &QHttpServerStream::writeChunk, data, m_streamId);
 }
 
 /*!
@@ -173,7 +186,8 @@ void QHttpServerResponderPrivate::writeEndChunked(const QByteArray &data,
                                                   const QHttpHeaders &trailers)
 {
     Q_ASSERT(stream);
-    stream->writeEndChunked(data, trailers, m_streamId);
+    QMetaObject::invokeMethod(stream, &QHttpServerStream::writeEndChunked, data, trailers,
+                              m_streamId);
 }
 
 /*!
