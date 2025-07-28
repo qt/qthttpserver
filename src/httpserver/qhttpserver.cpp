@@ -103,8 +103,32 @@ QHttpServer::QHttpServer(QObject *parent)
     });
     \endcode
 
+    This class overrides QAbstractHttpServer::handleRequest() to
+    make it attempt to match the routes registered with this function.
+    If there is a match, the first match is executed and \c true is
+    returned.
 
-    \sa QHttpServerRouter::addRule
+    Because of how handleRequest() is overridden, to accept incoming
+    WebSocket connection upgrade requests (prior to Qt 6.8), add
+    a route with a matching URL that does not respond as shown below:
+
+    \code
+    server.route("/ws", [] (QHttpServerResponder &&) { });
+    \endcode
+
+    The second requirement is to connect to the
+    QAbstractHttpServer::newWebSocketConnection() signal.
+
+    To see if there are any incoming WebSocket connections, use
+    QAbstractHttpServer::hasPendingWebSocketConnections().
+
+    To get the first available WebSocket connection, use
+    QAbstractHttpServer::nextPendingWebSocketConnection().
+
+    \sa QHttpServerRouter::addRule(), QAbstractHttpServer::handleRequest(),
+        QAbstractHttpServer::newWebSocketConnection(),
+        QAbstractHttpServer::hasPendingWebSocketConnections(),
+        QAbstractHttpServer::nextPendingWebSocketConnection()
 */
 
 /*! \fn template<typename ViewHandler> void QHttpServer::afterRequest(ViewHandler &&viewHandler)

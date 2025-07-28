@@ -188,7 +188,19 @@ QList<QTcpServer *> QAbstractHttpServer::servers() const
     This signal is emitted every time a new WebSocket connection is
     available.
 
-    \sa hasPendingWebSocketConnections(), nextPendingWebSocketConnection()
+    To accept incoming WebSocket connections (prior to Qt 6.8),
+    connect to this signal, and make sure \l handleRequest()
+    returns \c true, and that its QHttpServerResponder argument
+    is not written to.
+
+    Use \l hasPendingWebSocketConnections() to see if there are
+    any WebSocket connections.
+
+    Use \l nextPendingWebSocketConnection() to get the next WebSocket
+    connection.
+
+    \sa hasPendingWebSocketConnections(), nextPendingWebSocketConnection(),
+        handleRequest()
 */
 
 /*!
@@ -223,10 +235,15 @@ std::unique_ptr<QWebSocket> QAbstractHttpServer::nextPendingWebSocketConnection(
 /*!
     \fn QAbstractHttpServer::handleRequest(const QHttpServerRequest &request,
                                            QHttpServerResponder &responder)
-    Overload this function to handle each incoming \a request, by examining
+    Override this function to handle each incoming \a request, by examining
     the \a request and sending the appropriate response back to \a responder.
     Return \c true if the \a request was handled successfully. If this method
     returns \c false, \c missingHandler() will be called afterwards.
+
+    To support upgrading HTTP connections to WebSocket connections
+    (prior to Qt 6.8), connect to the \l newWebSocketConnection() signal,
+    and ensure the override of this function returns \c true and doesn't
+    write to the \a responder.
 
     This function must move out of \a responder before returning \c true.
 */
