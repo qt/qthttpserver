@@ -46,8 +46,10 @@ void QHttpServerStream::handleReadyRead()
                     QMetaMethod::fromSignal(&QAbstractHttpServer::newWebSocketConnection);
             if (server->isSignalConnected(signal) && server->handleRequest(request, responder)) {
                 // Socket will now be managed by websocketServer
+                protocolChanged = true;
                 socket->disconnect();
                 socket->rollbackTransaction();
+                socket->setParent(nullptr);
                 server->d_func()->websocketServer.handleConnection(socket);
                 Q_EMIT socket->readyRead();
             } else {
@@ -108,6 +110,10 @@ void QHttpServerStream::write(const char *body, qint64 size)
 void QHttpServerStream::responderDestroyed()
 {
     Q_ASSERT(QThread::currentThread() == thread());
+    if (protocolChanged) {
+        deleteLater();
+        return;
+    }
     Q_ASSERT(handlingRequest);
     handlingRequest = false;
 
