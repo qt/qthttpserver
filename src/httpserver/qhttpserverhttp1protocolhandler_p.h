@@ -6,6 +6,7 @@
 #define QHttpServerHttp1ProtocolHandler_H
 
 #include <QtHttpServer/qthttpserverglobal.h>
+#include <QtHttpServer/qhttpserverconfiguration.h>
 #include <QtHttpServer/qhttpserverrequest.h>
 #include <QtHttpServer/private/qhttpserverparser_p.h>
 #include <QtHttpServer/private/qhttpserverstream_p.h>
@@ -41,9 +42,9 @@ class QHttpServerHttp1ProtocolHandler : public QHttpServerStream
     friend class QHttpServerResponder;
 
 private:
-    QHttpServerHttp1ProtocolHandler(QAbstractHttpServer *server,
-                                    QIODevice *socket,
-                                    QHttpServerRequestFilter *filter);
+    QHttpServerHttp1ProtocolHandler(QAbstractHttpServer *server, QIODevice *socket,
+                                    QHttpServerRequestFilter *filter,
+                                    QHttpServerConfiguration *config);
 
     void responderDestroyed(quint32 streamId) final;
     void startHandlingRequest() final;
@@ -70,8 +71,10 @@ private:
     void write(const QByteArray &data);
     void write(const char *body, qint64 size);
 
+    void addConnectionAndKeepAliveHeaders(QHttpHeaders &headers);
     void checkKeepAliveTimeout();
     void resumeListening();
+    void closeConnection();
 
     QAbstractHttpServer *server;
     QIODevice *socket;
@@ -80,6 +83,7 @@ private:
     QLocalSocket *localSocket;
 #endif
     QHttpServerRequestFilter *m_filter;
+    QHttpServerConfiguration *m_configuration;
 
     enum class TransferState {
         Ready,
@@ -94,6 +98,7 @@ private:
     bool protocolChanged = false;
     QElapsedTimer lastActiveTimer;
     bool useHttp1_1 = false;
+    bool keepAlive = true;
     void completeWriting();
 
     template <qint64 BUFFERSIZE>

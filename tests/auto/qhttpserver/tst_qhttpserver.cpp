@@ -1926,12 +1926,15 @@ void tst_QHttpServer::contextObjectInOtherThreadWarning()
 #if QT_CONFIG(localserver)
 void tst_QHttpServer::localSocket()
 {
+    using namespace Qt::StringLiterals;
     QFETCH_GLOBAL(bool, useSsl);
     QFETCH_GLOBAL(bool, useHttp2);
     if (useSsl || useHttp2)
         QSKIP("Use only HTTP 1.1 for localSocket");
 
     QVERIFY(!httpserver.localServers().isEmpty());
+    QHttpServerConfiguration configuration;
+    qsizetype timeout = configuration.keepAliveTimeout().count();
 
     for (const auto &localServer : httpserver.localServers()) {
         QLocalSocket socket;
@@ -1945,8 +1948,10 @@ void tst_QHttpServer::localSocket()
                      "User-Agent: curl/7.88.1\r\n"
                      "Accept: */*\r\n\r\n");
 
-        const QByteArray expectedResult =
-                "HTTP/1.1 200 OK\r\ncontent-type: text/html\r\ncontent-length: 8\r\n\r\ntest msg";
+        const QString expectedString =
+                u"HTTP/1.1 200 OK\r\ncontent-type: text/html\r\ncontent-length: 8\r\n"_s
+                u"connection: keep-alive\r\nkeep-alive: timeout=%1\r\n\r\ntest msg"_s;
+        const QByteArray expectedResult = expectedString.arg(timeout).toUtf8();
 
         // We need to call process events a couple of times for the write/read to go through
         QTRY_COMPARE_GE(socket.bytesAvailable(), expectedResult.size());

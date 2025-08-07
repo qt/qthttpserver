@@ -381,8 +381,6 @@ QString LocalHttpClient::fetchResults()
             read += result;
         };
     } else if (transferEncoding.compare("chunked", Qt::CaseInsensitive) == 0) {
-        if (serverType == HTTP1_0)
-            QEXPECT_FAIL("", "QTBUG-138410: The HTTP/1.0 support is incomplete", Abort);
         QVERIFY2(serverType != HTTP1_0, "Chunked encoding not supported for HTTP/1.0");
         read = 0;
         forever {
@@ -1115,8 +1113,6 @@ void tst_QHttpServerMultithreaded::sequentialDevice()
     QTRY_VERIFY(future.isFinished());
 
     QString returned = future.result();
-    if (serverType == HTTP1_0)
-        QSKIP("QTBUG-138410: The HTTP/1.0 support is incomplete: Flaky, mostly fails on HTTP/1.0");
     QCOMPARE(returned, u"HeyHeyHey"_s);
     QCOMPARE(getCallCount(), 1);
 }

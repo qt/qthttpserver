@@ -23,6 +23,8 @@
 
 QT_BEGIN_NAMESPACE
 
+using namespace Qt::StringLiterals;
+
 Q_STATIC_LOGGING_CATEGORY(lcHttpServerHttp1Handler, "qt.httpserver.http1handler")
 
 // https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
@@ -248,8 +250,6 @@ struct QHttpServerHttp1IOChunkedTransfer
         if (source->isSequential()) {
             if (useHttp1_1)
                 sink->write("0\r\n\r\n");
-            else
-                sink->close();
         }
         source->deleteLater();
         writingIsComplete = true;
@@ -260,7 +260,8 @@ struct QHttpServerHttp1IOChunkedTransfer
 
 QHttpServerHttp1ProtocolHandler::QHttpServerHttp1ProtocolHandler(QAbstractHttpServer *server,
                                                                  QIODevice *socket,
-                                                                 QHttpServerRequestFilter *filter)
+                                                                 QHttpServerRequestFilter *filter,
+                                                                 QHttpServerConfiguration *config)
     : QHttpServerStream(socket, filter, server),
       server(server),
       socket(socket),
@@ -268,7 +269,8 @@ QHttpServerHttp1ProtocolHandler::QHttpServerHttp1ProtocolHandler(QAbstractHttpSe
 #if QT_CONFIG(localserver)
       localSocket(qobject_cast<QLocalSocket*>(socket)),
 #endif
-      m_filter(filter)
+      m_filter(filter),
+      m_configuration(config)
 {
     socket->setParent(this);
 
@@ -371,6 +373,10 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
 
     qCDebug(lcHttpServerHttp1Handler) << "Request:" << request;
     useHttp1_1 = request.d->minorVersion == 1;
+    auto connectionHeader =
+            QByteArray(request.headers().value(QHttpHeaders::WellKnownHeader::Connection,
+                                               useHttp1_1 ? "keep-alive" : "close")).toLower();
+    keepAlive = connectionHeader.contains("keep-alive");
 
     QHttpServerResponder responder(this);
     connectResponder(responder.d_ptr);
@@ -447,9 +453,13 @@ void QHttpServerHttp1ProtocolHandler::write(const QByteArray &body, const QHttpH
 {
     Q_UNUSED(streamId);
     Q_ASSERT(state == TransferState::Ready);
-    writeStatusAndHeaders(status, headers);
+    QHttpHeaders allHeaders(headers);
+    addConnectionAndKeepAliveHeaders(allHeaders);
+    writeStatusAndHeaders(status, allHeaders);
     write(body);
     state = TransferState::Ready;
+    if (!keepAlive)
+        closeConnection();
 }
 
 void QHttpServerHttp1ProtocolHandler::write(QHttpServerResponder::StatusCode status, quint32 streamId)
@@ -460,8 +470,11 @@ void QHttpServerHttp1ProtocolHandler::write(QHttpServerResponder::StatusCode sta
     headers.append(QHttpHeaders::WellKnownHeader::ContentType,
                    QHttpServerLiterals::contentTypeXEmpty());
     headers.append(QHttpHeaders::WellKnownHeader::ContentLength, "0");
+    addConnectionAndKeepAliveHeaders(headers);
     writeStatusAndHeaders(status, headers);
     state = TransferState::Ready;
+    if (!keepAlive)
+        closeConnection();
 }
 
 void QHttpServerHttp1ProtocolHandler::write(QIODevice *data, const QHttpHeaders &headers,
@@ -493,11 +506,13 @@ void QHttpServerHttp1ProtocolHandler::write(QIODevice *data, const QHttpHeaders 
         if (useHttp1_1)
             allHeaders.append(QHttpHeaders::WellKnownHeader::TransferEncoding, "chunked");
         else
-            allHeaders.append(QHttpHeaders::WellKnownHeader::Connection, "close");
+            keepAlive = false;
     } else { // Non-sequential QIODevice should know its data size
         allHeaders.append(QHttpHeaders::WellKnownHeader::ContentLength,
                           QByteArray::number(input->size()));
     }
+
+    addConnectionAndKeepAliveHeaders(allHeaders);
     writeStatusAndHeaders(status, allHeaders);
 
     state = TransferState::IODeviceTransferBegun;
@@ -512,7 +527,12 @@ void QHttpServerHttp1ProtocolHandler::writeBeginChunked(const QHttpHeaders &head
     Q_UNUSED(streamId);
     Q_ASSERT(state == TransferState::Ready);
     QHttpHeaders allHeaders(headers);
-    allHeaders.append(QHttpHeaders::WellKnownHeader::TransferEncoding, "chunked");
+    if (useHttp1_1)
+        allHeaders.append(QHttpHeaders::WellKnownHeader::TransferEncoding, "chunked");
+    else
+        keepAlive = false;
+
+    addConnectionAndKeepAliveHeaders(allHeaders);
     writeStatusAndHeaders(status, allHeaders);
     state = TransferState::ChunkedTransferBegun;
 }
@@ -527,10 +547,13 @@ void QHttpServerHttp1ProtocolHandler::writeChunk(const QByteArray &data, quint32
         return;
     }
 
-    write(QByteArray::number(data.length(), 16));
-    write("\r\n");
+    if (useHttp1_1) {
+        write(QByteArray::number(data.length(), 16));
+        write("\r\n");
+    }
     write(data);
-    write("\r\n");
+    if (useHttp1_1)
+        write("\r\n");
 }
 
 void QHttpServerHttp1ProtocolHandler::writeEndChunked(const QByteArray &data,
@@ -540,13 +563,21 @@ void QHttpServerHttp1ProtocolHandler::writeEndChunked(const QByteArray &data,
     Q_UNUSED(streamId);
     Q_ASSERT(state == TransferState::ChunkedTransferBegun);
     writeChunk(data, 0);
-    write("0\r\n");
-    for (qsizetype i = 0; i < trailers.size(); ++i) {
-        const auto name = trailers.nameAt(i);
-        const auto value = trailers.valueAt(i);
-        writeHeader({ name.data(), name.size() }, value.toByteArray());
+    if (useHttp1_1) {
+        write("0\r\n");
+        for (qsizetype i = 0; i < trailers.size(); ++i) {
+            const auto name = trailers.nameAt(i);
+            const auto value = trailers.valueAt(i);
+            writeHeader({ name.data(), name.size() }, value.toByteArray());
+        }
+        write("\r\n");
+    } else {
+        if (!trailers.isEmpty())
+            qCWarning(lcHttpServerHttp1Handler, "Cannot send trailers for HTTP/1.0 connections.");
     }
-    write("\r\n");
+    if (!keepAlive)
+        closeConnection();
+
     state = TransferState::Ready;
 }
 
@@ -595,8 +626,22 @@ void QHttpServerHttp1ProtocolHandler::completeWriting()
 {
     Q_ASSERT(state == TransferState::IODeviceTransferBegun);
     state = TransferState::Ready;
-    if (!handlingRequest)
+    if (!keepAlive) {
+        closeConnection();
+    } else if (!handlingRequest) {
         resumeListening();
+    }
+}
+
+void QHttpServerHttp1ProtocolHandler::addConnectionAndKeepAliveHeaders(QHttpHeaders &headers)
+{
+    if (keepAlive) {
+        headers.append(QHttpHeaders::WellKnownHeader::Connection, "keep-alive");
+        headers.append(QHttpHeaders::WellKnownHeader::KeepAlive,
+                       u"timeout=%1"_s.arg(m_configuration->keepAliveTimeout().count()));
+    } else {
+        headers.append(QHttpHeaders::WellKnownHeader::Connection, "close");
+    }
 }
 
 void QHttpServerHttp1ProtocolHandler::checkKeepAliveTimeout()
@@ -610,6 +655,18 @@ void QHttpServerHttp1ProtocolHandler::checkKeepAliveTimeout()
 #if QT_CONFIG(localserver)
         else if (localSocket)
             localSocket->abort();
+#endif
+    }
+}
+
+void QHttpServerHttp1ProtocolHandler::closeConnection()
+{
+    if (tcpSocket) {
+        QMetaObject::invokeMethod(tcpSocket, &QTcpSocket::disconnectFromHost, Qt::QueuedConnection);
+#if QT_CONFIG(localserver)
+    } else if (localSocket) {
+        QMetaObject::invokeMethod(localSocket, &QLocalSocket::disconnectFromServer,
+                                  Qt::QueuedConnection);
 #endif
     }
 }

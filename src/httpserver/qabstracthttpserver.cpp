@@ -86,7 +86,7 @@ void QAbstractHttpServerPrivate::createHttp1Handler(QIODevice *socket)
 {
     Q_Q(QAbstractHttpServer);
 
-    auto handler = new QHttpServerHttp1ProtocolHandler(q, socket, &requestFilter);
+    auto handler = new QHttpServerHttp1ProtocolHandler(q, socket, &requestFilter, &configuration);
     QObject::connect(&heartbeatTimer, &QTimer::timeout,
             handler, &QHttpServerHttp1ProtocolHandler::checkKeepAliveTimeout);
 }
