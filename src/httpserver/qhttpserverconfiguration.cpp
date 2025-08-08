@@ -127,6 +127,8 @@ std::chrono::seconds QHttpServerConfiguration::keepAliveTimeout() const
 }
 
 /*!
+    \since 6.10
+
     Sets \a subnetList as the whitelist of allowed subnets.
 
     When the list is not empty, only IP addresses in this list
@@ -151,6 +153,8 @@ void QHttpServerConfiguration::setWhitelist(QSpan<const std::pair<QHostAddress, 
 }
 
 /*!
+    \since 6.10
+
     Returns the whitelist of subnets allowed by QHttpServer.
 
     \sa setWhitelist()
@@ -161,6 +165,8 @@ QSpan<const std::pair<QHostAddress, int>> QHttpServerConfiguration::whitelist() 
 }
 
 /*!
+    \since 6.10
+
     Sets \a subnetList as the blacklist of subnets.
 
     IP addresses in this list will be denied access by QHttpServer.
@@ -175,6 +181,8 @@ void QHttpServerConfiguration::setBlacklist(QSpan<const std::pair<QHostAddress, 
 }
 
 /*!
+    \since 6.10
+
     Returns the blacklist of subnets that are denied access by QHttpServer.
 
     \sa setBlacklist()
