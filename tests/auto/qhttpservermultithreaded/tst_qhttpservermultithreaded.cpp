@@ -17,6 +17,10 @@
 #include <QtNetwork/qtcpserver.h>
 #include <QtNetwork/qtcpsocket.h>
 
+#ifndef QTEST_THROW_ON_FAIL
+# error This test requires QTEST_THROW_ON_FAIL being active.
+#endif
+
 #if QT_CONFIG(localserver)
 #include <QtNetwork/qlocalsocket.h>
 #include <QtNetwork/qlocalserver.h>
@@ -161,17 +165,13 @@ LocalHttpClient::LocalHttpClient(ServerType type)
         QTcpSocket *tcpSocket = new QTcpSocket();
         tcpSocket->connectToHost("localhost", port);
         tcpSocket->waitForConnected();
-        if (!tcpSocket->waitForConnected()) {
-            qCritical("Failed waiting for client TCP socket to be connected");
-            return;
-        }
+        QVERIFY2(tcpSocket->waitForConnected(),
+                 "Failed waiting for client TCP socket to be connected");
         socket = tcpSocket;
 #if QT_CONFIG(ssl)
     } else if (type == SSL) {
-        if (!QSslSocket::supportsSsl()) {
-            qCritical("Client SSL socket requested even though it is not supported");
-            return;
-        }
+        QVERIFY2(QSslSocket::supportsSsl(),
+                 "Client SSL socket requested even though it is not supported");
         QSslSocket *sslSocket = new QSslSocket();
         const QList<QSslError> expectedSslErrors = {
             QSslError(QSslError::SelfSignedCertificate, QSslCertificate(g_certificate)),
@@ -182,10 +182,8 @@ LocalHttpClient::LocalHttpClient(ServerType type)
         };
         sslSocket->ignoreSslErrors(expectedSslErrors);
         sslSocket->connectToHostEncrypted("localhost", sslPort);
-        if (!sslSocket->waitForEncrypted()) {
-            qCritical("Failed waiting for client SSL socket to be encrypted");
-            return;
-        }
+        QVERIFY2(sslSocket->waitForEncrypted(),
+                 "Failed waiting for client SSL socket to be encrypted");
         socket = sslSocket;
 #endif
 #if QT_CONFIG(localserver)
@@ -195,14 +193,12 @@ LocalHttpClient::LocalHttpClient(ServerType type)
         localSocket->setSocketOptions(QLocalSocket::AbstractNamespaceOption);
 #endif
         localSocket->connectToServer(local);
-        if (!localSocket->waitForConnected()) {
-            qCritical("Failed waiting for client local socket to be connected");
-            return;
-        }
+        QVERIFY2(localSocket->waitForConnected(),
+                 "Failed waiting for client local socket to be connected");
         socket = localSocket;
 #endif
     } else {
-        qCritical("Unknown server type");
+        QFAIL("Unknown server type");
     }
 }
 
@@ -240,8 +236,7 @@ QString LocalHttpClient::getSlowRead(const QString &url, qsizetype chunkSize, qs
             socket->waitForReadyRead(10);
         }
         read = socket->readLine(headerBuffer, headerBufferSize);
-        if (read < 0)
-            return u"IO ERROR READING HEADERS"_s; // Error reading header
+        QVERIFY2(read >= 0, "IO error reading headers");
         if (read <= 2)
             break; // End of headers
         QByteArrayView line(headerBuffer, read);
@@ -253,17 +248,15 @@ QString LocalHttpClient::getSlowRead(const QString &url, qsizetype chunkSize, qs
         }
     };
 
-    if (contentLength < 0)
-        return u"CONTENT LENGTH MISSING"_s;
-    else if (contentLength == 0)
+    QVERIFY2(contentLength != -1, "Content-Length field missing");
+    if (contentLength == 0)
         return u""_s; // No content
 
     read = 0;
     QByteArray buffer(contentLength, 0);
     forever {
         qint64 result = socket->read(&buffer[read], qMin(contentLength - read, chunkSize));
-        if (result == -1)
-            return u"IO ERROR READING CONTENT"_s; // IO Error
+        QVERIFY2(result >= 0, "IO error reading content");
         read += result;
         if (read == contentLength)
             break;
@@ -279,8 +272,7 @@ QString LocalHttpClient::postSlow(const QString &url, const QHttpHeaders &header
 {
     Q_ASSERT(socket);
     qint64 result = socket->write(u"POST %1 HTTP/1.1\r\n"_s.arg(url).toUtf8());
-    if (result == -1)
-        return u"ERROR WRITING POST METHOD"_s;
+    QVERIFY2(result >= 0, "Error writing POST method");
 
     for (qsizetype i = 0; i < headers.size(); ++i) {
         QByteArray output;
@@ -289,8 +281,7 @@ QString LocalHttpClient::postSlow(const QString &url, const QHttpHeaders &header
         output.append(headers.valueAt(i));
         output.append("\r\n");
         result = socket->write(output);
-        if (result == -1)
-            return u"ERROR WRITING HEADER LINE"_s;
+        QVERIFY2(result >= 0, "Error writing header line");
 
         QTimer timer;
         timer.setSingleShot(true);
@@ -301,8 +292,7 @@ QString LocalHttpClient::postSlow(const QString &url, const QHttpHeaders &header
             QThread::msleep(remaining);
     }
     result = socket->write("\r\n");
-    if (result == -1)
-        return u"ERROR ENDING HEADERS"_s;
+    QVERIFY2(result >= 0, "Error ending headers");
 
     return fetchResults();
 }
@@ -325,8 +315,7 @@ QString LocalHttpClient::fetchResults()
             socket->waitForReadyRead(10);
         }
         read = socket->readLine(buffer, bufferSize);
-        if (read < 0)
-            return u"IO ERROR READING HEADERS"_s; // Error reading header
+        QVERIFY2(read >= 0, "IO error reading header");
         if (read <= 2)
             break; // End of headers
         QByteArrayView line(buffer, read);
@@ -338,18 +327,15 @@ QString LocalHttpClient::fetchResults()
         }
     };
 
-    if (contentLength == -1)
-        return u"CONTENT LENGTH MISSING"_s;
-    else if (contentLength > bufferSize)
-        return u"BUFFER TOO SMALL"_s; // Buffer too small
-    else if (contentLength == 0)
+    QVERIFY2(contentLength != -1, "Content length missing");
+    QVERIFY2(contentLength < bufferSize, "Buffer too small");
+    if (contentLength == 0)
         return u""_s; // No content
 
     read = 0;
     forever {
         qint64 result = socket->read(&buffer[read], contentLength - read);
-        if (result == -1)
-            return u"IO ERROR READING CONTENT"_s; // IO Error
+        QVERIFY2(result >= 0, "IO error reading content");
         read += result;
         if (read == contentLength)
             break;
