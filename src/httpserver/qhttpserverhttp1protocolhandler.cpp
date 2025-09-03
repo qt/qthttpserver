@@ -553,7 +553,7 @@ void QHttpServerHttp1ProtocolHandler::writeStatusAndHeaders(QHttpServerResponder
 {
     Q_ASSERT(state == TransferState::Ready);
     QByteArray payload;
-    payload.append("HTTP/1.1 ");
+    payload.append(useHttp1_1 ? "HTTP/1.1 " : "HTTP/1.0 ");
     payload.append(QByteArray::number(quint32(status)));
     const auto it = statusString.find(status);
     if (it != statusString.end()) {
