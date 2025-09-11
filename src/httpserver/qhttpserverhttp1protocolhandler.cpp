@@ -261,7 +261,7 @@ struct QHttpServerHttp1IOChunkedTransfer
 QHttpServerHttp1ProtocolHandler::QHttpServerHttp1ProtocolHandler(QAbstractHttpServer *server,
                                                                  QIODevice *socket,
                                                                  QHttpServerRequestFilter *filter)
-    : QHttpServerStream(socket, server),
+    : QHttpServerStream(socket, filter, server),
       server(server),
       socket(socket),
       tcpSocket(qobject_cast<QTcpSocket *>(socket)),

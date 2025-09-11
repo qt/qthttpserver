@@ -76,6 +76,51 @@ bool QHttpServerRequestFilter::isRequestWithinRate(const QHostAddress &peerAddre
     return result;
 }
 
+/*!
+    \internal
+*/
+bool QHttpServerRequestFilter::isUrlSizeAllowed(qsizetype urlSize) const
+{
+    auto limit = m_config.maxUrlSize();
+    return limit < 0 || limit >= qint64(urlSize);
+}
+
+/*!
+    \internal
+*/
+bool QHttpServerRequestFilter::isTotalHeaderSizeAllowed(qsizetype headerSize) const
+{
+    auto limit = m_config.maxTotalHeaderSize();
+    return limit < 0 || limit >= qint64(headerSize);
+}
+
+/*!
+    \internal
+*/
+bool QHttpServerRequestFilter::isHeaderFieldSizeAllowed(qsizetype headerSize) const
+{
+    auto limit = m_config.maxHeaderFieldSize();
+    return limit < 0 || limit >= qint64(headerSize);
+}
+
+/*!
+    \internal
+*/
+bool QHttpServerRequestFilter::isNumberOfHeaderFieldsAllowed(qsizetype headerSize) const
+{
+    auto limit = m_config.maxNumberOfHeaderFields();
+    return limit < 0 || limit >= qint64(headerSize);
+}
+
+/*!
+    \internal
+*/
+bool QHttpServerRequestFilter::isBodySizeAllowed(qint64 bodySize) const
+{
+    auto limit = m_config.maxBodySize();
+    return limit < 0 || limit >= bodySize;
+}
+
 void QHttpServerRequestFilter::cleanIpInfoGarbage(QHash<QHostAddress, IpInfo>::iterator it,
                                                   qint64 currTime)
 {

@@ -6,7 +6,8 @@
 #define QHTTPSERVERPARSER_P_H
 
 #include <QtHttpServer/qhttpserverrequest.h>
-
+#include <QtHttpServer/qhttpserverresponder.h>
+#include <QtHttpServer/private/qhttpserverrequestfilter_p.h>
 #include <QtNetwork/private/qhttpheaderparser_p.h>
 #if __has_include(<QtNetwork/private/qbytedatabuffer_p.h>)
 #include <QtNetwork/private/qbytedatabuffer_p.h>
@@ -34,7 +35,8 @@ class QHttpServerParser
 
 public:
     QHttpServerParser(const QHostAddress &remoteAddress, quint16 remotePort,
-                      const QHostAddress &localAddress, quint16 localPort);
+                      const QHostAddress &localAddress, quint16 localPort,
+                      QHttpServerRequestFilter *filter);
 
     quint16 port = 0;
 
@@ -57,6 +59,8 @@ public:
     qsizetype readRequestBodyRaw(QIODevice *socket, qsizetype size);
     qsizetype readRequestBodyChunked(QIODevice *socket);
     qsizetype getChunkSize(QIODevice *socket, qsizetype *chunkSize);
+    void sendError(QIODevice *socket, QHttpServerResponder::StatusCode error);
+    bool isUrlSizeAllowed(QByteArrayView requestLine);
 
     bool parse(QIODevice *socket);
 #if QT_CONFIG(http)
@@ -67,11 +71,13 @@ public:
     qint64 contentLength() const;
     QByteArray headerField(const QByteArray &name) const
     { return headerParser.combinedHeaderValue(name); }
+    QString getClientIpAddressAndPort() const;
 
     QHostAddress remoteAddress;
     quint16 remotePort;
     QHostAddress localAddress;
     quint16 localPort;
+    QHttpServerRequestFilter *filter;
     QUrl url;
     QHttpServerRequest::Method method;
     QHttpHeaders headers;

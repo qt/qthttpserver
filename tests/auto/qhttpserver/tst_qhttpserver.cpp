@@ -243,6 +243,11 @@ private slots:
     void multipleResponses();
     void contextObjectInOtherThreadWarning();
     void keepAliveTimeout();
+    void maxUrlSizeAllowed();
+    void maxTotalHeaderSizeAllowed();
+    void maxHeaderFieldSizeAllowed();
+    void maxNumberOfHeaderFieldsAllowed();
+    void maxBodySizeAllowed();
     void writeSequentialDevice();
     void writeMuchToSequentialDevice();
     void writeFromEmptySequentialDevice();
@@ -1982,6 +1987,204 @@ void tst_QHttpServer::keepAliveTimeout()
 
     checkReply(slowReply, slowWaitTime);
     checkReply(fastReply, fastWaitTime);
+#else
+    QSKIP("QtConcurrent is not available, skipping test");
+#endif // QT_CONFIG(concurrent)
+}
+
+void tst_QHttpServer::maxUrlSizeAllowed()
+{
+#if QT_CONFIG(concurrent)
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+
+    QHttpServerConfiguration config;
+    config.setMaxUrlSize(30);
+    httpserver.setConfiguration(config);
+
+    auto cleanup = qScopeGuard([this] {
+        QHttpServerConfiguration config;
+        httpserver.setConfiguration(config);
+    });
+
+    QNetworkRequest request(QUrl(urlBase.arg(u"/req-and-resp-from-object"_s)));
+    request.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.post(request, "Hey"));
+
+    QTRY_VERIFY(reply->isFinished());
+    checkReply(reply.release(), "Hey");
+
+    config.setMaxUrlSize(3);
+    httpserver.setConfiguration(config);
+
+    reply.reset(networkAccessManager.post(request, "Hey"));
+    QTRY_VERIFY(reply->isFinished());
+    QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 414);
+    QTest::qSleep(2000);
+
+#else
+    QSKIP("QtConcurrent is not available, skipping test");
+#endif // QT_CONFIG(concurrent)
+}
+
+void tst_QHttpServer::maxTotalHeaderSizeAllowed()
+{
+#if QT_CONFIG(concurrent)
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+
+    QHttpServerConfiguration config;
+    config.setMaxTotalHeaderSize(500);
+    httpserver.setConfiguration(config);
+
+    auto cleanup = qScopeGuard([this] {
+        QHttpServerConfiguration config;
+        httpserver.setConfiguration(config);
+    });
+
+    QNetworkRequest request(QUrl(urlBase.arg(u"/req-and-resp-from-object"_s)));
+    request.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.post(request, "Hey"));
+
+    QTRY_VERIFY(reply->isFinished());
+    checkReply(reply.release(), "Hey");
+
+    config.setMaxTotalHeaderSize(10);
+    httpserver.setConfiguration(config);
+
+    reply.reset(networkAccessManager.post(request, "Hey"));
+    QTRY_VERIFY(reply->isFinished());
+    QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 431);
+    QTest::qSleep(2000);
+
+#else
+    QSKIP("QtConcurrent is not available, skipping test");
+#endif // QT_CONFIG(concurrent)
+}
+
+void tst_QHttpServer::maxHeaderFieldSizeAllowed()
+{
+#if QT_CONFIG(concurrent)
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+
+    QHttpServerConfiguration config;
+    config.setMaxHeaderFieldSize(500);
+    httpserver.setConfiguration(config);
+
+    auto cleanup = qScopeGuard([this] {
+        QHttpServerConfiguration config;
+        httpserver.setConfiguration(config);
+    });
+
+    QNetworkRequest request(QUrl(urlBase.arg(u"/req-and-resp-from-object"_s)));
+    request.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
+    request.setRawHeader("X-Big-Header", QByteArray("GonnaBeLarge").repeated(10));
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.post(request, "Hey"));
+
+    QTRY_VERIFY(reply->isFinished());
+    checkReply(reply.release(), "Hey");
+
+    config.setMaxHeaderFieldSize(100);
+    httpserver.setConfiguration(config);
+
+    reply.reset(networkAccessManager.post(request, "Hey"));
+    QTRY_VERIFY(reply->isFinished());
+    QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 431);
+    QTest::qSleep(2000);
+
+#else
+    QSKIP("QtConcurrent is not available, skipping test");
+#endif // QT_CONFIG(concurrent)
+}
+
+void tst_QHttpServer::maxNumberOfHeaderFieldsAllowed()
+{
+#if QT_CONFIG(concurrent)
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+
+    QHttpServerConfiguration config;
+    config.setMaxNumberOfHeaderFields(120);
+    httpserver.setConfiguration(config);
+
+    auto cleanup = qScopeGuard([this] {
+        QHttpServerConfiguration config;
+        httpserver.setConfiguration(config);
+    });
+
+    QNetworkRequest request(QUrl(urlBase.arg(u"/req-and-resp-from-object"_s)));
+    request.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
+    for (qsizetype i = 0; i < 100; ++i)
+        request.setRawHeader(QByteArray("X-Header-").append(QByteArray::number(i)), "Dummydata");
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.post(request, "Hey"));
+
+    QTRY_VERIFY(reply->isFinished());
+    checkReply(reply.release(), "Hey");
+
+    config.setMaxNumberOfHeaderFields(100);
+    httpserver.setConfiguration(config);
+
+    reply.reset(networkAccessManager.post(request, "Hey"));
+    QTRY_VERIFY(reply->isFinished());
+    QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 431);
+    QTest::qSleep(2000);
+
+#else
+    QSKIP("QtConcurrent is not available, skipping test");
+#endif // QT_CONFIG(concurrent)
+}
+
+void tst_QHttpServer::maxBodySizeAllowed()
+{
+#if QT_CONFIG(concurrent)
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+
+    QHttpServerConfiguration config;
+    config.setMaxBodySize(500);
+    httpserver.setConfiguration(config);
+
+    auto cleanup = qScopeGuard([this] {
+        QHttpServerConfiguration config;
+        httpserver.setConfiguration(config);
+    });
+
+    QNetworkRequest request(QUrl(urlBase.arg(u"/req-and-resp-from-object"_s)));
+    request.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.post(request, "Here's the body"));
+
+    QTRY_VERIFY(reply->isFinished());
+    checkReply(reply.release(), "Here's the body");
+
+    config.setMaxBodySize(10);
+    httpserver.setConfiguration(config);
+
+    reply.reset(networkAccessManager.post(request, "Here's the body"));
+    QTRY_VERIFY(reply->isFinished());
+    QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 413);
+    QTest::qSleep(2000);
+
 #else
     QSKIP("QtConcurrent is not available, skipping test");
 #endif // QT_CONFIG(concurrent)

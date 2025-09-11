@@ -16,14 +16,14 @@
 
 QT_BEGIN_NAMESPACE
 
-static QHttpServerParser initParserFromSocket(QIODevice *socket)
+static QHttpServerParser initParserFromSocket(QIODevice *socket, QHttpServerRequestFilter *filter)
 {
     QTcpSocket *tcpSocket = qobject_cast<QTcpSocket *>(socket);
     if (tcpSocket) {
         return QHttpServerParser(tcpSocket->peerAddress(), tcpSocket->peerPort(),
-                                 tcpSocket->localAddress(), tcpSocket->localPort());
+                                 tcpSocket->localAddress(), tcpSocket->localPort(), filter);
     }
-    return QHttpServerParser(QHostAddress::LocalHost, 0, QHostAddress::LocalHost, 0);
+    return QHttpServerParser(QHostAddress::LocalHost, 0, QHostAddress::LocalHost, 0, filter);
 }
 
 #if QT_CONFIG(ssl)
@@ -36,9 +36,10 @@ static QSslConfiguration initSslConfigurationFromSocket(QIODevice *socket)
 }
 #endif
 
-QHttpServerStream::QHttpServerStream(QIODevice *socket, QObject *parent)
+QHttpServerStream::QHttpServerStream(QIODevice *socket, QHttpServerRequestFilter *filter,
+                                     QObject *parent)
     : QObject(parent)
-    , parser(initParserFromSocket(socket))
+    , parser(initParserFromSocket(socket, filter))
 #if QT_CONFIG(ssl)
     , sslConfiguration(initSslConfigurationFromSocket(socket))
 #endif

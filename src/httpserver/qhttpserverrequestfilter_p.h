@@ -39,6 +39,12 @@ public:
     Q_HTTPSERVER_EXPORT bool isRequestWithinRate(const QHostAddress &peerAddress);
     Q_HTTPSERVER_EXPORT bool isRequestWithinRate(const QHostAddress &peerAddress, qint64 currTimeMSec);
 
+    Q_HTTPSERVER_EXPORT bool isUrlSizeAllowed(qsizetype urlSize) const;
+    Q_HTTPSERVER_EXPORT bool isTotalHeaderSizeAllowed(qsizetype headerSize) const;
+    Q_HTTPSERVER_EXPORT bool isHeaderFieldSizeAllowed(qsizetype headerSize) const;
+    Q_HTTPSERVER_EXPORT bool isNumberOfHeaderFieldsAllowed(qsizetype headerSize) const;
+    Q_HTTPSERVER_EXPORT bool isBodySizeAllowed(qint64 bodySize) const;
+
 private:
     struct IpInfo
     {

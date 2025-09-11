@@ -8,6 +8,7 @@
 #include <QtHttpServer/qthttpserverglobal.h>
 #include <QtHttpServer/qhttpserverresponder.h>
 #include <QtHttpServer/private/qhttpserverparser_p.h>
+#include <QtHttpServer/private/qhttpserverrequestfilter_p.h>
 
 #if QT_CONFIG(ssl)
 #include <QtNetwork/qsslsocket.h>
@@ -37,7 +38,8 @@ class QHttpServerStream : public QObject
     friend class QHttpServerResponderPrivate;
 
 protected:
-    QHttpServerStream(QIODevice *socket, QObject *parent = nullptr);
+    QHttpServerStream(QIODevice *socket, QHttpServerRequestFilter *filter,
+                      QObject *parent = nullptr);
 
     virtual void responderDestroyed(quint32 streamId) = 0;
     virtual void startHandlingRequest() = 0;

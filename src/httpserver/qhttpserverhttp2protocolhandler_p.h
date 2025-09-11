@@ -43,6 +43,14 @@ struct QHttpServerHttp2Queue
     bool allEnqueued = false;
 };
 
+struct QHttpServerHttp2Data
+{
+    qsizetype numberOfHeaders = 0;
+    qsizetype headersSize = 0;
+    qsizetype dataSize = 0;
+    bool done = false;
+};
+
 class QHttpServerHttp2ProtocolHandler : public QHttpServerStream
 {
     Q_OBJECT
@@ -83,6 +91,8 @@ private slots:
     void onStreamClosed(quint32 streamId);
     void onStreamHalfClosed(quint32 streamId);
     void sendToStream(quint32 streamId);
+    void onHeadersReceived(quint32 id, const HPack::HttpHeader &headers);
+    void onDataReceived(quint32 id, qsizetype size);
 
 private:
     QHttp2Stream * getStream(quint32 streamId) const;
@@ -96,6 +106,7 @@ private:
     QHttp2Connection *m_connection;
     QHash<quint32, QList<QMetaObject::Connection>> m_streamConnections;
     QHash<quint32, QHttpServerHttp2Queue> m_streamQueue;
+    QHash<quint32, QHttpServerHttp2Data> m_streamData;
     QHash<quint32, QHttpServerResponderPrivate *> m_responders;
     qint32 m_responderCounter = 0;
     QElapsedTimer lastActiveTimer;

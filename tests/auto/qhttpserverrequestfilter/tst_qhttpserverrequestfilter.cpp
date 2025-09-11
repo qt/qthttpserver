@@ -15,6 +15,11 @@ class tst_QHttpServerRequestFilter : public QObject
 private slots:
     void testIsRequestWithinRate();
     void testIsRequestAllowed();
+    void testIsUrlSizeAllowed();
+    void testIsTotalHeaderSizeAllowed();
+    void testIsHeaderFieldSizeAllowed();
+    void testIsNumberOfHeaderFieldsAllowed();
+    void testIsBodySizeAllowed();
 };
 
 void tst_QHttpServerRequestFilter::testIsRequestWithinRate()
@@ -139,6 +144,109 @@ void tst_QHttpServerRequestFilter::testIsRequestAllowed()
     QCOMPARE(filter.isRequestAllowed(QHostAddress("10.0.0.1")), true);
     QCOMPARE(filter.isRequestAllowed(QHostAddress("10.0.0.2")), false);
     QCOMPARE(filter.isRequestAllowed(QHostAddress("192.168.0.1")), false);
+}
+
+void tst_QHttpServerRequestFilter::testIsUrlSizeAllowed()
+{
+    using namespace QHttpServerRequestFilterPrivate;
+
+    QHttpServerRequestFilter filter;
+    QHttpServerConfiguration config;
+
+    filter.setConfiguration(config);
+    QCOMPARE(filter.isUrlSizeAllowed(1000), true);
+
+    config.setMaxUrlSize(100);
+    filter.setConfiguration(config);
+    QCOMPARE(filter.isUrlSizeAllowed(100), true);
+    QCOMPARE(filter.isUrlSizeAllowed(101), false);
+    QCOMPARE(filter.isUrlSizeAllowed(1024 * 1024), false);
+}
+
+void tst_QHttpServerRequestFilter::testIsTotalHeaderSizeAllowed()
+{
+    using namespace QHttpServerRequestFilterPrivate;
+
+    QHttpServerRequestFilter filter;
+    QHttpServerConfiguration config;
+
+    filter.setConfiguration(config);
+    QCOMPARE(filter.isTotalHeaderSizeAllowed(1000), true);
+
+    config.setMaxTotalHeaderSize(100);
+    filter.setConfiguration(config);
+    QCOMPARE(filter.isTotalHeaderSizeAllowed(100), true);
+    QCOMPARE(filter.isTotalHeaderSizeAllowed(101), false);
+    QCOMPARE(filter.isTotalHeaderSizeAllowed(1024 * 1024), false);
+
+    config.setMaxTotalHeaderSize(-1);
+    filter.setConfiguration(config);
+    QCOMPARE(filter.isTotalHeaderSizeAllowed(100), true);
+    QCOMPARE(filter.isTotalHeaderSizeAllowed(101), true);
+    QCOMPARE(filter.isTotalHeaderSizeAllowed(1024 * 1024 * 1024), true);
+}
+
+void tst_QHttpServerRequestFilter::testIsHeaderFieldSizeAllowed()
+{
+    using namespace QHttpServerRequestFilterPrivate;
+
+    QHttpServerRequestFilter filter;
+    QHttpServerConfiguration config;
+
+    filter.setConfiguration(config);
+    QCOMPARE(filter.isHeaderFieldSizeAllowed(1000), true);
+
+    config.setMaxHeaderFieldSize(100);
+    filter.setConfiguration(config);
+    QCOMPARE(filter.isHeaderFieldSizeAllowed(100), true);
+    QCOMPARE(filter.isHeaderFieldSizeAllowed(101), false);
+    QCOMPARE(filter.isHeaderFieldSizeAllowed(1024 * 1024), false);
+
+    config.setMaxHeaderFieldSize(-1);
+    filter.setConfiguration(config);
+    QCOMPARE(filter.isHeaderFieldSizeAllowed(100), true);
+    QCOMPARE(filter.isHeaderFieldSizeAllowed(101), true);
+    QCOMPARE(filter.isHeaderFieldSizeAllowed(1024 * 1024 * 1024), true);
+}
+
+void tst_QHttpServerRequestFilter::testIsNumberOfHeaderFieldsAllowed()
+{
+    using namespace QHttpServerRequestFilterPrivate;
+
+    QHttpServerRequestFilter filter;
+    QHttpServerConfiguration config;
+
+    filter.setConfiguration(config);
+    QCOMPARE(filter.isNumberOfHeaderFieldsAllowed(100), true);
+
+    config.setMaxNumberOfHeaderFields(100);
+    filter.setConfiguration(config);
+    QCOMPARE(filter.isNumberOfHeaderFieldsAllowed(100), true);
+    QCOMPARE(filter.isNumberOfHeaderFieldsAllowed(101), false);
+    QCOMPARE(filter.isNumberOfHeaderFieldsAllowed(1024 * 1024), false);
+
+    config.setMaxNumberOfHeaderFields(-1);
+    filter.setConfiguration(config);
+    QCOMPARE(filter.isNumberOfHeaderFieldsAllowed(100), true);
+    QCOMPARE(filter.isNumberOfHeaderFieldsAllowed(101), true);
+    QCOMPARE(filter.isNumberOfHeaderFieldsAllowed(1024 * 1024), true);
+}
+
+void tst_QHttpServerRequestFilter::testIsBodySizeAllowed()
+{
+    using namespace QHttpServerRequestFilterPrivate;
+
+    QHttpServerRequestFilter filter;
+    QHttpServerConfiguration config;
+
+    filter.setConfiguration(config);
+    QCOMPARE(filter.isBodySizeAllowed(1000), true);
+
+    config.setMaxBodySize(100);
+    filter.setConfiguration(config);
+    QCOMPARE(filter.isBodySizeAllowed(100), true);
+    QCOMPARE(filter.isBodySizeAllowed(101), false);
+    QCOMPARE(filter.isBodySizeAllowed(1024 * 1024), false);
 }
 
 QT_END_NAMESPACE

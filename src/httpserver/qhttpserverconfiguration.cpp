@@ -20,13 +20,23 @@ public:
         return rateLimit == other.rateLimit
             && keepAliveTimeout == other.keepAliveTimeout
             && whitelist == other.whitelist
-            && blacklist == other.blacklist;
+            && blacklist == other.blacklist
+            && maxUrlSize == other.maxUrlSize
+            && maxTotalHeaderSize == other.maxTotalHeaderSize
+            && maxHeaderFieldSize == other.maxHeaderFieldSize
+            && maxNumberOfHeaderFields == other.maxNumberOfHeaderFields
+            && maxBodySize == other.maxBodySize;
     }
 
     quint32 rateLimit = 0;
     std::chrono::seconds keepAliveTimeout = std::chrono::seconds(15);
     QList<QPair<QHostAddress, int>> whitelist;
     QList<QPair<QHostAddress, int>> blacklist;
+    qint64 maxUrlSize = 64 * 1024;
+    qint64 maxTotalHeaderSize = 64 * 1024;
+    qint64 maxHeaderFieldSize = 48 * 1024;
+    qint64 maxNumberOfHeaderFields = 128;
+    qint64 maxBodySize = 32 * 1024 * 1024;
 };
 
 QT_DEFINE_QESDP_SPECIALIZATION_DTOR(QHttpServerConfigurationPrivate)
@@ -190,6 +200,155 @@ void QHttpServerConfiguration::setBlacklist(QSpan<const std::pair<QHostAddress, 
 QSpan<const std::pair<QHostAddress, int>> QHttpServerConfiguration::blacklist() const
 {
     return d->blacklist;
+}
+
+/*!
+    \since 6.11
+
+    Sets \a maxSize as the maximum size of the URL
+    that the server will accept. If the limit is exceeded,
+    QHttpServer will respond with status 414 Request-URI
+    Too Long. If \a maxSize is -1 there is no limit.
+    The default is 64 KiB.
+
+    \sa maxUrlSize(), QHttpServerResponder::StatusCode
+*/
+void QHttpServerConfiguration::setMaxUrlSize(qint64 maxSize)
+{
+    d.detach();
+    d->maxUrlSize = maxSize;
+}
+
+/*!
+    \since 6.11
+
+    Returns maximum size of the URL accepted by the
+    server.
+
+    \sa setMaxUrlSize()
+*/
+qint64 QHttpServerConfiguration::maxUrlSize() const
+{
+    return d->maxUrlSize;
+}
+
+/*!
+    \since 6.11
+
+    Sets \a maxSize as the maximum total size of the headers
+    that the server will accept. If the limit is exceeded,
+    QHttpServer will respond with status 431 Request Header
+    Fields Too Large. If \a maxSize is -1 there is no limit.
+    The default is 64 KiB.
+
+    \sa maxTotalHeaderSize(), QHttpServerResponder::StatusCode
+*/
+void QHttpServerConfiguration::setMaxTotalHeaderSize(qint64 maxSize)
+{
+    d.detach();
+    d->maxTotalHeaderSize = maxSize;
+}
+
+/*!
+    \since 6.11
+
+    Returns maximum size of the total incoming headers accepted
+    by the server.
+
+    \sa setMaxTotalHeaderSize()
+*/
+qint64 QHttpServerConfiguration::maxTotalHeaderSize() const
+{
+    return d->maxTotalHeaderSize;
+}
+
+/*!
+    \since 6.11
+
+    Sets \a maxSize as the maximum size of a single header
+    that the server will accept. If the limit is exceeded,
+    QHttpServer will respond with status 431 Request Header
+    Fields Too Large. If \a maxSize is -1 there is no limit.
+    The default is 48 KiB.
+
+    \sa maxHeaderFieldSize(), QHttpServerResponder::StatusCode
+*/
+void QHttpServerConfiguration::setMaxHeaderFieldSize(qint64 maxSize)
+{
+    d.detach();
+    d->maxHeaderFieldSize = maxSize;
+}
+
+/*!
+    \since 6.11
+
+    Returns maximum size of the incoming headers accepted
+    by the server.
+
+    \sa setMaxHeaderFieldSize()
+*/
+qint64 QHttpServerConfiguration::maxHeaderFieldSize() const
+{
+    return d->maxHeaderFieldSize;
+}
+
+/*!
+    \since 6.11
+
+    Sets \a maxSize as the maximum number of headers that
+    the server will accept. If the limit is exceeded,
+    QHttpServer will respond with status 431 Request Header
+    Fields Too Large. If \a maxSize is -1 there is no limit.
+    The default is 128.
+
+    \sa maxNumberOfHeaderFields(), QHttpServerResponder::StatusCode
+*/
+void QHttpServerConfiguration::setMaxNumberOfHeaderFields(qint64 maxSize)
+{
+    d.detach();
+    d->maxNumberOfHeaderFields = maxSize;
+}
+
+/*!
+    \since 6.11
+
+    Returns maximum number of incoming headers accepted
+    by the server.
+
+    \sa setMaxNumberOfHeaderFields()
+*/
+qint64 QHttpServerConfiguration::maxNumberOfHeaderFields() const
+{
+    return d->maxNumberOfHeaderFields;
+}
+
+/*!
+    \since 6.11
+
+    Sets \a maxSize as the maximum size of the body
+    that the server will accept. If the limit is exceeded,
+    QHttpServer will respond with status 413 Content Too Large.
+    If \a maxSize is -1 there is no limit. The default is 32 MiB.
+
+    \sa maxBodySize(), QHttpServerResponder::StatusCode
+*/
+void QHttpServerConfiguration::setMaxBodySize(qint64 maxSize)
+{
+    d.detach();
+    d->maxBodySize = maxSize;
+}
+
+/*!
+    \since 6.11
+
+    Returns maximum size of the incoming body accepted
+    by the server.
+
+    \sa setMaxBodySize()
+*/
+qint64 QHttpServerConfiguration::maxBodySize() const
+{
+    return d->maxBodySize;
 }
 
 /*!

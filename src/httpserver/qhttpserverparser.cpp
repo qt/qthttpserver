@@ -5,12 +5,16 @@
 #include "qhttpserverrequest_p.h"
 #include "qhttpserverparser_p.h"
 
+#include <QtCore/qloggingcategory.h>
 #include <QtNetwork/qhttpheaders.h>
 #if QT_CONFIG(http)
 #include <QtNetwork/private/qhttp2connection_p.h>
 #endif
+#include <limits>
 
 QT_BEGIN_NAMESPACE
+
+Q_STATIC_LOGGING_CATEGORY(lcHttpServerParser, "qt.httpserver.parser")
 
 using namespace Qt::StringLiterals;
 
@@ -36,6 +40,20 @@ QHttpServerRequest::Method parseRequestMethod(QByteArrayView str)
         return QHttpServerRequest::Method::Connect;
     else
         return QHttpServerRequest::Method::Unknown;
+}
+
+const char* getErrorString(QHttpServerResponder::StatusCode code)
+{
+    switch (code) {
+    case QHttpServerResponder::StatusCode::PayloadTooLarge:
+        return "Request Entity Too Large";
+    case QHttpServerResponder::StatusCode::UriTooLong:
+        return "Request-URI Too Long";
+    case QHttpServerResponder::StatusCode::RequestHeaderFieldsTooLarge:
+        return "Request Header Fields Too Large";
+    default:
+        return "Bad Request";
+    };
 }
 
 } // anonymous namespace
@@ -127,10 +145,53 @@ qsizetype QHttpServerParser::readRequestLine(QIODevice *socket)
             break;
         } else {
             fragment.append(c);
+            if (!isUrlSizeAllowed(fragment.first(bytes))) {
+                fragment.clear();
+                sendError(socket, QHttpServerResponder::StatusCode::UriTooLong);
+                qCDebug(lcHttpServerParser) << "URI too long at" << bytes << "bytes from client"
+                                            << getClientIpAddressAndPort();
+                return -1;
+            }
         }
     } while (haveRead == 1);
 
     return bytes;
+}
+
+bool QHttpServerParser::isUrlSizeAllowed(QByteArrayView requestLine)
+{
+    if (filter->isUrlSizeAllowed(requestLine.size()))
+        return true; // Succeed if entire request line is not too long
+
+    // Request-Line   = Method SP Request-URI SP HTTP-Version CRLF
+    constexpr qsizetype shortestCaseExtraCharacters = 3 + 1 + 1 + 8 + 2;
+    if (!filter->isUrlSizeAllowed(requestLine.size() - shortestCaseExtraCharacters))
+        return false;
+
+    qsizetype firstSpace = requestLine.indexOf(' ');
+    if (firstSpace < 0)
+        return false; // First space not read yet
+
+    qsizetype uriStart = firstSpace;
+    while (uriStart < requestLine.size() && requestLine[uriStart] == ' ')
+        uriStart++;
+
+    qsizetype secondSpace = requestLine.indexOf(' ', uriStart);
+    if (secondSpace < 0)
+        secondSpace = requestLine.size(); // Second space not read yet
+
+    return filter->isUrlSizeAllowed(secondSpace - uriStart);
+}
+
+void QHttpServerParser::sendError(QIODevice *socket, QHttpServerResponder::StatusCode error)
+{
+    QByteArray buffer;
+    buffer.append("HTTP/1.1 ");
+    buffer.append(QByteArray::number(int(error)));
+    buffer.append(" ");
+    buffer.append(getErrorString(error));
+    buffer.append("\r\nConnection: close\r\n\r\n");
+    socket->write(buffer);
 }
 
 /*!
@@ -174,6 +235,12 @@ qsizetype QHttpServerParser::readHeader(QIODevice *socket)
         } else {
             fragment.append(c);
             bytes++;
+            if (!filter->isTotalHeaderSizeAllowed(bytes)) {
+                sendError(socket, QHttpServerResponder::StatusCode::RequestHeaderFieldsTooLarge);
+                qCDebug(lcHttpServerParser) << "Total header size too large, currently at" << bytes
+                                            << "bytes from client" << getClientIpAddressAndPort();
+                return -1;
+            }
 
             if (c == '\n') {
                 // check for possible header endings. As per HTTP rfc,
@@ -193,9 +260,34 @@ qsizetype QHttpServerParser::readHeader(QIODevice *socket)
 
     // we received all headers now parse them
     if (allHeaders) {
-        headerParser.parseHeaders(fragment);
+        bool parseSuccess = headerParser.parseHeaders(fragment);
+        if (!parseSuccess) {
+            sendError(socket, QHttpServerResponder::StatusCode::RequestHeaderFieldsTooLarge);
+            qCDebug(lcHttpServerParser)
+                    << "Error parsing headers from client" << getClientIpAddressAndPort();
+            return -1;
+        }
         headers = headerParser.headers();
         fragment.clear(); // next fragment
+
+        if (!filter->isNumberOfHeaderFieldsAllowed(headers.size())) {
+            sendError(socket, QHttpServerResponder::StatusCode::RequestHeaderFieldsTooLarge);
+            qCDebug(lcHttpServerParser) << "Number of header fields" << headers.size()
+                                        << "too large from client" << getClientIpAddressAndPort();
+            return -1;
+        }
+
+        for (qsizetype i = 0; i < headers.size(); ++i) {
+            qsizetype headerFieldSize = headers.nameAt(i).size() + 1 + headers.valueAt(i).size();
+            if (!filter->isHeaderFieldSizeAllowed(headerFieldSize)) {
+                sendError(socket, QHttpServerResponder::StatusCode::RequestHeaderFieldsTooLarge);
+                QByteArrayView name(headers.nameAt(i).data(), qMin(50, headers.nameAt(i).size()));
+                qCDebug(lcHttpServerParser)
+                        << "Header field" << name << "too large at" << headerFieldSize
+                        << "bytes from client" << getClientIpAddressAndPort();
+                return -1;
+            }
+        }
 
         auto hostUrl = QString::fromUtf8(headerField("host"));
         if (!hostUrl.isEmpty())
@@ -217,6 +309,12 @@ qsizetype QHttpServerParser::readHeader(QIODevice *socket)
             url.setPort(port);
 
         bodyLength = contentLength(); // cache the length
+        if (bodyLength > 0 && !filter->isBodySizeAllowed(bodyLength)) {
+            sendError(socket, QHttpServerResponder::StatusCode::PayloadTooLarge);
+            qCDebug(lcHttpServerParser) << "Body size too large at" << bodyLength
+                                        << "bytes from client" << getClientIpAddressAndPort();
+            return -1;
+        }
         // cache isChunked() since it is called often
         // FIXME: the RFC says that anything but "identity" should be interpreted as chunked (4.4
         // [2])
@@ -251,13 +349,18 @@ qsizetype QHttpServerParser::sendContinue(QIODevice *socket)
     \internal
 */
 QHttpServerParser::QHttpServerParser(const QHostAddress &remoteAddress, quint16 remotePort,
-                                     const QHostAddress &localAddress, quint16 localPort)
+                                     const QHostAddress &localAddress, quint16 localPort,
+                                     QHttpServerRequestFilter *filter)
     : remoteAddress(remoteAddress),
       remotePort(remotePort),
       localAddress(localAddress),
-      localPort(localPort)
+      localPort(localPort),
+      filter(filter)
 {
     clear();
+    headerParser.setMaxHeaderFieldSize(std::numeric_limits<qsizetype>::max());
+    headerParser.setMaxTotalHeaderSize(std::numeric_limits<qsizetype>::max());
+    headerParser.setMaxHeaderFields(std::numeric_limits<qsizetype>::max());
 }
 
 /*!
@@ -463,6 +566,14 @@ qsizetype QHttpServerParser::readRequestBodyChunked(QIODevice *socket)
             bytes += getChunkSize(socket, &currentChunkSize);
             if (currentChunkSize == -1)
                 break;
+            if (!filter->isBodySizeAllowed(bodyBuffer.byteAmount() + currentChunkSize)) {
+                sendError(socket, QHttpServerResponder::StatusCode::PayloadTooLarge);
+                socket->skip(socket->bytesAvailable());
+                qCDebug(lcHttpServerParser) << "Body size too large currently at"
+                                            << (bodyBuffer.byteAmount() + currentChunkSize)
+                                            << "from client" << getClientIpAddressAndPort();
+                return -1;
+            }
         }
         // if the chunk size is 0, end of the stream
         if (currentChunkSize == 0 || lastChunkRead) {
@@ -536,6 +647,23 @@ qsizetype QHttpServerParser::getChunkSize(QIODevice *socket, qsizetype *chunkSiz
     }
 
     return bytes;
+}
+
+/*!
+    \internal
+*/
+QString QHttpServerParser::getClientIpAddressAndPort() const
+{
+    using namespace Qt::StringLiterals;
+    QString result;
+    if (remoteAddress.protocol() != QAbstractSocket::IPv4Protocol)
+        result.append(u"["_s);
+    result.append(remoteAddress.toString());
+    if (remoteAddress.protocol() != QAbstractSocket::IPv4Protocol)
+        result.append(u"]"_s);
+    result.append(u":"_s);
+    result.append(QString::number(remotePort));
+    return result;
 }
 
 QT_END_NAMESPACE
