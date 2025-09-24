@@ -6,8 +6,13 @@
 #define QHTTPSERVERPARSER_P_H
 
 #include <QtHttpServer/qhttpserverrequest.h>
+
 #include <QtNetwork/private/qhttpheaderparser_p.h>
+#if __has_include(<QtNetwork/private/qbytedatabuffer_p.h>)
+#include <QtNetwork/private/qbytedatabuffer_p.h>
+#else
 #include <QtCore/private/qbytedata_p.h>
+#endif
 
 //
 //  W A R N I N G
