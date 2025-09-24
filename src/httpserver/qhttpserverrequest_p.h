@@ -6,8 +6,8 @@
 #define QHTTPSERVERREQUEST_P_H
 
 #include <QtHttpServer/qhttpserverrequest.h>
+
 #include <QtNetwork/private/qhttpheaderparser_p.h>
-#include <QtCore/private/qbytedata_p.h>
 
 //
 //  W A R N I N G
