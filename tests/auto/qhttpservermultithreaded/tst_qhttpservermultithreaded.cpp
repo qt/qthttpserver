@@ -550,8 +550,7 @@ void tst_QHttpServerMultithreaded::singleCall()
 
     // Wait for incoming requests to be handled in main thread before they are
     // processed in separate threads
-    while (!future.isFinished())
-        QTest::qWait(1);
+    QTRY_VERIFY(future.isFinished());
 
     QString returned = future.result();
     QCOMPARE(returned, result);
@@ -584,8 +583,7 @@ void tst_QHttpServerMultithreaded::multipleCallsOnEachConnection()
         return results;
     });
 
-    while (!futureLower.isFinished() || !futureUpper.isFinished())
-        QTest::qWait(1);
+    QTRY_VERIFY_WITH_TIMEOUT(futureLower.isFinished() && futureUpper.isFinished(), 10s);
 
     QList<QString> convertedToLower = futureLower.result();
     QList<QString> convertedToUpper = futureUpper.result();
@@ -622,10 +620,8 @@ void tst_QHttpServerMultithreaded::moreConnectionsThanServerThreads()
         });
     };
 
-    while (!std::all_of(futures.begin(), futures.end(),
-                        [](auto &future) { return future.isFinished(); } )) {
-        QTest::qWait(1);
-    }
+    QTRY_VERIFY(std::all_of(futures.begin(), futures.end(),
+                            [](auto &future) { return future.isFinished(); }));
 
     QCOMPARE(getCallCount(), inputs.size() * NumberOfTasks * 2);
     for (qsizetype i = 0; i < NumberOfTasks; ++i) {
@@ -652,10 +648,9 @@ void tst_QHttpServerMultithreaded::readSlow()
         });
     }
 
-    while (!std::all_of(futures.begin(), futures.end(),
-                        [](auto &future) { return future.isFinished(); } )) {
-        QTest::qWait(1);
-    }
+    QTRY_VERIFY_WITH_TIMEOUT(std::all_of(futures.begin(), futures.end(),
+                                         [](auto &future) { return future.isFinished(); }),
+                             20s);
 
     for (qsizetype i = 0; i < NumberOfTasks; ++i) {
         QList<QString> returned = futures[i].results();
@@ -686,10 +681,9 @@ void tst_QHttpServerMultithreaded::postSlow()
         });
     }
 
-    while (!std::all_of(futures.begin(), futures.end(),
-                        [](auto &future) { return future.isFinished(); })) {
-        QTest::qWait(1);
-    }
+    QTRY_VERIFY_WITH_TIMEOUT(std::all_of(futures.begin(), futures.end(),
+                                         [](auto &future) { return future.isFinished(); }),
+                             30s);
 
     for (qsizetype i = 0; i < NumberOfTasks; ++i) {
         QList<QString> returned = futures[i].results();
@@ -725,10 +719,8 @@ void tst_QHttpServerMultithreaded::useSemaphores()
     readySem.acquire(NumberProcessed);
     routeSem.release(NumberProcessed);
 
-    while (!std::all_of(futures.begin(), futures.end(),
-                        [](auto &future) { return future.isFinished(); })) {
-        QTest::qWait(1);
-    }
+    QTRY_VERIFY(std::all_of(futures.begin(), futures.end(),
+                            [](auto &future) { return future.isFinished(); }));
 
     for (qsizetype i = 0; i < NumberProcessed; ++i)
         QCOMPARE(futures[i].result(), QString::number(i));
@@ -757,8 +749,7 @@ void tst_QHttpServerMultithreaded::waitingInParallel()
         return result;
     });
 
-    while (!future1.isFinished() || !future2.isFinished())
-        QTest::qWait(1);
+    QTRY_VERIFY(future1.isFinished() && future2.isFinished());
 
     QCOMPARE(getCallCount(), 4);
 }
@@ -781,10 +772,9 @@ void tst_QHttpServerMultithreaded::waitPipelined()
         });
     }
 
-    while (!std::all_of(futures.begin(), futures.end(),
-                        [](auto &future) { return future.isFinished(); })) {
-        QTest::qWait(1);
-    }
+    QTRY_VERIFY_WITH_TIMEOUT(std::all_of(futures.begin(), futures.end(),
+                                         [](auto &future) { return future.isFinished(); }),
+                             20s);
 
     QCOMPARE(getCallCount(), waitTimes.size() * NumberOfTasks);
     for (qsizetype i = 0; i < NumberOfTasks; ++i) {
@@ -826,10 +816,9 @@ void tst_QHttpServerMultithreaded::waitPipelinedQnam()
                            [](QNetworkReply *reply) { return reply->isFinished(); });
     };
 
-    while (!std::all_of(repliesForTasks.begin(), repliesForTasks.end(),
-                        [&](auto &replies) { return allRepliesFinished(replies); })) {
-        QTest::qWait(1);
-    }
+    QTRY_VERIFY_WITH_TIMEOUT(std::all_of(repliesForTasks.begin(), repliesForTasks.end(),
+                                         [&](auto &task) { return allRepliesFinished(task); }),
+                             10s);
 
     QCOMPARE(getCallCount(), waitTimes.size() * NumberOfTasks);
     QCOMPARE(repliesForTasks.size(), NumberOfTasks);
@@ -861,10 +850,8 @@ void tst_QHttpServerMultithreaded::manyWaitingToRespond()
         });
     }
 
-    while (!std::all_of(futures.begin(), futures.end(),
-                        [](auto &future) { return future.isFinished(); })) {
-        QTest::qWait(1);
-    }
+    QTRY_VERIFY(std::all_of(futures.begin(), futures.end(),
+                            [](auto &future) { return future.isFinished(); }));
 
     QCOMPARE(getCallCount(), NumberOfTasks);
 }
@@ -890,15 +877,9 @@ void tst_QHttpServerMultithreaded::oneSlowManyFast()
         });
     }
 
-    forever {
-        if (slowFuture.isFinished()) {
-            for (auto &fastFuture : fastFutures)
-                QVERIFY(fastFuture.isFinished());
-            break;
-        } else {
-            QTest::qWait(10);
-        }
-    }
+    QTRY_VERIFY(slowFuture.isFinished());
+    QVERIFY(std::all_of(fastFutures.begin(), fastFutures.end(),
+                        [](auto &future) { return future.isFinished(); }));
     QCOMPARE(getCallCount(), NumberOfFastTasks + 1);
 }
 
