@@ -45,7 +45,7 @@ private:
                                     QIODevice *socket,
                                     QHttpServerRequestFilter *filter);
 
-    void responderDestroyed() final;
+    void responderDestroyed(quint32 streamId) final;
     void startHandlingRequest() final;
     void socketDisconnected() final;
 

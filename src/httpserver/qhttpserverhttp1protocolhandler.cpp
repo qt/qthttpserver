@@ -291,8 +291,9 @@ QHttpServerHttp1ProtocolHandler::QHttpServerHttp1ProtocolHandler(QAbstractHttpSe
     lastActiveTimer.start();
 }
 
-void QHttpServerHttp1ProtocolHandler::responderDestroyed()
+void QHttpServerHttp1ProtocolHandler::responderDestroyed(quint32 streamId)
 {
+    disconnectResponder(streamId);
     Q_ASSERT(QThread::currentThread() == thread());
     if (protocolChanged) {
         deleteLater();
@@ -372,6 +373,7 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
     useHttp1_1 = request.d->minorVersion == 1;
 
     QHttpServerResponder responder(this);
+    connectResponder(responder.d_ptr);
 
 #if defined(QT_WEBSOCKETS_LIB)
     if (auto *tcpSocket = qobject_cast<QTcpSocket*>(socket)) {

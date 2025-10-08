@@ -28,6 +28,7 @@
 QT_BEGIN_NAMESPACE
 
 class QTcpSocket;
+class QHttpServerResponderPrivate;
 
 class QHttpServerStream : public QObject
 {
@@ -38,7 +39,7 @@ class QHttpServerStream : public QObject
 protected:
     QHttpServerStream(QIODevice *socket, QObject *parent = nullptr);
 
-    virtual void responderDestroyed() = 0;
+    virtual void responderDestroyed(quint32 streamId) = 0;
     virtual void startHandlingRequest() = 0;
     virtual void socketDisconnected() = 0;
 
@@ -56,11 +57,15 @@ protected:
                                  QHttpHeaders &trailers,
                                  quint32 streamId) = 0;
 
+    void connectResponder(QHttpServerResponderPrivate *responder);
+    void disconnectResponder(quint32 streamId);
+
     QHttpServerParser parser;
 #if QT_CONFIG(ssl)
     QSslConfiguration sslConfiguration;
 #endif
-
+    QHash<quint32, QMetaObject::Connection> responderConnections;
+    QIODevice *clientSocket;
 };
 
 QT_END_NAMESPACE

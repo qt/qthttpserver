@@ -11,10 +11,12 @@
 
 #include <private/qhttpserverstream_p.h>
 
+#include <QtCore/qatomic.h>
 #include <QtCore/qcoreapplication.h>
 #include <QtCore/qpair.h>
 #include <QtCore/qpointer.h>
 #include <QtCore/qsysinfo.h>
+#include <private/qobject_p.h>
 
 #include <type_traits>
 
@@ -44,6 +46,7 @@ public:
     void writeBeginChunked(const QHttpHeaders &headers, QHttpServerResponder::StatusCode status);
     void writeChunk(const QByteArray &body);
     void writeEndChunked(const QByteArray &data, const QHttpHeaders &trailers);
+    void cancel();
 
 #if defined(QT_DEBUG)
     const QPointer<QHttpServerStream> stream;
@@ -51,6 +54,7 @@ public:
     QHttpServerStream *const stream;
 #endif
     quint32 m_streamId = 0;
+    QAtomicInteger<bool> canceled = false;
 };
 
 QT_END_NAMESPACE

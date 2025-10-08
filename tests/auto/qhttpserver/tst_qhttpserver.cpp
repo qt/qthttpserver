@@ -247,6 +247,8 @@ private slots:
     void writeMuchToSequentialDevice();
     void writeFromEmptySequentialDevice();
     void concurrentRequestsToSequentialDevice();
+    void timeoutConnection();
+    void useCanceledResponders();
 
 #if QT_CONFIG(localserver)
     void localSocket();
@@ -262,7 +264,9 @@ private:
     std::array<QNetworkAccessManager, 10> networkAccessManagers;
     QNetworkAccessManager &networkAccessManager = networkAccessManagers[0];
     ReplyObject replyObject;
+    std::vector<std::unique_ptr<QHttpServerResponder>> responders;
     std::optional<QSemaphore> readySem, routeSem;
+    std::optional<bool> canceledByClient;
 };
 
 struct CustomArg {
@@ -678,6 +682,28 @@ httpserver.route("/concurrent-request-back2", this,
                             }
                         });
             });
+
+    httpserver.route("/timeout-connection", this, [this](QHttpServerResponder &&responder) {
+        return QtConcurrent::run(
+                [this, r = std::make_shared<QHttpServerResponder>(std::move(responder))] {
+                    r->writeBeginChunked("text/plain"_ba);
+                    for (int i = 1; i < 200; ++i) {
+                        if (r->isResponseCanceled()) {
+                            canceledByClient.emplace(true);
+                            return;
+                        }
+                        QThread::sleep(10ms);
+                    }
+                    canceledByClient.emplace(false);
+                    r->writeEndChunked("chunk");
+                });
+    });
+
+    httpserver.route("/add-responder", this, [this](QHttpServerResponder &&responder) {
+        responder.writeBeginChunked("text/plain"_ba);
+        responder.writeChunk("chunk");
+        responders.emplace_back(std::make_unique<QHttpServerResponder>(std::move(responder)));
+    });
 #endif
 
 #if QT_CONFIG(localserver)
@@ -852,6 +878,8 @@ httpserver.route("/concurrent-request-back2", this,
 
 void tst_QHttpServer::init()
 {
+    canceledByClient.reset();
+    responders.clear();
 #if QT_CONFIG(ssl)
     QFETCH_GLOBAL(const bool, useSsl);
     if (useSsl && QTestPrivate::isSecureTransportBlockingTest())
@@ -2045,6 +2073,54 @@ void tst_QHttpServer::concurrentRequestsToSequentialDevice()
 #else
     QSKIP("QtConcurrent is not available, skipping test");
 #endif // QT_CONFIG(concurrent)
+}
+
+void tst_QHttpServer::timeoutConnection()
+{
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QVERIFY(!canceledByClient.has_value());
+
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    const QUrl requestUrl(urlBase.arg("/timeout-connection"));
+    QNetworkRequest req(requestUrl);
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+    req.setTransferTimeout(100ms);
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(req));
+
+    QSignalSpy spy(reply.get(), &QNetworkReply::finished);
+    spy.wait(3s);
+    QTRY_VERIFY(canceledByClient.has_value());
+    QCOMPARE(spy.count(), 1);
+    QVERIFY(reply->isFinished());
+    QCOMPARE(reply->error(), QNetworkReply::OperationCanceledError);
+    QVERIFY(canceledByClient.value());
+}
+
+void tst_QHttpServer::useCanceledResponders()
+{
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    const QUrl requestUrl(urlBase.arg("/add-responder"));
+    QNetworkRequest req(requestUrl);
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+    req.setTransferTimeout(10ms);
+    std::unique_ptr<QNetworkReply> reply1(networkAccessManager.get(req));
+    std::unique_ptr<QNetworkReply> reply2(networkAccessManager.get(req));
+
+    QTRY_VERIFY(reply1->isFinished());
+    QTRY_VERIFY(reply2->isFinished());
+
+    for (auto &responder : responders)
+        responder->writeChunk("chunk");
+
+    for (auto &responder : responders)
+        responder->writeEndChunked("end");
+
+    for (auto &responder : responders)
+        QVERIFY(responder->isResponseCanceled());
 }
 
 QT_END_NAMESPACE

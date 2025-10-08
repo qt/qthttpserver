@@ -72,9 +72,11 @@ QHttpServerHttp2ProtocolHandler::QHttpServerHttp2ProtocolHandler(QAbstractHttpSe
     lastActiveTimer.start();
 }
 
-void QHttpServerHttp2ProtocolHandler::responderDestroyed()
+void QHttpServerHttp2ProtocolHandler::responderDestroyed(quint32 streamId)
 {
     m_responderCounter--;
+    disconnectResponder(streamId);
+    m_responders.remove(streamId);
 }
 
 void QHttpServerHttp2ProtocolHandler::startHandlingRequest()
@@ -104,6 +106,8 @@ void QHttpServerHttp2ProtocolHandler::write(const QByteArray &body, const QHttpH
 
     connect(stream, &QHttp2Stream::uploadFinished, buffer, &QObject::deleteLater);
     stream->sendDATA(buffer, true);
+    disconnectResponder(streamId);
+    m_responders.remove(streamId);
 }
 
 void QHttpServerHttp2ProtocolHandler::write(QHttpServerResponder::StatusCode status,
@@ -120,6 +124,8 @@ void QHttpServerHttp2ProtocolHandler::write(QHttpServerResponder::StatusCode sta
     bool isInfoStatus = QHttpServerResponder::StatusCode::Continue <= status
                         && status < QHttpServerResponder::StatusCode::Ok;
     writeHeadersAndStatus(headers, status, !isInfoStatus, streamId);
+    disconnectResponder(streamId);
+    m_responders.remove(streamId);
 }
 
 void QHttpServerHttp2ProtocolHandler::write(QIODevice *data, const QHttpHeaders &headers,
@@ -158,6 +164,8 @@ void QHttpServerHttp2ProtocolHandler::write(QIODevice *data, const QHttpHeaders 
     input->setParent(stream);
     connect(stream, &QHttp2Stream::uploadFinished, input.get(), &QObject::deleteLater);
     stream->sendDATA(input.release(), true);
+    disconnectResponder(streamId);
+    m_responders.remove(streamId);
 }
 
 void QHttpServerHttp2ProtocolHandler::writeBeginChunked(const QHttpHeaders &headers,
@@ -177,6 +185,8 @@ void QHttpServerHttp2ProtocolHandler::writeEndChunked(const QByteArray &body,
                                                       quint32 streamId)
 {
     enqueueChunk(body, true, trailers, streamId);
+    disconnectResponder(streamId);
+    m_responders.remove(streamId);
 }
 
 void QHttpServerHttp2ProtocolHandler::enqueueChunk(const QByteArray &body, bool allEnqueued,
@@ -278,6 +288,8 @@ void QHttpServerHttp2ProtocolHandler::onStreamHalfClosed(quint32 streamId)
 
     QHttpServerResponder responder(this);
     responder.d_ptr->m_streamId = streamId;
+    connectResponder(responder.d_ptr);
+    m_responders.insert(streamId, responder.d_ptr);
 
     if (!m_filter->isRequestWithinRate(m_tcpSocket->peerAddress())) {
         responder.sendResponse(
@@ -294,6 +306,9 @@ void QHttpServerHttp2ProtocolHandler::onStreamClosed(quint32 streamId)
         disconnect(c);
 
     m_streamQueue.remove(streamId);
+    auto responder = m_responders.take(streamId);
+    if (responder)
+        responder->cancel();
 }
 
 void QHttpServerHttp2ProtocolHandler::checkKeepAliveTimeout()

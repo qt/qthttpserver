@@ -3,11 +3,15 @@
 // Qt-Security score:significant reason:default
 
 #include "qhttpserverstream_p.h"
+#include <private/qhttpserverresponder_p.h>
 
 #include <QtNetwork/qtcpsocket.h>
 
 #if QT_CONFIG(ssl)
 #include <QtNetwork/qsslsocket.h>
+#endif
+#if QT_CONFIG(localserver)
+#include <QtNetwork/qlocalsocket.h>
 #endif
 
 QT_BEGIN_NAMESPACE
@@ -38,7 +42,30 @@ QHttpServerStream::QHttpServerStream(QIODevice *socket, QObject *parent)
 #if QT_CONFIG(ssl)
     , sslConfiguration(initSslConfigurationFromSocket(socket))
 #endif
+    , clientSocket(socket)
 {
+}
+
+void QHttpServerStream::connectResponder(QHttpServerResponderPrivate *responder)
+{
+    if (QTcpSocket *tcpSocket = qobject_cast<QTcpSocket *>(clientSocket)) {
+        responderConnections.insert(responder->m_streamId,
+                                    connect(tcpSocket, &QAbstractSocket::disconnected, tcpSocket,
+                                            [responder]() { responder->cancel(); }));
+#if QT_CONFIG(localserver)
+    } else if (QLocalSocket *localSocket = qobject_cast<QLocalSocket *>(clientSocket)) {
+        responderConnections.insert(responder->m_streamId,
+                                    connect(localSocket, &QLocalSocket::disconnected, localSocket,
+                                            [responder]() { responder->cancel(); }));
+#endif
+    }
+}
+
+void QHttpServerStream::disconnectResponder(quint32 streamId)
+{
+    auto connection = responderConnections.take(streamId);
+    if (connection)
+        disconnect(connection);
 }
 
 QT_END_NAMESPACE

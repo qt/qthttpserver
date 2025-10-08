@@ -115,13 +115,24 @@ QHttpServerResponderPrivate::QHttpServerResponderPrivate(QHttpServerStream *stre
 QHttpServerResponderPrivate::~QHttpServerResponderPrivate()
 {
     Q_ASSERT(stream);
-    QMetaObject::invokeMethod(stream, &QHttpServerStream::responderDestroyed);
+    QMetaObject::invokeMethod(stream, &QHttpServerStream::responderDestroyed, m_streamId);
 }
+
+/*!
+    \internal
+*/
+void QHttpServerResponderPrivate::cancel()
+{
+    canceled = true;
+}
+
 /*!
     \internal
 */
 void QHttpServerResponderPrivate::write(QHttpServerResponder::StatusCode status)
 {
+    if (canceled)
+        return;
     Q_ASSERT(stream);
     QMetaObject::invokeMethod(
             stream, qOverload<QHttpServerResponder::StatusCode, quint32>(&QHttpServerStream::write),
@@ -134,6 +145,8 @@ void QHttpServerResponderPrivate::write(QHttpServerResponder::StatusCode status)
 void QHttpServerResponderPrivate::write(const QByteArray &body, const QHttpHeaders &headers,
                                         QHttpServerResponder::StatusCode status)
 {
+    if (canceled)
+        return;
     Q_ASSERT(stream);
     QMetaObject::invokeMethod(
             stream,
@@ -148,6 +161,8 @@ void QHttpServerResponderPrivate::write(const QByteArray &body, const QHttpHeade
 void QHttpServerResponderPrivate::write(QIODevice *data, const QHttpHeaders &headers,
                                         QHttpServerResponder::StatusCode status)
 {
+    if (canceled)
+        return;
     Q_ASSERT(stream);
     Q_ASSERT(data);
     data->setParent(nullptr);
@@ -165,6 +180,8 @@ void QHttpServerResponderPrivate::write(QIODevice *data, const QHttpHeaders &hea
 void QHttpServerResponderPrivate::writeBeginChunked(const QHttpHeaders &headers,
                                                     QHttpServerResponder::StatusCode status)
 {
+    if (canceled)
+        return;
     Q_ASSERT(stream);
     QMetaObject::invokeMethod(stream, &QHttpServerStream::writeBeginChunked, headers, status,
                               m_streamId);
@@ -175,6 +192,8 @@ void QHttpServerResponderPrivate::writeBeginChunked(const QHttpHeaders &headers,
 */
 void QHttpServerResponderPrivate::writeChunk(const QByteArray &data)
 {
+    if (canceled)
+        return;
     Q_ASSERT(stream);
     QMetaObject::invokeMethod(stream, &QHttpServerStream::writeChunk, data, m_streamId);
 }
@@ -185,6 +204,8 @@ void QHttpServerResponderPrivate::writeChunk(const QByteArray &data)
 void QHttpServerResponderPrivate::writeEndChunked(const QByteArray &data,
                                                   const QHttpHeaders &trailers)
 {
+    if (canceled)
+        return;
     Q_ASSERT(stream);
     QMetaObject::invokeMethod(stream, &QHttpServerStream::writeEndChunked, data, trailers,
                               m_streamId);
@@ -456,6 +477,19 @@ void QHttpServerResponder::writeEndChunked(const QByteArray &data, const QHttpHe
 void QHttpServerResponder::writeEndChunked(const QByteArray &data)
 {
     writeEndChunked(data, {});
+}
+
+/*!
+    Returns true if the client has canceled the response.
+    Used to make it possible to exit early in handler
+    when the response is canceled.
+
+    \since 6.11
+*/
+bool QHttpServerResponder::isResponseCanceled()
+{
+    Q_D(QHttpServerResponder);
+    return d->canceled;
 }
 
 QT_END_NAMESPACE

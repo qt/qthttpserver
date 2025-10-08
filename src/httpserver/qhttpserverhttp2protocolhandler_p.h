@@ -9,6 +9,7 @@
 #include <QtHttpServer/qhttpserverrequest.h>
 #include <QtHttpServer/private/qhttpserverstream_p.h>
 #include <QtHttpServer/private/qhttpserverrequestfilter_p.h>
+#include <QtHttpServer/private/qhttpserverresponder_p.h>
 #include <QtNetwork/private/hpack_p.h>
 #include <QtCore/qbytearray.h>
 #include <QtCore/qqueue.h>
@@ -53,7 +54,7 @@ private:
                                     QIODevice *socket,
                                     QHttpServerRequestFilter *filter);
 
-    void responderDestroyed() final;
+    void responderDestroyed(quint32 streamId) final;
     void startHandlingRequest() final;
     void socketDisconnected() final;
 
@@ -95,6 +96,7 @@ private:
     QHttp2Connection *m_connection;
     QHash<quint32, QList<QMetaObject::Connection>> m_streamConnections;
     QHash<quint32, QHttpServerHttp2Queue> m_streamQueue;
+    QHash<quint32, QHttpServerResponderPrivate *> m_responders;
     qint32 m_responderCounter = 0;
     QElapsedTimer lastActiveTimer;
 };
