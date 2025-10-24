@@ -151,6 +151,7 @@ int main(int argc, char *argv[])
 
     conf.setLocalCertificate(sslCertificateChain.front());
     conf.setPrivateKey(QSslKey(&privateKeyFile, QSsl::Rsa));
+    conf.setAllowedNextProtocols({ QSslConfiguration::ALPNProtocolHTTP2 }); // Add HTTP/2 support
 
     privateKeyFile.close();
 
