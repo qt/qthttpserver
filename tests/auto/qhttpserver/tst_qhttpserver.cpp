@@ -2296,7 +2296,7 @@ void tst_QHttpServer::timeoutConnection()
     QTRY_VERIFY(canceledByClient.has_value());
     QCOMPARE(spy.count(), 1);
     QVERIFY(reply->isFinished());
-    QCOMPARE(reply->error(), QNetworkReply::OperationCanceledError);
+    QCOMPARE(reply->error(), QNetworkReply::TimeoutError);
     QVERIFY(canceledByClient.value());
 }
 
