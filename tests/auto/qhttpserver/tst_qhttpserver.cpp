@@ -890,6 +890,7 @@ void tst_QHttpServer::init()
     if (useSsl && QTestPrivate::isSecureTransportBlockingTest())
         QSKIP("SslServer is blocking the test execution while trying to access the login keychain");
 #endif // QT_CONFIG(ssl)
+    networkAccessManager.clearConnectionCache();
 }
 
 void tst_QHttpServer::routeGet_data()
@@ -2288,7 +2289,7 @@ void tst_QHttpServer::timeoutConnection()
     const QUrl requestUrl(urlBase.arg("/timeout-connection"));
     QNetworkRequest req(requestUrl);
     req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
-    req.setTransferTimeout(100ms);
+    req.setTransferTimeout(1s);
     std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(req));
 
     QSignalSpy spy(reply.get(), &QNetworkReply::finished);
