@@ -1122,7 +1122,7 @@ void tst_QHttpServer::routeGet()
     QFETCH(QString, type);
     QFETCH(QString, body);
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
-    QNetworkRequest request = QNetworkRequest(urlBase.arg(url));
+    QNetworkRequest request = QNetworkRequest(QUrl{urlBase.arg(url)});
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
 
     std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(request));
@@ -1158,7 +1158,7 @@ void tst_QHttpServer::routeKeepAlive()
             .arg(static_cast<int>(req.method()));
     });
 
-    QNetworkRequest request(urlBase.arg("/keep-alive"));
+    QNetworkRequest request(QUrl{urlBase.arg("/keep-alive")});
     request.setRawHeader(QByteArray("Connection"), QByteArray("keep-alive"));
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
 
@@ -1168,7 +1168,7 @@ void tst_QHttpServer::routeKeepAlive()
     if (QTest::currentTestFailed())
         return;
 
-    request.setUrl(urlBase.arg("/keep-alive?po=98"));
+    request.setUrl(QUrl{urlBase.arg("/keep-alive?po=98")});
     request.setRawHeader("CustomHeader", "1");
     request.setHeader(QNetworkRequest::ContentTypeHeader, "text/html"_ba);
 
@@ -1178,7 +1178,7 @@ void tst_QHttpServer::routeKeepAlive()
     if (QTest::currentTestFailed())
         return;
 
-    request = QNetworkRequest(urlBase.arg("/keep-alive"));
+    request = QNetworkRequest(QUrl{urlBase.arg("/keep-alive")});
     request.setRawHeader(QByteArray("Connection"), QByteArray("keep-alive"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "text/html"_ba);
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
@@ -1304,7 +1304,7 @@ void tst_QHttpServer::routePost()
     QFETCH(QString, data);
     QFETCH(QString, body);
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
-    QNetworkRequest request(urlBase.arg(url));
+    QNetworkRequest request(QUrl{urlBase.arg(url)});
     if (data.size())
         request.setHeader(QNetworkRequest::ContentTypeHeader, "text/html"_ba);
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
@@ -1351,7 +1351,7 @@ void tst_QHttpServer::routeDelete()
     QFETCH(int, code);
     QFETCH(QString, type);
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
-    QNetworkRequest request(urlBase.arg(url));
+    QNetworkRequest request(QUrl{urlBase.arg(url)});
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
 
     std::unique_ptr<QNetworkReply> reply(networkAccessManager.deleteResource(request));
@@ -1375,7 +1375,7 @@ void tst_QHttpServer::routeExtraHeaders()
     QFETCH_GLOBAL(bool, useSsl);
     QFETCH_GLOBAL(bool, useHttp2);
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
-    QNetworkRequest request(urlBase.arg("/extra-headers"));
+    QNetworkRequest request(QUrl{urlBase.arg("/extra-headers")});
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
 
     std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(request));
@@ -1400,7 +1400,7 @@ void tst_QHttpServer::getLongChunks()
     QFETCH_GLOBAL(bool, useSsl);
     QFETCH_GLOBAL(bool, useHttp2);
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
-    QNetworkRequest request(urlBase.arg("/longChunks/"));
+    QNetworkRequest request(QUrl{urlBase.arg("/longChunks/")});
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
 
     std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(request));
@@ -1488,7 +1488,7 @@ void tst_QHttpServer::afterRequest()
     QFETCH_GLOBAL(bool, useSsl);
     QFETCH_GLOBAL(bool, useHttp2);
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
-    QNetworkRequest request(urlBase.arg("/test-after-request"));
+    QNetworkRequest request(QUrl{urlBase.arg("/test-after-request")});
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
 
     httpserver.addAfterRequestHandler(this, [] (const QHttpServerRequest &request,
@@ -1555,7 +1555,7 @@ void tst_QHttpServer::disconnectedInEventLoop()
     QFETCH_GLOBAL(bool, useSsl);
     QFETCH_GLOBAL(bool, useHttp2);
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
-    QNetworkRequest request(urlBase.arg("/event-loop/"));
+    QNetworkRequest request(QUrl{urlBase.arg("/event-loop/")});
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
 
     httpserver.route("/event-loop/", this, [] () {
@@ -1579,7 +1579,7 @@ void tst_QHttpServer::multipleRequests()
     QFETCH_GLOBAL(bool, useSsl);
     QFETCH_GLOBAL(bool, useHttp2);
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
-    QNetworkRequest request(urlBase.arg("/do-not-move"));
+    QNetworkRequest request(QUrl{urlBase.arg("/do-not-move")});
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
 
     httpserver.route("/do-not-move", this, [v = std::vector<int>{1, 2, 3}] () {
