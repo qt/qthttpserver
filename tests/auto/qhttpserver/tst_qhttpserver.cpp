@@ -2315,21 +2315,23 @@ void tst_QHttpServer::useCanceledResponders()
     const QUrl requestUrl(urlBase.arg("/add-responder"));
     QNetworkRequest req(requestUrl);
     req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
-    req.setTransferTimeout(10ms);
+    req.setTransferTimeout(1s);
     std::unique_ptr<QNetworkReply> reply1(networkAccessManager.get(req));
     std::unique_ptr<QNetworkReply> reply2(networkAccessManager.get(req));
 
     QTRY_VERIFY(reply1->isFinished());
     QTRY_VERIFY(reply2->isFinished());
 
+    QCOMPARE(responders.size(), 2);
+
+    for (auto &responder : responders)
+        QTRY_VERIFY(responder->isResponseCanceled());
+
     for (auto &responder : responders)
         responder->writeChunk("chunk");
 
     for (auto &responder : responders)
         responder->writeEndChunked("end");
-
-    for (auto &responder : responders)
-        QVERIFY(responder->isResponseCanceled());
 }
 
 QT_END_NAMESPACE
