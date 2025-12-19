@@ -18,6 +18,7 @@ public:
     bool equals(const QHttpServerConfigurationPrivate &other) const noexcept
     {
         return rateLimit == other.rateLimit
+            && maxConnectionsPerHost == other.maxConnectionsPerHost
             && keepAliveTimeout == other.keepAliveTimeout
             && whitelist == other.whitelist
             && blacklist == other.blacklist
@@ -29,6 +30,7 @@ public:
     }
 
     quint32 rateLimit = 0;
+    quint32 maxConnectionsPerHost = 0;
     std::chrono::seconds keepAliveTimeout = std::chrono::seconds(15);
     QList<QPair<QHostAddress, int>> whitelist;
     QList<QPair<QHostAddress, int>> blacklist;
@@ -105,6 +107,46 @@ void QHttpServerConfiguration::setRateLimitPerSecond(quint32 maxRequests)
 quint32 QHttpServerConfiguration::rateLimitPerSecond() const
 {
     return d->rateLimit;
+}
+
+/*!
+    \since 6.12
+
+    Sets limit on \a maxConnections simultaneous connections
+    per host that will will be accepted by QHttpServer.
+    If the limit is exceeded, QHttpServer will respond with
+    QHttpServerResponder::StatusCode::TooManyRequests.
+
+    If \a maxConnections is set to 0, the per-host
+    connection limit is disabled. This should be done when
+    running behind a reverse proxy, as all incoming
+    sockets will appear to originate from the reverse proxy.
+
+    When the per-host connection limit is reached, HTTP/1
+    connections are closed with a 429 (Too Many Requests) response.
+    For SSL connections the connection is closed when the limit is exceeded.
+
+    By default this is disabled.
+
+    \sa maximumConnectionsPerHost(), QHttpServerResponder::StatusCode
+*/
+void QHttpServerConfiguration::setMaximumConnectionsPerHost(quint32 maxConnections)
+{
+    d.detach();
+    d->maxConnectionsPerHost = maxConnections;
+}
+
+/*!
+    \since 6.12
+
+    Returns maximum number of simultaneous connections
+    per host that will be accepted by the server.
+
+    \sa setMaximumConnectionsPerHost()
+*/
+quint32 QHttpServerConfiguration::maximumConnectionsPerHost() const
+{
+    return d->maxConnectionsPerHost;
 }
 
 /*!

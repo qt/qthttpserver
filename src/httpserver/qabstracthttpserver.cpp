@@ -14,6 +14,10 @@
 #include <QtCore/qloggingcategory.h>
 #include <QtNetwork/qtcpserver.h>
 #include <QtNetwork/qtcpsocket.h>
+#if QT_CONFIG(ssl) && QT_CONFIG(http)
+#include <QtNetwork/private/qhttp2connection_p.h>
+#endif
+
 #if QT_CONFIG(localserver)
 #include <QtNetwork/qlocalserver.h>
 #include <QtNetwork/qlocalsocket.h>
@@ -31,7 +35,29 @@
 
 QT_BEGIN_NAMESPACE
 
-Q_STATIC_LOGGING_CATEGORY(lcHttpServer, "qt.httpserver")
+Q_STATIC_LOGGING_CATEGORY(lcHttpServer, "qt.httpserver", QtWarningMsg)
+
+bool LessHostAddress::operator()(const QHostAddress &lhs, const QHostAddress &rhs) const
+{
+    bool lhsIsIPv4 = false;
+    bool rhsIsIPv4 = false;
+    quint32 lhsIpAddressV4 = lhs.toIPv4Address(&lhsIsIPv4);
+    quint32 rhsIpAddressV4 = rhs.toIPv4Address(&rhsIsIPv4);
+    if (lhsIsIPv4 != rhsIsIPv4)
+        return lhsIsIPv4;
+    if (lhsIsIPv4)
+        return lhsIpAddressV4 < rhsIpAddressV4;
+
+    Q_IPV6ADDR lhsIpAddressV6 = lhs.toIPv6Address();
+    Q_IPV6ADDR rhsIpAddressV6 = rhs.toIPv6Address();
+    for (int i = 0; i < 16; ++i) {
+        if (lhsIpAddressV6[i] != rhsIpAddressV6[i])
+            return lhsIpAddressV6[i] < rhsIpAddressV6[i];
+    }
+
+    return false;
+}
+
 
 /*!
     \internal
@@ -84,9 +110,23 @@ bool QAbstractHttpServerPrivate::verifyThreadAffinity(const QObject *contextObje
 
 void QAbstractHttpServerPrivate::createHttp1Handler(QIODevice *socket)
 {
+    using namespace std::chrono_literals;
     Q_Q(QAbstractHttpServer);
 
+    if (hasTooManyConnections(socket)) {
+        if (auto tcpSocket = qobject_cast<QTcpSocket *>(socket)) {
+            QByteArray buffer;
+            buffer.append("HTTP/1.1 429 Too Many Requests");
+            buffer.append("\r\nConnection: close\r\n\r\n");
+            tcpSocket->write(buffer);
+            tcpSocket->flush();
+            QTimer::singleShot(1s, tcpSocket, &QObject::deleteLater);
+        }
+        return;
+    }
+
     auto handler = new QHttpServerHttp1ProtocolHandler(q, socket, &requestFilter, &configuration);
+    updateSocketCounter(socket);
     QObject::connect(&heartbeatTimer, &QTimer::timeout,
             handler, &QHttpServerHttp1ProtocolHandler::checkKeepAliveTimeout);
 }
@@ -94,11 +134,79 @@ void QAbstractHttpServerPrivate::createHttp1Handler(QIODevice *socket)
 #if QT_CONFIG(ssl) && QT_CONFIG(http)
 void QAbstractHttpServerPrivate::createHttp2Handler(QIODevice *socket)
 {
+    using namespace std::chrono_literals;
     Q_Q(QAbstractHttpServer);
 
+    if (hasTooManyConnections(socket)) {
+        if (auto tcpSocket = qobject_cast<QTcpSocket *>(socket)) {
+            auto *connection = QHttp2Connection::createDirectServerConnection(
+                                    socket, q->http2Configuration());
+            connection->close(Http2::Http2Error::ENHANCE_YOUR_CALM);
+            QTimer::singleShot(1s, tcpSocket, &QObject::deleteLater);
+        }
+        return;
+    }
+
     auto handler = new QHttpServerHttp2ProtocolHandler(q, socket, &requestFilter);
+    updateSocketCounter(socket);
     QObject::connect(&heartbeatTimer, &QTimer::timeout,
             handler, &QHttpServerHttp2ProtocolHandler::checkKeepAliveTimeout);
+}
+#endif
+
+bool QAbstractHttpServerPrivate::hasTooManyConnections(QIODevice *socket)
+{
+    if (configuration.maximumConnectionsPerHost() == 0)
+        return false;
+
+    if (auto tcpSocket = qobject_cast<QTcpSocket *>(socket)) {
+        auto foundNumberOfConnections = connectionsPerHost.find(tcpSocket->peerAddress());
+        if (foundNumberOfConnections != connectionsPerHost.end()) {
+            if (foundNumberOfConnections->second >= configuration.maximumConnectionsPerHost()) {
+                qCInfo(lcHttpServer) << "QAbstractHttpServer:"
+                                     << "closing socket: too many connections from"
+                                     << tcpSocket->peerAddress().toString();
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void QAbstractHttpServerPrivate::updateSocketCounter(QIODevice *socket)
+{
+    // If there are no limits on connections per host, there's point in tracking
+    // the amount of connections per host, so we skip doing so.
+    if (configuration.maximumConnectionsPerHost() == 0)
+        return;
+
+    if (auto tcpSocket = qobject_cast<QTcpSocket *>(socket)) {
+        auto [it, _] = connectionsPerHost.try_emplace(tcpSocket->peerAddress(), 0);
+        ++(it->second);
+        QObjectPrivate::connect(tcpSocket, &QAbstractSocket::disconnected, this,
+                                &QAbstractHttpServerPrivate::socketDisconnected);
+    }
+}
+
+void QAbstractHttpServerPrivate::socketDisconnected()
+{
+    Q_Q(QAbstractHttpServer);
+    if (auto tcpSocket = qobject_cast<QTcpSocket *>(q->sender())) {
+        auto foundNumberOfConnections = connectionsPerHost.find(tcpSocket->peerAddress());
+        if (foundNumberOfConnections != connectionsPerHost.end()) {
+            if (foundNumberOfConnections->second == 1)
+                connectionsPerHost.erase(foundNumberOfConnections);
+            else
+                --(foundNumberOfConnections->second);
+        }
+    }
+}
+
+#if QT_CONFIG(ssl)
+void QAbstractHttpServerPrivate::handleStartedEncryptionHandshake(QSslSocket *socket)
+{
+    if (hasTooManyConnections(socket))
+        socket->close();
 }
 #endif
 
@@ -224,6 +332,13 @@ bool QAbstractHttpServer::bind(QTcpServer *server)
     QObjectPrivate::connect(server, &QTcpServer::pendingConnectionAvailable, d,
                             &QAbstractHttpServerPrivate::handleNewConnections,
                             Qt::UniqueConnection);
+#if QT_CONFIG(ssl)
+    if (auto *sslServer = qobject_cast<QSslServer *>(server)) {
+         QObjectPrivate::connect(sslServer,&QSslServer::startedEncryptionHandshake, d,
+                                 &QAbstractHttpServerPrivate::handleStartedEncryptionHandshake,
+                                 Qt::UniqueConnection);
+    }
+#endif
     return true;
 }
 

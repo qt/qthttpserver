@@ -30,12 +30,14 @@ QT_BEGIN_NAMESPACE
 
 class QTcpSocket;
 class QHttpServerResponderPrivate;
+class QAbstractHttpServerPrivate;
 
 class QHttpServerStream : public QObject
 {
     Q_OBJECT
 
     friend class QHttpServerResponderPrivate;
+    friend class QAbstractHttpServerPrivate;
 
 protected:
     QHttpServerStream(QIODevice *socket, QHttpServerRequestFilter *filter,

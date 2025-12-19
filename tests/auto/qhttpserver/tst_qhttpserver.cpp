@@ -21,6 +21,7 @@
 #include <QtCore/qjsonobject.h>
 #include <QtCore/qjsonvalue.h>
 #include <QtCore/qjsonarray.h>
+#include <QtCore/qloggingcategory.h>
 #include <QtCore/qsemaphore.h>
 #include <QtCore/qtimer.h>
 
@@ -43,7 +44,6 @@
 #endif
 
 #include <QtTest/private/qtesthelpers_p.h>
-
 #include <array>
 
 QT_BEGIN_NAMESPACE
@@ -254,6 +254,7 @@ private slots:
     void concurrentRequestsToSequentialDevice();
     void timeoutConnection();
     void useCanceledResponders();
+    void maximumConnectionsPerHost();
 
 #if QT_CONFIG(localserver)
     void localSocket();
@@ -266,7 +267,8 @@ private:
     QHttpServer httpserver;
     QString clearUrlBase;
     QString sslUrlBase;
-    std::array<QNetworkAccessManager, 10> networkAccessManagers;
+    static constexpr qsizetype numberOfNetworkAccessManagers = 10;
+    std::array<QNetworkAccessManager, numberOfNetworkAccessManagers> networkAccessManagers;
     QNetworkAccessManager &networkAccessManager = networkAccessManagers[0];
     ReplyObject replyObject;
     std::vector<std::unique_ptr<QHttpServerResponder>> responders;
@@ -890,7 +892,8 @@ void tst_QHttpServer::init()
     if (useSsl && QTestPrivate::isSecureTransportBlockingTest())
         QSKIP("SslServer is blocking the test execution while trying to access the login keychain");
 #endif // QT_CONFIG(ssl)
-    networkAccessManager.clearConnectionCache();
+    for (auto &qnam : networkAccessManagers)
+        qnam.clearConnectionCache();
 }
 
 void tst_QHttpServer::routeGet_data()
@@ -2333,6 +2336,93 @@ void tst_QHttpServer::useCanceledResponders()
     for (auto &responder : responders)
         responder->writeEndChunked("end");
 }
+
+void tst_QHttpServer::maximumConnectionsPerHost()
+{
+#if QT_CONFIG(concurrent)
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+
+    auto cleanup = qScopeGuard([this] {
+        QHttpServerConfiguration config;
+        httpserver.setConfiguration(config);
+        for (auto &qnam : networkAccessManagers)
+            qnam.clearConnectionCache();
+        QCoreApplication::processEvents();
+        QLoggingCategory::setFilterRules(QStringLiteral(""));
+    });
+
+    QLoggingCategory::setFilterRules(QStringLiteral("qt.network.http2.warning=false"));
+    constexpr int waitInterval = 2000;
+    QByteArray returnValue = QByteArray::number(waitInterval);
+    const QUrl requestUrl(urlBase.arg("/wait/") + returnValue);
+    constexpr qsizetype NumberOfConnections = numberOfNetworkAccessManagers;
+    std::array<std::unique_ptr<QNetworkReply>, NumberOfConnections> replies;
+    QThreadPool::globalInstance()->setMaxThreadCount(NumberOfConnections + 1);
+    QNetworkRequest req(requestUrl);
+    req.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+
+    // Test without limitation
+    QHttpServerConfiguration config;
+    config.setMaximumConnectionsPerHost(0);
+    httpserver.setConfiguration(config);
+    for (qsizetype i = 0; i < NumberOfConnections; ++i) {
+        replies[i].reset(networkAccessManagers[i].get(req));
+    }
+    for (qsizetype i = 0; i < NumberOfConnections; ++i)
+        checkReply(replies[i].release(), returnValue);
+
+    for (auto &qnam : networkAccessManagers)
+        qnam.clearConnectionCache();
+    QCoreApplication::processEvents();
+
+    // Test with higher limitation than number of connections
+    config.setMaximumConnectionsPerHost(numberOfNetworkAccessManagers*3);
+    httpserver.setConfiguration(config);
+    for (qsizetype i = 0; i < NumberOfConnections; ++i) {
+        replies[i].reset(networkAccessManagers[i].get(req));
+    }
+    for (qsizetype i = 0; i < NumberOfConnections; ++i)
+        checkReply(replies[i].release(), returnValue);
+
+    for (auto &qnam : networkAccessManagers)
+        qnam.clearConnectionCache();
+    QCoreApplication::processEvents();
+
+    // Test with five more connections than allowed
+    static constexpr qint32 shouldSucceed = 5;
+    config.setMaximumConnectionsPerHost(shouldSucceed);
+    httpserver.setConfiguration(config);
+    for (qsizetype i = 0; i < NumberOfConnections; ++i)
+        replies[i].reset(networkAccessManagers[i].get(req));
+
+    qint32 numberOfCompletedConnections = 0;
+    for (qsizetype i = 0; i < NumberOfConnections; ++i) {
+        QTRY_VERIFY(replies[i]->isFinished());
+        if (replies[i]->error() == QNetworkReply::NoError) {
+            ++numberOfCompletedConnections;
+        } else {
+            if (useHttp2) {
+                QCOMPARE(replies[i]->error(), QNetworkReply::UnknownServerError);
+            } else {
+                bool isInt = false;
+                int statusCode =
+                    replies[i]->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(&isInt);
+                QVERIFY(isInt);
+                QCOMPARE(statusCode, 429);
+            }
+        }
+    }
+
+    QCOMPARE(numberOfCompletedConnections, shouldSucceed);
+#else
+    QSKIP("QtConcurrent is not available, skipping test");
+#endif // QT_CONFIG(concurrent)
+}
+
 
 QT_END_NAMESPACE
 

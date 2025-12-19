@@ -38,6 +38,11 @@
 QT_BEGIN_NAMESPACE
 
 class QHttpServerRequest;
+class LessHostAddress
+{
+public:
+    [[nodiscard]] bool operator()(const QHostAddress &lhs, const QHostAddress &rhs) const;
+};
 
 class QAbstractHttpServerPrivate: public QObjectPrivate
 {
@@ -65,7 +70,12 @@ public:
     void createHttp2Handler(QIODevice *socket);
 #endif
     void restartHeartbeatTimer();
-
+    [[nodiscard]] bool hasTooManyConnections(QIODevice *socket);
+    void updateSocketCounter(QIODevice *socket);
+    void socketDisconnected();
+#if QT_CONFIG(ssl)
+    void handleStartedEncryptionHandshake(QSslSocket *socket);
+#endif
 #if defined(QT_WEBSOCKETS_LIB)
     mutable bool handlingWebSocketUpgrade = false;
     struct WebSocketUpgradeVerifier
@@ -81,6 +91,7 @@ public:
     QHttpServerConfiguration configuration;
     QHttpServerRequestFilter requestFilter;
     QTimer heartbeatTimer;
+    std::map<QHostAddress, quint32, LessHostAddress> connectionsPerHost;
 };
 
 QT_END_NAMESPACE
