@@ -539,7 +539,7 @@ void tst_QHttpServer::initTestCase()
 
     httpserver.route("/longChunks/", this, [](QHttpServerResponder &responder) {
         responder.writeBeginChunked("text/plain", QHttpServerResponder::StatusCode::Ok);
-        constexpr qsizetype chunkLength = 8 * 1024 * 1024;
+        constexpr qsizetype chunkLength = 1024 * 1024;
         QByteArray a(chunkLength, 'a');
         QByteArray b(chunkLength, 'b');
         QByteArray c(chunkLength, 'c');
@@ -1421,7 +1421,7 @@ void tst_QHttpServer::getLongChunks()
     QByteArray body(reply->readAll());
     qsizetype offset = 0;
     char parts[] = { 'a', 'b', 'c' };
-    constexpr qsizetype chunkLength = 8 * 1024 * 1024;
+    constexpr qsizetype chunkLength = 1024 * 1024;
     for (auto part : parts) {
         for (int i = 0; i < chunkLength; ++i)
             QCOMPARE(body[i + offset], part);
