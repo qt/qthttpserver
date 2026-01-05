@@ -211,9 +211,9 @@ QSpan<const std::pair<QHostAddress, int>> QHttpServerConfiguration::blacklist() 
     Too Long. If \a maxSize is -1 there is no limit.
     The default is 64 KiB.
 
-    \sa maxUrlSize(), QHttpServerResponder::StatusCode
+    \sa maximumUrlSize(), QHttpServerResponder::StatusCode
 */
-void QHttpServerConfiguration::setMaxUrlSize(qint64 maxSize)
+void QHttpServerConfiguration::setMaximumUrlSize(qint64 maxSize)
 {
     d.detach();
     d->maxUrlSize = maxSize;
@@ -225,9 +225,9 @@ void QHttpServerConfiguration::setMaxUrlSize(qint64 maxSize)
     Returns maximum size of the URL accepted by the
     server.
 
-    \sa setMaxUrlSize()
+    \sa setMaximumUrlSize()
 */
-qint64 QHttpServerConfiguration::maxUrlSize() const
+qint64 QHttpServerConfiguration::maximumUrlSize() const
 {
     return d->maxUrlSize;
 }
@@ -241,9 +241,9 @@ qint64 QHttpServerConfiguration::maxUrlSize() const
     Fields Too Large. If \a maxSize is -1 there is no limit.
     The default is 64 KiB.
 
-    \sa maxTotalHeaderSize(), QHttpServerResponder::StatusCode
+    \sa maximumTotalHeaderSize(), QHttpServerResponder::StatusCode
 */
-void QHttpServerConfiguration::setMaxTotalHeaderSize(qint64 maxSize)
+void QHttpServerConfiguration::setMaximumTotalHeaderSize(qint64 maxSize)
 {
     d.detach();
     d->maxTotalHeaderSize = maxSize;
@@ -255,9 +255,9 @@ void QHttpServerConfiguration::setMaxTotalHeaderSize(qint64 maxSize)
     Returns maximum size of the total incoming headers accepted
     by the server.
 
-    \sa setMaxTotalHeaderSize()
+    \sa setMaximumTotalHeaderSize()
 */
-qint64 QHttpServerConfiguration::maxTotalHeaderSize() const
+qint64 QHttpServerConfiguration::maximumTotalHeaderSize() const
 {
     return d->maxTotalHeaderSize;
 }
@@ -271,9 +271,9 @@ qint64 QHttpServerConfiguration::maxTotalHeaderSize() const
     Fields Too Large. If \a maxSize is -1 there is no limit.
     The default is 48 KiB.
 
-    \sa maxHeaderFieldSize(), QHttpServerResponder::StatusCode
+    \sa maximumHeaderFieldSize(), QHttpServerResponder::StatusCode
 */
-void QHttpServerConfiguration::setMaxHeaderFieldSize(qint64 maxSize)
+void QHttpServerConfiguration::setMaximumHeaderFieldSize(qint64 maxSize)
 {
     d.detach();
     d->maxHeaderFieldSize = maxSize;
@@ -285,9 +285,9 @@ void QHttpServerConfiguration::setMaxHeaderFieldSize(qint64 maxSize)
     Returns maximum size of the incoming headers accepted
     by the server.
 
-    \sa setMaxHeaderFieldSize()
+    \sa setMaximumHeaderFieldSize()
 */
-qint64 QHttpServerConfiguration::maxHeaderFieldSize() const
+qint64 QHttpServerConfiguration::maximumHeaderFieldSize() const
 {
     return d->maxHeaderFieldSize;
 }
@@ -295,15 +295,15 @@ qint64 QHttpServerConfiguration::maxHeaderFieldSize() const
 /*!
     \since 6.11
 
-    Sets \a maxSize as the maximum number of headers that
-    the server will accept. If the limit is exceeded,
+    Sets \a maxSize as the maximum number of header fields
+    that the server will accept. If the limit is exceeded,
     QHttpServer will respond with status 431 Request Header
     Fields Too Large. If \a maxSize is -1 there is no limit.
     The default is 128.
 
-    \sa maxNumberOfHeaderFields(), QHttpServerResponder::StatusCode
+    \sa maximumHeaderFieldCount(), QHttpServerResponder::StatusCode
 */
-void QHttpServerConfiguration::setMaxNumberOfHeaderFields(qint64 maxSize)
+void QHttpServerConfiguration::setMaximumHeaderFieldCount(qint64 maxSize)
 {
     d.detach();
     d->maxNumberOfHeaderFields = maxSize;
@@ -312,12 +312,12 @@ void QHttpServerConfiguration::setMaxNumberOfHeaderFields(qint64 maxSize)
 /*!
     \since 6.11
 
-    Returns maximum number of incoming headers accepted
+    Returns maximum number of incoming header fields accepted
     by the server.
 
-    \sa setMaxNumberOfHeaderFields()
+    \sa setMaximumHeaderFieldCount()
 */
-qint64 QHttpServerConfiguration::maxNumberOfHeaderFields() const
+qint64 QHttpServerConfiguration::maximumHeaderFieldCount() const
 {
     return d->maxNumberOfHeaderFields;
 }
@@ -330,9 +330,9 @@ qint64 QHttpServerConfiguration::maxNumberOfHeaderFields() const
     QHttpServer will respond with status 413 Content Too Large.
     If \a maxSize is -1 there is no limit. The default is 32 MiB.
 
-    \sa maxBodySize(), QHttpServerResponder::StatusCode
+    \sa maximumBodySize(), QHttpServerResponder::StatusCode
 */
-void QHttpServerConfiguration::setMaxBodySize(qint64 maxSize)
+void QHttpServerConfiguration::setMaximumBodySize(qint64 maxSize)
 {
     d.detach();
     d->maxBodySize = maxSize;
@@ -344,9 +344,9 @@ void QHttpServerConfiguration::setMaxBodySize(qint64 maxSize)
     Returns maximum size of the incoming body accepted
     by the server.
 
-    \sa setMaxBodySize()
+    \sa setMaximumBodySize()
 */
-qint64 QHttpServerConfiguration::maxBodySize() const
+qint64 QHttpServerConfiguration::maximumBodySize() const
 {
     return d->maxBodySize;
 }

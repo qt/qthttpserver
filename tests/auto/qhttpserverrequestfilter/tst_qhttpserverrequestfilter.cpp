@@ -156,7 +156,7 @@ void tst_QHttpServerRequestFilter::testIsUrlSizeAllowed()
     filter.setConfiguration(config);
     QCOMPARE(filter.isUrlSizeAllowed(1000), true);
 
-    config.setMaxUrlSize(100);
+    config.setMaximumUrlSize(100);
     filter.setConfiguration(config);
     QCOMPARE(filter.isUrlSizeAllowed(100), true);
     QCOMPARE(filter.isUrlSizeAllowed(101), false);
@@ -173,13 +173,13 @@ void tst_QHttpServerRequestFilter::testIsTotalHeaderSizeAllowed()
     filter.setConfiguration(config);
     QCOMPARE(filter.isTotalHeaderSizeAllowed(1000), true);
 
-    config.setMaxTotalHeaderSize(100);
+    config.setMaximumTotalHeaderSize(100);
     filter.setConfiguration(config);
     QCOMPARE(filter.isTotalHeaderSizeAllowed(100), true);
     QCOMPARE(filter.isTotalHeaderSizeAllowed(101), false);
     QCOMPARE(filter.isTotalHeaderSizeAllowed(1024 * 1024), false);
 
-    config.setMaxTotalHeaderSize(-1);
+    config.setMaximumTotalHeaderSize(-1);
     filter.setConfiguration(config);
     QCOMPARE(filter.isTotalHeaderSizeAllowed(100), true);
     QCOMPARE(filter.isTotalHeaderSizeAllowed(101), true);
@@ -196,13 +196,13 @@ void tst_QHttpServerRequestFilter::testIsHeaderFieldSizeAllowed()
     filter.setConfiguration(config);
     QCOMPARE(filter.isHeaderFieldSizeAllowed(1000), true);
 
-    config.setMaxHeaderFieldSize(100);
+    config.setMaximumHeaderFieldSize(100);
     filter.setConfiguration(config);
     QCOMPARE(filter.isHeaderFieldSizeAllowed(100), true);
     QCOMPARE(filter.isHeaderFieldSizeAllowed(101), false);
     QCOMPARE(filter.isHeaderFieldSizeAllowed(1024 * 1024), false);
 
-    config.setMaxHeaderFieldSize(-1);
+    config.setMaximumHeaderFieldSize(-1);
     filter.setConfiguration(config);
     QCOMPARE(filter.isHeaderFieldSizeAllowed(100), true);
     QCOMPARE(filter.isHeaderFieldSizeAllowed(101), true);
@@ -219,13 +219,13 @@ void tst_QHttpServerRequestFilter::testIsNumberOfHeaderFieldsAllowed()
     filter.setConfiguration(config);
     QCOMPARE(filter.isNumberOfHeaderFieldsAllowed(100), true);
 
-    config.setMaxNumberOfHeaderFields(100);
+    config.setMaximumHeaderFieldCount(100);
     filter.setConfiguration(config);
     QCOMPARE(filter.isNumberOfHeaderFieldsAllowed(100), true);
     QCOMPARE(filter.isNumberOfHeaderFieldsAllowed(101), false);
     QCOMPARE(filter.isNumberOfHeaderFieldsAllowed(1024 * 1024), false);
 
-    config.setMaxNumberOfHeaderFields(-1);
+    config.setMaximumHeaderFieldCount(-1);
     filter.setConfiguration(config);
     QCOMPARE(filter.isNumberOfHeaderFieldsAllowed(100), true);
     QCOMPARE(filter.isNumberOfHeaderFieldsAllowed(101), true);
@@ -242,7 +242,7 @@ void tst_QHttpServerRequestFilter::testIsBodySizeAllowed()
     filter.setConfiguration(config);
     QCOMPARE(filter.isBodySizeAllowed(1000), true);
 
-    config.setMaxBodySize(100);
+    config.setMaximumBodySize(100);
     filter.setConfiguration(config);
     QCOMPARE(filter.isBodySizeAllowed(100), true);
     QCOMPARE(filter.isBodySizeAllowed(101), false);
