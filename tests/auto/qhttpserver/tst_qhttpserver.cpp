@@ -243,11 +243,11 @@ private slots:
     void multipleResponses();
     void contextObjectInOtherThreadWarning();
     void keepAliveTimeout();
-    void maxUrlSizeAllowed();
-    void maxTotalHeaderSizeAllowed();
-    void maxHeaderFieldSizeAllowed();
-    void maxNumberOfHeaderFieldsAllowed();
-    void maxBodySizeAllowed();
+    void maximumUrlSizeAllowed();
+    void maximumTotalHeaderSizeAllowed();
+    void maximumHeaderFieldSizeAllowed();
+    void maximumNumberOfHeaderFieldsAllowed();
+    void maximumBodySizeAllowed();
     void writeSequentialDevice();
     void writeMuchToSequentialDevice();
     void writeFromEmptySequentialDevice();
@@ -1998,7 +1998,7 @@ void tst_QHttpServer::keepAliveTimeout()
 #endif // QT_CONFIG(concurrent)
 }
 
-void tst_QHttpServer::maxUrlSizeAllowed()
+void tst_QHttpServer::maximumUrlSizeAllowed()
 {
 #if QT_CONFIG(concurrent)
     QFETCH_GLOBAL(bool, useSsl);
@@ -2007,7 +2007,7 @@ void tst_QHttpServer::maxUrlSizeAllowed()
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
 
     QHttpServerConfiguration config;
-    config.setMaxUrlSize(30);
+    config.setMaximumUrlSize(30);
     httpserver.setConfiguration(config);
 
     auto cleanup = qScopeGuard([this] {
@@ -2024,7 +2024,7 @@ void tst_QHttpServer::maxUrlSizeAllowed()
     QTRY_VERIFY(reply->isFinished());
     checkReply(reply.release(), "Hey");
 
-    config.setMaxUrlSize(3);
+    config.setMaximumUrlSize(3);
     httpserver.setConfiguration(config);
 
     reply.reset(networkAccessManager.post(request, "Hey"));
@@ -2037,7 +2037,7 @@ void tst_QHttpServer::maxUrlSizeAllowed()
 #endif // QT_CONFIG(concurrent)
 }
 
-void tst_QHttpServer::maxTotalHeaderSizeAllowed()
+void tst_QHttpServer::maximumTotalHeaderSizeAllowed()
 {
 #if QT_CONFIG(concurrent)
     QFETCH_GLOBAL(bool, useSsl);
@@ -2046,7 +2046,7 @@ void tst_QHttpServer::maxTotalHeaderSizeAllowed()
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
 
     QHttpServerConfiguration config;
-    config.setMaxTotalHeaderSize(500);
+    config.setMaximumTotalHeaderSize(500);
     httpserver.setConfiguration(config);
 
     auto cleanup = qScopeGuard([this] {
@@ -2063,7 +2063,7 @@ void tst_QHttpServer::maxTotalHeaderSizeAllowed()
     QTRY_VERIFY(reply->isFinished());
     checkReply(reply.release(), "Hey");
 
-    config.setMaxTotalHeaderSize(10);
+    config.setMaximumTotalHeaderSize(10);
     httpserver.setConfiguration(config);
 
     reply.reset(networkAccessManager.post(request, "Hey"));
@@ -2076,7 +2076,7 @@ void tst_QHttpServer::maxTotalHeaderSizeAllowed()
 #endif // QT_CONFIG(concurrent)
 }
 
-void tst_QHttpServer::maxHeaderFieldSizeAllowed()
+void tst_QHttpServer::maximumHeaderFieldSizeAllowed()
 {
 #if QT_CONFIG(concurrent)
     QFETCH_GLOBAL(bool, useSsl);
@@ -2085,7 +2085,7 @@ void tst_QHttpServer::maxHeaderFieldSizeAllowed()
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
 
     QHttpServerConfiguration config;
-    config.setMaxHeaderFieldSize(500);
+    config.setMaximumHeaderFieldSize(500);
     httpserver.setConfiguration(config);
 
     auto cleanup = qScopeGuard([this] {
@@ -2103,7 +2103,7 @@ void tst_QHttpServer::maxHeaderFieldSizeAllowed()
     QTRY_VERIFY(reply->isFinished());
     checkReply(reply.release(), "Hey");
 
-    config.setMaxHeaderFieldSize(100);
+    config.setMaximumHeaderFieldSize(100);
     httpserver.setConfiguration(config);
 
     reply.reset(networkAccessManager.post(request, "Hey"));
@@ -2116,7 +2116,7 @@ void tst_QHttpServer::maxHeaderFieldSizeAllowed()
 #endif // QT_CONFIG(concurrent)
 }
 
-void tst_QHttpServer::maxNumberOfHeaderFieldsAllowed()
+void tst_QHttpServer::maximumNumberOfHeaderFieldsAllowed()
 {
 #if QT_CONFIG(concurrent)
     QFETCH_GLOBAL(bool, useSsl);
@@ -2125,7 +2125,7 @@ void tst_QHttpServer::maxNumberOfHeaderFieldsAllowed()
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
 
     QHttpServerConfiguration config;
-    config.setMaxNumberOfHeaderFields(120);
+    config.setMaximumHeaderFieldCount(120);
     httpserver.setConfiguration(config);
 
     auto cleanup = qScopeGuard([this] {
@@ -2144,7 +2144,7 @@ void tst_QHttpServer::maxNumberOfHeaderFieldsAllowed()
     QTRY_VERIFY(reply->isFinished());
     checkReply(reply.release(), "Hey");
 
-    config.setMaxNumberOfHeaderFields(100);
+    config.setMaximumHeaderFieldCount(100);
     httpserver.setConfiguration(config);
 
     reply.reset(networkAccessManager.post(request, "Hey"));
@@ -2157,7 +2157,7 @@ void tst_QHttpServer::maxNumberOfHeaderFieldsAllowed()
 #endif // QT_CONFIG(concurrent)
 }
 
-void tst_QHttpServer::maxBodySizeAllowed()
+void tst_QHttpServer::maximumBodySizeAllowed()
 {
 #if QT_CONFIG(concurrent)
     QFETCH_GLOBAL(bool, useSsl);
@@ -2166,7 +2166,7 @@ void tst_QHttpServer::maxBodySizeAllowed()
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
 
     QHttpServerConfiguration config;
-    config.setMaxBodySize(500);
+    config.setMaximumBodySize(500);
     httpserver.setConfiguration(config);
 
     auto cleanup = qScopeGuard([this] {
@@ -2183,7 +2183,7 @@ void tst_QHttpServer::maxBodySizeAllowed()
     QTRY_VERIFY(reply->isFinished());
     checkReply(reply.release(), "Here's the body");
 
-    config.setMaxBodySize(10);
+    config.setMaximumBodySize(10);
     httpserver.setConfiguration(config);
 
     reply.reset(networkAccessManager.post(request, "Here's the body"));

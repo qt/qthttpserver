@@ -81,7 +81,7 @@ bool QHttpServerRequestFilter::isRequestWithinRate(const QHostAddress &peerAddre
 */
 bool QHttpServerRequestFilter::isUrlSizeAllowed(qsizetype urlSize) const
 {
-    auto limit = m_config.maxUrlSize();
+    auto limit = m_config.maximumUrlSize();
     return limit < 0 || limit >= qint64(urlSize);
 }
 
@@ -90,7 +90,7 @@ bool QHttpServerRequestFilter::isUrlSizeAllowed(qsizetype urlSize) const
 */
 bool QHttpServerRequestFilter::isTotalHeaderSizeAllowed(qsizetype headerSize) const
 {
-    auto limit = m_config.maxTotalHeaderSize();
+    auto limit = m_config.maximumTotalHeaderSize();
     return limit < 0 || limit >= qint64(headerSize);
 }
 
@@ -99,7 +99,7 @@ bool QHttpServerRequestFilter::isTotalHeaderSizeAllowed(qsizetype headerSize) co
 */
 bool QHttpServerRequestFilter::isHeaderFieldSizeAllowed(qsizetype headerSize) const
 {
-    auto limit = m_config.maxHeaderFieldSize();
+    auto limit = m_config.maximumHeaderFieldSize();
     return limit < 0 || limit >= qint64(headerSize);
 }
 
@@ -108,7 +108,7 @@ bool QHttpServerRequestFilter::isHeaderFieldSizeAllowed(qsizetype headerSize) co
 */
 bool QHttpServerRequestFilter::isNumberOfHeaderFieldsAllowed(qsizetype headerSize) const
 {
-    auto limit = m_config.maxNumberOfHeaderFields();
+    auto limit = m_config.maximumHeaderFieldCount();
     return limit < 0 || limit >= qint64(headerSize);
 }
 
@@ -117,7 +117,7 @@ bool QHttpServerRequestFilter::isNumberOfHeaderFieldsAllowed(qsizetype headerSiz
 */
 bool QHttpServerRequestFilter::isBodySizeAllowed(qint64 bodySize) const
 {
-    auto limit = m_config.maxBodySize();
+    auto limit = m_config.maximumBodySize();
     return limit < 0 || limit >= bodySize;
 }
 

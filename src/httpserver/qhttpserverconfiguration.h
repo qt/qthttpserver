@@ -43,20 +43,20 @@ public:
     Q_HTTPSERVER_EXPORT void setBlacklist(QSpan<const std::pair<QHostAddress, int>> subnetList);
     Q_HTTPSERVER_EXPORT QSpan<const std::pair<QHostAddress, int>> blacklist() const;
 
-    Q_HTTPSERVER_EXPORT void setMaxUrlSize(qint64 maxUrlSize);
-    Q_HTTPSERVER_EXPORT qint64 maxUrlSize() const;
+    Q_HTTPSERVER_EXPORT void setMaximumUrlSize(qint64 maxUrlSize);
+    Q_HTTPSERVER_EXPORT qint64 maximumUrlSize() const;
 
-    Q_HTTPSERVER_EXPORT void setMaxTotalHeaderSize(qint64 maxTotalHeadersSize);
-    Q_HTTPSERVER_EXPORT qint64 maxTotalHeaderSize() const;
+    Q_HTTPSERVER_EXPORT void setMaximumTotalHeaderSize(qint64 maxTotalHeadersSize);
+    Q_HTTPSERVER_EXPORT qint64 maximumTotalHeaderSize() const;
 
-    Q_HTTPSERVER_EXPORT void setMaxHeaderFieldSize(qint64 maxSingleHeaderSize);
-    Q_HTTPSERVER_EXPORT qint64 maxHeaderFieldSize() const;
+    Q_HTTPSERVER_EXPORT void setMaximumHeaderFieldSize(qint64 maxSingleHeaderSize);
+    Q_HTTPSERVER_EXPORT qint64 maximumHeaderFieldSize() const;
 
-    Q_HTTPSERVER_EXPORT void setMaxNumberOfHeaderFields(qint64 maxNumberOfHeaders);
-    Q_HTTPSERVER_EXPORT qint64 maxNumberOfHeaderFields() const;
+    Q_HTTPSERVER_EXPORT void setMaximumHeaderFieldCount(qint64 maxNumberOfHeaders);
+    Q_HTTPSERVER_EXPORT qint64 maximumHeaderFieldCount() const;
 
-    Q_HTTPSERVER_EXPORT void setMaxBodySize(qint64 maxBodySize);
-    Q_HTTPSERVER_EXPORT qint64 maxBodySize() const;
+    Q_HTTPSERVER_EXPORT void setMaximumBodySize(qint64 maxBodySize);
+    Q_HTTPSERVER_EXPORT qint64 maximumBodySize() const;
 
 private:
     QExplicitlySharedDataPointer<QHttpServerConfigurationPrivate> d;
