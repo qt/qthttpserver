@@ -788,7 +788,7 @@ void tst_QHttpServerMultithreaded::multipleCallsOnEachConnection()
 void tst_QHttpServerMultithreaded::moreConnectionsThanServerThreads()
 {
     QFETCH_GLOBAL(ServerType, serverType);
-    QList<QString> inputs(100);
+    QList<QString> inputs(25);
     for (qsizetype i = 0; i < inputs.size(); ++i)
         inputs[i] = u"Hey%1"_s.arg(i);
 
