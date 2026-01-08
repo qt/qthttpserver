@@ -1066,14 +1066,17 @@ void tst_QHttpServerMultithreaded::oneSlowManyFast()
 
     QFETCH_GLOBAL(ServerType, serverType);
 
-    QFuture<QString> slowFuture = QtConcurrent::run([&]() {
+    QThreadPool clientThreadPool;
+    clientThreadPool.setMaxThreadCount(NumberOfFastTasks + 1);
+
+    QFuture<QString> slowFuture = QtConcurrent::run(&clientThreadPool, [&]() {
         LocalHttpClient client(serverType);
         return client.get(u"/wait/2000"_s);
     });
 
     QList<QFuture<QString>> fastFutures(NumberOfFastTasks);
     for (qsizetype i = 0; i < NumberOfFastTasks; ++i) {
-        fastFutures[i] = QtConcurrent::run([&]() {
+        fastFutures[i] = QtConcurrent::run(&clientThreadPool, [&]() {
             LocalHttpClient client(serverType);
             return client.get(u"/wait/200"_s);
         });
