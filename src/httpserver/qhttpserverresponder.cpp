@@ -486,9 +486,9 @@ void QHttpServerResponder::writeEndChunked(const QByteArray &data)
 
     \since 6.11
 */
-bool QHttpServerResponder::isResponseCanceled()
+bool QHttpServerResponder::isResponseCanceled() const
 {
-    Q_D(QHttpServerResponder);
+    Q_D(const QHttpServerResponder);
     return d->canceled;
 }
 

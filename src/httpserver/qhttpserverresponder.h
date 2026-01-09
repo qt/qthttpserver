@@ -156,7 +156,7 @@ public:
 
     Q_HTTPSERVER_EXPORT void writeEndChunked(const QByteArray &data);
 
-    Q_HTTPSERVER_EXPORT bool isResponseCanceled();
+    Q_HTTPSERVER_EXPORT bool isResponseCanceled() const;
 
 private:
     Q_HTTPSERVER_EXPORT QHttpServerResponder(QHttpServerStream *stream);
