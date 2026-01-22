@@ -3,5 +3,5 @@ dependencies:
     ref: 000d6c62f7880bb8d3054724e8da0b8ae244130e
     required: true
   ../qtwebsockets:
-    ref: 4e87b5b66a53d718f70aed85a267fce0a5d9eb98
+    ref: 2b969cb983d1e22df0e6fc6ece54043942090bd8
     required: false
