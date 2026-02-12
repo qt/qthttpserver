@@ -37,6 +37,9 @@ public:
     Q_HTTPSERVER_EXPORT void setMaximumConnectionsPerHost(quint32 maxConnections);
     Q_HTTPSERVER_EXPORT quint32 maximumConnectionsPerHost() const;
 
+    Q_HTTPSERVER_EXPORT void setMaximumConnections(quint32 maxConnections);
+    Q_HTTPSERVER_EXPORT quint32 maximumConnections() const;
+
     Q_HTTPSERVER_EXPORT void setKeepAliveTimeout(std::chrono::seconds timeout);
     Q_HTTPSERVER_EXPORT std::chrono::seconds keepAliveTimeout() const;
 

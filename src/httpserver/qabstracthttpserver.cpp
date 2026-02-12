@@ -156,6 +156,10 @@ void QAbstractHttpServerPrivate::createHttp2Handler(QIODevice *socket)
 
 bool QAbstractHttpServerPrivate::hasTooManyConnections(QIODevice *socket)
 {
+    if (configuration.maximumConnections() != 0
+        && totalConnections >= configuration.maximumConnections())
+        return true;
+
     if (configuration.maximumConnectionsPerHost() == 0)
         return false;
 
@@ -175,14 +179,15 @@ bool QAbstractHttpServerPrivate::hasTooManyConnections(QIODevice *socket)
 
 void QAbstractHttpServerPrivate::updateSocketCounter(QIODevice *socket)
 {
-    // If there are no limits on connections per host, there's point in tracking
-    // the amount of connections per host, so we skip doing so.
-    if (configuration.maximumConnectionsPerHost() == 0)
+    // If there are no limits on connections per host or in total, there's no point in tracking
+    // the amount of connections, so we skip doing so.
+    if (configuration.maximumConnectionsPerHost() == 0 && configuration.maximumConnections() == 0)
         return;
 
     if (auto tcpSocket = qobject_cast<QTcpSocket *>(socket)) {
         auto [it, _] = connectionsPerHost.try_emplace(tcpSocket->peerAddress(), 0);
         ++(it->second);
+        ++totalConnections;
         QObjectPrivate::connect(tcpSocket, &QAbstractSocket::disconnected, this,
                                 &QAbstractHttpServerPrivate::socketDisconnected);
     }
@@ -190,8 +195,10 @@ void QAbstractHttpServerPrivate::updateSocketCounter(QIODevice *socket)
 
 void QAbstractHttpServerPrivate::socketDisconnected()
 {
+
     Q_Q(QAbstractHttpServer);
     if (auto tcpSocket = qobject_cast<QTcpSocket *>(q->sender())) {
+        --totalConnections;
         auto foundNumberOfConnections = connectionsPerHost.find(tcpSocket->peerAddress());
         if (foundNumberOfConnections != connectionsPerHost.end()) {
             if (foundNumberOfConnections->second == 1)

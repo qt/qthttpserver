@@ -19,6 +19,7 @@ public:
     {
         return rateLimit == other.rateLimit
             && maxConnectionsPerHost == other.maxConnectionsPerHost
+            && maxConnections == other.maxConnections
             && keepAliveTimeout == other.keepAliveTimeout
             && whitelist == other.whitelist
             && blacklist == other.blacklist
@@ -31,6 +32,7 @@ public:
 
     quint32 rateLimit = 0;
     quint32 maxConnectionsPerHost = 0;
+    quint32 maxConnections = 0;
     std::chrono::seconds keepAliveTimeout = std::chrono::seconds(15);
     QList<std::pair<QHostAddress, int>> whitelist;
     QList<std::pair<QHostAddress, int>> blacklist;
@@ -149,6 +151,35 @@ quint32 QHttpServerConfiguration::maximumConnectionsPerHost() const
     return d->maxConnectionsPerHost;
 }
 
+/*!
+    \since 6.12
+
+    Sets limit on the total simultaneous connections that will
+    be accepted by the server.
+
+    If \a maxConnections is set to 0, the total connection
+    limit is disabled.
+
+    \sa maximumConnections(), QHttpServerResponder::StatusCode
+*/
+void QHttpServerConfiguration::setMaximumConnections(quint32 maxConnections)
+{
+    d.detach();
+    d->maxConnections = maxConnections;
+}
+
+/*!
+    \since 6.12
+
+    Returns the maximum number of simultaneous connections
+    accepted by the server in total, or 0 if disabled.
+
+    \sa setMaximumConnections()
+*/
+quint32 QHttpServerConfiguration::maximumConnections() const
+{
+    return d->maxConnections;
+}
 /*!
     \since 6.10
 

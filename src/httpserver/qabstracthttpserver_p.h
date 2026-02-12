@@ -93,6 +93,7 @@ public:
     QHttpServerRequestFilter requestFilter;
     QTimer heartbeatTimer;
     std::map<QHostAddress, quint32, LessHostAddress> connectionsPerHost;
+    quint32 totalConnections = 0;
 };
 
 QT_END_NAMESPACE
