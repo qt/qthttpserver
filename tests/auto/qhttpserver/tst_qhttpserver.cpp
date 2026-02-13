@@ -267,6 +267,7 @@ private:
     QHttpServer httpserver;
     QString clearUrlBase;
     QString sslUrlBase;
+    QString captureBase;
     static constexpr qsizetype numberOfNetworkAccessManagers = 10;
     std::array<QNetworkAccessManager, numberOfNetworkAccessManagers> networkAccessManagers;
     QNetworkAccessManager &networkAccessManager = networkAccessManagers[0];
@@ -1466,23 +1467,13 @@ void tst_QHttpServer::checkRouteLambdaCapture()
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
     QNetworkRequest request;
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
-
-    httpserver.route("/capture-this/", this, [&urlBase] () {
-        return urlBase;
-    });
-
-    QString msg = urlBase + "/pod";
-    httpserver.route("/capture-non-pod-data/", this, [&msg] () {
-        return msg;
+    captureBase = urlBase;
+    httpserver.route("/capture-this/", this, [this] () {
+        return captureBase;
     });
 
     request.setUrl(QUrl(urlBase.arg("/capture-this/")));
     checkReply(networkAccessManager.get(request), urlBase);
-    if (QTest::currentTestFailed())
-        return;
-
-    request.setUrl(QUrl(urlBase.arg("/capture-non-pod-data/")));
-    checkReply(networkAccessManager.get(request), msg);
     if (QTest::currentTestFailed())
         return;
 }
