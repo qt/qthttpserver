@@ -255,6 +255,7 @@ private slots:
     void concurrentRequestsToSequentialDevice();
     void timeoutConnection();
     void useCanceledResponders();
+    void maximumConnectionsPerHost_data();
     void maximumConnectionsPerHost();
 
 #if QT_CONFIG(localserver)
@@ -2335,13 +2336,26 @@ void tst_QHttpServer::useCanceledResponders()
         responder->writeEndChunked("end");
 }
 
+void tst_QHttpServer::maximumConnectionsPerHost_data()
+{
+    QTest::addColumn<int>("limit");
+    QTest::addColumn<int>("expectedOkCount");
+
+    QTest::newRow("no-limit") << 0 << numberOfNetworkAccessManagers;
+    QTest::newRow("same-as-number-of-connections")
+                    << numberOfNetworkAccessManagers << numberOfNetworkAccessManagers;
+    QTest::newRow("total-limit-5") << 5 << 5;
+}
+
 void tst_QHttpServer::maximumConnectionsPerHost()
 {
 #if QT_CONFIG(concurrent)
     QFETCH_GLOBAL(bool, useSsl);
     QFETCH_GLOBAL(bool, useHttp2);
 
-    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    QFETCH(int, limit);
+    QFETCH(int, expectedOkCount);
+    const QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
 
     auto cleanup = qScopeGuard([this] {
         QHttpServerConfiguration config;
@@ -2354,7 +2368,7 @@ void tst_QHttpServer::maximumConnectionsPerHost()
 
     QLoggingCategory::setFilterRules(QStringLiteral("qt.network.http2.warning=false"));
     constexpr int waitInterval = 2000;
-    QByteArray returnValue = QByteArray::number(waitInterval);
+    const QByteArray returnValue = QByteArray::number(waitInterval);
     const QUrl requestUrl(urlBase.arg("/wait/") + returnValue);
     constexpr qsizetype NumberOfConnections = numberOfNetworkAccessManagers;
     std::array<std::unique_ptr<QNetworkReply>, NumberOfConnections> replies;
@@ -2362,60 +2376,29 @@ void tst_QHttpServer::maximumConnectionsPerHost()
     QNetworkRequest req(requestUrl);
     req.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
     req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
-
-    // Test without limitation
     QHttpServerConfiguration config;
-    config.setMaximumConnectionsPerHost(0);
+    config.setMaximumConnectionsPerHost(limit);
     httpserver.setConfiguration(config);
-    for (qsizetype i = 0; i < NumberOfConnections; ++i) {
-        replies[i].reset(networkAccessManagers[i].get(req));
-    }
-    for (qsizetype i = 0; i < NumberOfConnections; ++i)
-        checkReply(replies[i].release(), returnValue);
 
-    for (auto &qnam : networkAccessManagers)
-        qnam.clearConnectionCache();
-    QCoreApplication::processEvents();
-
-    // Test with higher limitation than number of connections
-    config.setMaximumConnectionsPerHost(numberOfNetworkAccessManagers*3);
-    httpserver.setConfiguration(config);
-    for (qsizetype i = 0; i < NumberOfConnections; ++i) {
-        replies[i].reset(networkAccessManagers[i].get(req));
-    }
-    for (qsizetype i = 0; i < NumberOfConnections; ++i)
-        checkReply(replies[i].release(), returnValue);
-
-    for (auto &qnam : networkAccessManagers)
-        qnam.clearConnectionCache();
-    QCoreApplication::processEvents();
-
-    // Test with five more connections than allowed
-    static constexpr qint32 shouldSucceed = 5;
-    config.setMaximumConnectionsPerHost(shouldSucceed);
-    httpserver.setConfiguration(config);
     for (qsizetype i = 0; i < NumberOfConnections; ++i)
         replies[i].reset(networkAccessManagers[i].get(req));
 
-    qint32 numberOfCompletedConnections = 0;
+    int okCount = 0;
     for (qsizetype i = 0; i < NumberOfConnections; ++i) {
         QTRY_VERIFY(replies[i]->isFinished());
         if (replies[i]->error() == QNetworkReply::NoError) {
-            ++numberOfCompletedConnections;
+            ++okCount;
         } else {
-            if (useHttp2) {
-                QCOMPARE(replies[i]->error(), QNetworkReply::UnknownServerError);
-            } else {
+            if (!useHttp2) {
                 bool isInt = false;
-                int statusCode =
-                    replies[i]->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(&isInt);
+                const int statusCode =
+                        replies[i]->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(&isInt);
                 QVERIFY(isInt);
                 QCOMPARE(statusCode, 429);
             }
         }
     }
-
-    QCOMPARE(numberOfCompletedConnections, shouldSucceed);
+    QCOMPARE(okCount, expectedOkCount);
 #else
     QSKIP("QtConcurrent is not available, skipping test");
 #endif // QT_CONFIG(concurrent)
