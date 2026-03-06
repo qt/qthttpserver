@@ -51,6 +51,8 @@ QT_DEFINE_QESDP_SPECIALIZATION_DTOR(QHttpServerConfigurationPrivate)
     Such a configuration has the following values:
      \list
          \li Rate limit is disabled.
+         \li Maximum connections is disabled.
+         \li Maximum connections per host is disabled.
          \li Keep-alive timeout is set to 15 seconds.
          \li Whitelist is empty.
          \li Blacklist is empty.
@@ -159,6 +161,10 @@ void QHttpServerConfiguration::setMaximumConnectionsPerHost(quint32 maxConnectio
 
     Returns maximum number of simultaneous connections
     per host that will be accepted by the server.
+    The host is identified by the IP address of the incoming TCP
+    connection.
+
+    Returns 0 if the per-host connection limit is disabled.
 
     \sa setMaximumConnectionsPerHost()
 */
@@ -170,11 +176,16 @@ quint32 QHttpServerConfiguration::maximumConnectionsPerHost() const
 /*!
     \since 6.12
 
-    Sets limit on the total simultaneous connections that will
-    be accepted by the server.
+    Sets limit of \a maxConnections on the total simultaneous
+    connections that will be accepted by the server.
+    If the limit is reached, the server rejects new connections. For
+    HTTP/1 connections, QHttpServer responds with
+    QHttpServerResponder::StatusCode::TooManyRequests and closes the connection.
 
     If \a maxConnections is set to 0, the total connection
     limit is disabled.
+
+    By default this limit disabled.
 
     \sa maximumConnections(), QHttpServerResponder::StatusCode
 */
@@ -188,7 +199,9 @@ void QHttpServerConfiguration::setMaximumConnections(quint32 maxConnections)
     \since 6.12
 
     Returns the maximum number of simultaneous connections
-    accepted by the server in total, or 0 if disabled.
+    accepted by the server in total.
+
+    Returns 0 if the total connection limit is disabled.
 
     \sa setMaximumConnections()
 */

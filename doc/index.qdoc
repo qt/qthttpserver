@@ -81,6 +81,22 @@
             The default value is 15 seconds.
     \endlist
 
+    \section2 Number of Connections Limitations
+
+    \list
+        \li The maximum number of simultaneous requests can be configured using
+            \l{QHttpServerConfiguration::}{setMaximumConnections()}.
+            By default, no limit is applied. When the limit is exceeded,
+            the server responds with status code Too Many Requests, and the
+            connection is closed.
+
+        \li The maximum number of simultaneous requests per client IP can be
+            configured using \l{QHttpServerConfiguration::}{setMaximumConnectionsPerHost()}.
+            By default, no limit is applied. When the limit is exceeded,
+            the server responds with status code Too Many Requests, and the
+            connection is closed.
+    \endlist
+
     \section2 Blacklisting and Whitelisting
 
     \list
