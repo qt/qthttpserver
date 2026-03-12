@@ -121,6 +121,8 @@ NQZlAZc2w1Ha9lqisaWWpt42QVhQM64=
 -----END CERTIFICATE-----)";
 #endif // QT_CONFIG(ssl)
 
+#include <atomic>
+
 QT_BEGIN_NAMESPACE
 
 using namespace Qt::StringLiterals;
@@ -895,14 +897,17 @@ void tst_QHttpServerMultithreaded::useSemaphores()
     QThreadPool clientThreadPool;
     clientThreadPool.setMaxThreadCount(NumberProcessed);
     QList<QFuture<QString>> futures(NumberProcessed);
+    std::atomic<qsizetype> startedThreads = 0;
     for (qsizetype i = 0; i < NumberProcessed; ++i) {
         futures[i] = QtConcurrent::run(&clientThreadPool, [&, i]() {
             LocalHttpClient client(serverType);
+            ++startedThreads;
             return client.get(u"/semroute/%1"_s.arg(i));
         });
     }
 
     QTest::qWait(2000);
+    QTRY_COMPARE(startedThreads, NumberOfThreads);
     readySem.acquire(NumberProcessed);
     routeSem.release(NumberProcessed);
 
