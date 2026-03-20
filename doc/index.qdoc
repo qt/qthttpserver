@@ -14,9 +14,11 @@
 
     \section1 Overview
 
-    Qt HTTP Server provides building blocks for embedding a lightweight HTTP server
-    based on \l{RFC 2616} and \l{RFC 9113} in an application. There are classes for
-    the messages sent and received, and for the various parts of an HTTP server.
+    Qt HTTP Server provides building blocks for embedding a lightweight
+    \l{RFC 9110}{HTTP} server supporting \l{RFC 9113}{HTTP/2},
+    \l{RFC 9112}{HTTP/1.1}, and \l{RFC 1945}{HTTP/1.0} in an application.
+    There are classes for the messages sent and received, and for the various
+    parts of an HTTP server.
 
     The QHttpServer class has a \l{QHttpServer::}{route()} function to bind
     callables to different incoming URLs. These callables can take as arguments
