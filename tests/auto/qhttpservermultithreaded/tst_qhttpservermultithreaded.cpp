@@ -276,7 +276,7 @@ QString LocalHttpClient::getSlowRead(const QString &url, qsizetype chunkSize, qs
         socket->waitForReadyRead(10);
     };
 
-    return QString::fromUtf8(buffer, contentLength);
+    return QString::fromUtf8(buffer);
 }
 
 QString LocalHttpClient::postSlow(const QString &url, const QHttpHeaders &headers, qsizetype mSleep)
