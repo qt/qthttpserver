@@ -254,27 +254,28 @@ void QHttpServerHttp2ProtocolHandler::onStreamCreated(QHttp2Stream *stream)
         }
     };
 
-    auto &connections = m_streamConnections[id];
-    connections << connect(stream,
+    m_streamConnections[id] = {
+                   connect(stream,
                            &QHttp2Stream::stateChanged,
                            this,
                            onStateChanged,
-                           Qt::QueuedConnection);
+                           Qt::QueuedConnection),
 
-    connections << connect(stream, &QHttp2Stream::uploadFinished, this,
-                           [this, id]() { sendToStream(id); });
+                   connect(stream, &QHttp2Stream::uploadFinished, this,
+                           [this, id]() { sendToStream(id); }),
 
-    connections << connect(stream, &QHttp2Stream::headersReceived, this,
+                   connect(stream, &QHttp2Stream::headersReceived, this,
                            [this, id](const HPack::HttpHeader &headers, bool endStream) {
                                Q_UNUSED(endStream);
                                onHeadersReceived(id, headers);
-                           });
+                           }),
 
-    connections << connect(stream, &QHttp2Stream::dataReceived, this,
+                   connect(stream, &QHttp2Stream::dataReceived, this,
                            [this, id](const QByteArray &data, bool endStream) {
                                Q_UNUSED(endStream);
                                onDataReceived(id, data.size());
-                           });
+                           }),
+    };
 
     lastActiveTimer.restart();
 }
