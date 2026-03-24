@@ -244,15 +244,16 @@ void QHttpServerHttp2ProtocolHandler::onStreamCreated(QHttp2Stream *stream)
         }
     };
 
-    auto &connections = m_streamConnections[id];
-    connections << connect(stream,
+    m_streamConnections[id] = {
+                   connect(stream,
                            &QHttp2Stream::stateChanged,
                            this,
                            onStateChanged,
-                           Qt::QueuedConnection);
+                           Qt::QueuedConnection),
 
-    connections << connect(stream, &QHttp2Stream::uploadFinished, this,
-                           [this, id]() { sendToStream(id); });
+                   connect(stream, &QHttp2Stream::uploadFinished, this,
+                           [this, id]() { sendToStream(id); }),
+    };
 
     lastActiveTimer.restart();
 }

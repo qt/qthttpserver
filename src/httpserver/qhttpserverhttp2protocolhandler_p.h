@@ -15,6 +15,8 @@
 
 #include <QtCore/qelapsedtimer.h>
 
+#include <array>
+
 //
 //  W A R N I N G
 //  -------------
@@ -93,7 +95,7 @@ private:
     QTcpSocket *m_tcpSocket;
     QHttpServerRequestFilter *m_filter;
     QHttp2Connection *m_connection;
-    QHash<quint32, QList<QMetaObject::Connection>> m_streamConnections;
+    QHash<quint32, std::array<QMetaObject::Connection, 2>> m_streamConnections;
     QHash<quint32, QHttpServerHttp2Queue> m_streamQueue;
     qint32 m_responderCounter = 0;
     QElapsedTimer lastActiveTimer;
