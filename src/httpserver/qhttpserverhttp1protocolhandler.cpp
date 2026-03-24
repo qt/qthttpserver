@@ -109,9 +109,9 @@ struct QHttpServerHttp1IOChunkedTransfer
     qint64 endIndex = -1;
     QPointer<QIODevice> source;
     const QPointer<QIODevice> sink;
-    const QMetaObject::Connection bytesWrittenConnection;
-    const QMetaObject::Connection readyReadConnection;
-    const QMetaObject::Connection readChannelFinished;
+    QMetaObject::Connection bytesWrittenConnection;
+    QMetaObject::Connection readyReadConnection;
+    QMetaObject::Connection readChannelFinished;
     QPointer<QHttpServerHttp1ProtocolHandler> handler;
     bool inRead = false;
     bool gotReadChannelFinished = false;
