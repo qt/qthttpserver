@@ -649,9 +649,10 @@ void tst_QHttpServerMultithreaded::initTestCase()
     httpserver.route(
             "/sequential/<arg>/<arg>",
             [this](QString message, int times, QHttpServerResponder &&responder) {
+                auto r = std::make_shared<QHttpServerResponder>(std::move(responder));
                 return QtConcurrent::run(
                         &threadPool,
-                        [=, r = std::make_shared<QHttpServerResponder>(std::move(responder))]() {
+                        [this, message = std::move(message), times, r = std::move(r)]() {
                             ++callCounter;
                             auto device = new SequentialIODevice(message.toUtf8(), times, 50ms);
                             r->write(device, QHttpHeaders());
