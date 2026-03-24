@@ -261,7 +261,7 @@ QString LocalHttpClient::getSlowRead(const QString &url, qsizetype chunkSize, qs
         return u""_s; // No content
 
     read = 0;
-    QByteArray buffer(contentLength, 0);
+    QByteArray buffer(contentLength, Qt::Uninitialized);
     forever {
         qint64 result = socket->read(&buffer[read], qMin(contentLength - read, chunkSize));
         QVERIFY2(result >= 0, "IO error reading content");
