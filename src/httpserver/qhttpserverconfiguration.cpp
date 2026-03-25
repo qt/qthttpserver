@@ -25,8 +25,8 @@ public:
 
     quint32 rateLimit = 0;
     std::chrono::seconds keepAliveTimeout = std::chrono::seconds(15);
-    QList<QPair<QHostAddress, int>> whitelist;
-    QList<QPair<QHostAddress, int>> blacklist;
+    QList<std::pair<QHostAddress, int>> whitelist;
+    QList<std::pair<QHostAddress, int>> blacklist;
 };
 
 QT_DEFINE_QESDP_SPECIALIZATION_DTOR(QHttpServerConfigurationPrivate)
