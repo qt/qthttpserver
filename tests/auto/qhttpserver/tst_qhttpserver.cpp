@@ -23,6 +23,7 @@
 #include <QtCore/qjsonarray.h>
 #include <QtCore/qloggingcategory.h>
 #include <QtCore/qsemaphore.h>
+#include <QtCore/qset.h>
 #include <QtCore/qtimer.h>
 
 #include <QtNetwork/qnetworkaccessmanager.h>
