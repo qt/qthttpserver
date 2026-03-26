@@ -8,6 +8,7 @@
 #include <private/qhttpserverrouterrule_p.h>
 #include <private/qhttpserverrequest_p.h>
 
+#include <QtCore/qhash.h>
 #include <QtCore/qmetaobject.h>
 #include <QtCore/qloggingcategory.h>
 #include <QtCore/qregularexpression.h>
