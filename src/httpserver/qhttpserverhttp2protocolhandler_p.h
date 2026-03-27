@@ -11,9 +11,10 @@
 #include <QtHttpServer/private/qhttpserverrequestfilter_p.h>
 #include <QtHttpServer/private/qhttpserverresponder_p.h>
 #include <QtNetwork/private/hpack_p.h>
-#include <QtCore/qbytearray.h>
-#include <QtCore/qqueue.h>
 
+#include <QtCore/qbytearray.h>
+#include <QtCore/qhash.h>
+#include <QtCore/qqueue.h>
 #include <QtCore/qelapsedtimer.h>
 
 #include <array>
