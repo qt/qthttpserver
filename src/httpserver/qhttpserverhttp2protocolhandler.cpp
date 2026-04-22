@@ -24,7 +24,7 @@ void toHeaderPairs(HPack::HttpHeader &fields, const QHttpHeaders &headers)
 {
     for (qsizetype i = 0; i < headers.size(); ++i) {
         const auto name = headers.nameAt(i);
-        fields.push_back(HPack::HeaderField(QByteArray(name.data(), name.size()),
+        fields.push_back(HPack::HeaderField(QByteArray(name.data(), name.size()).toLower(),
                                             headers.valueAt(i).toByteArray()));
     }
 }
