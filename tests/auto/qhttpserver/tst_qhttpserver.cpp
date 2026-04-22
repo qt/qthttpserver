@@ -1949,9 +1949,15 @@ void tst_QHttpServer::localSocket()
                      "User-Agent: curl/7.88.1\r\n"
                      "Accept: */*\r\n\r\n");
 
-        const QString expectedString =
-                u"HTTP/1.1 200 OK\r\ncontent-type: text/html\r\ncontent-length: 8\r\n"_s
-                u"connection: keep-alive\r\nkeep-alive: timeout=%1\r\n\r\ntest msg"_s;
+        auto headerName = [](QHttpHeaders::WellKnownHeader header) {
+            return QString::fromLatin1(QHttpHeaders::wellKnownHeaderName(header));
+        };
+        const QString expectedString = u"HTTP/1.1 200 OK\r\n%1: text/html\r\n%2: 8\r\n"
+                                       u"%3: keep-alive\r\n%4: timeout=%5\r\n\r\ntest msg"_s
+                                               .arg(headerName(QHttpHeaders::WellKnownHeader::ContentType),
+                                                    headerName(QHttpHeaders::WellKnownHeader::ContentLength),
+                                                    headerName(QHttpHeaders::WellKnownHeader::Connection),
+                                                    headerName(QHttpHeaders::WellKnownHeader::KeepAlive));
         const QByteArray expectedResult = expectedString.arg(timeout).toUtf8();
 
         // We need to call process events a couple of times for the write/read to go through
