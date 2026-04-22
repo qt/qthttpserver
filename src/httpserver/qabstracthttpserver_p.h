@@ -33,6 +33,7 @@
 
 #if QT_CONFIG(ssl)
 #include <QtNetwork/qhttp2configuration.h>
+#include <QtNetwork/qsslsocket.h>
 #endif
 
 QT_BEGIN_NAMESPACE
