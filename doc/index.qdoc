@@ -7,10 +7,13 @@
     \title Qt HTTP Server
     \brief Provides a lightweight server implementing the HTTP protocol.
 
-    Qt HTTP Server supports building HTTP server functionality into an application.
-    Common use cases are exposing the application's functionality through
-    REST APIs, or making devices in a trusted environment configurable also via HTTP.
-    The limitations are described in \l{Limitations and Security}.
+    Qt HTTP Server supports building HTTP server functionality into an
+    application. The main use case is exposing the application's functionality
+    through REST APIs, or making devices in a trusted environment also
+    configurable over HTTP. A trusted environment also means that the Qt HTTP
+    Server must not be directly exposed to the internet nor used to provide
+    functionality of a general-purpose web server for end users. For more
+    details, see \l{Limitations and Security}.
 
     \section1 Overview
 
@@ -63,88 +66,7 @@
     active TLS backend is needed for HTTP/2 support. To check if a backend
     supports this, use \l{QSslSocket::isFeatureSupported}.
 
-    The primary way of configuring QHttpServer happens through the
-    QHttpServerConfiguration class. Key configuration options are listed below.
-
-    \section2 Rate Limitations
-
-    \list
-        \li The maximum number of requests per second
-            per client IP can be configured using
-            \l{QHttpServerConfiguration::}{setRateLimitPerSecond()}.
-            By default, no rate limit is applied. When the limit is exceeded,
-            the server responds with status code 429 (Too Many Requests).
-
-        \li The keep-alive timeout controls how long an idle keep-alive connection is
-            kept open before being closed. This can be configured using
-            \l{QHttpServerConfiguration::}{setKeepAliveTimeout()}.
-            The default value is 15 seconds.
-    \endlist
-
-    \section2 Number of Connections Limitations
-
-    \list
-        \li The maximum number of simultaneous requests can be configured using
-            \l{QHttpServerConfiguration::}{setMaximumConnections()}.
-            By default, no limit is applied. When the limit is exceeded,
-            the server responds with status code 429 (Too Many Requests), and
-            the connection is closed.
-
-        \li The maximum number of simultaneous requests per client IP can be
-            configured using \l{QHttpServerConfiguration::}{setMaximumConnectionsPerHost()}.
-            By default, no limit is applied. When the limit is exceeded,
-            the server responds with status code 429 (Too Many Requests), and
-            the connection is closed.
-    \endlist
-
-    \section2 Blacklisting and Whitelisting
-
-    \list
-        \li The list of client subnets that are allowed to access the server can be
-            configured using \l{QHttpServerConfiguration::}{setWhitelist()}.
-            By default, the whitelist is empty, and all clients are allowed.
-            If the whitelist is not empty, only addresses in this list are accepted.
-            The whitelist is checked before the blacklist.
-
-        \li Denied client subnets can be configured using
-            \l{QHttpServerConfiguration::}{setBlacklist()}.
-            The blacklist is only applied when the whitelist is empty.
-            By default, the blacklist is empty.
-    \endlist
-
-    \section2 Size Limitations on Incoming Requests
-
-    \list
-        \li The accepted URL size, specified in bytes, can be limited
-            using \l{QHttpServerConfiguration::}{setMaximumUrlSize()}.
-            If the limit is exceeded, the server responds with HTTP status
-            code 414 (Request-URI Too Long).
-            The default value is 64 KiB.
-
-        \li The total accepted size of all HTTP request headers can be limited
-            using \l{QHttpServerConfiguration::}{setMaximumTotalHeaderSize()}.
-            If the limit is exceeded, the server responds with HTTP status code
-            431 (Request Header Fields Too Large).
-            The default value is 64 KiB.
-
-        \li The accepted size of a single HTTP header field can be limited using
-            \l{QHttpServerConfiguration::}{setMaximumHeaderFieldSize()}.
-            If exceeded, the server responds with HTTP status code 431
-            (Request Header Fields Too Large).
-            The default value is 48 KiB.
-
-        \li The number of HTTP header fields accepted per request can be limited
-            using \l{QHttpServerConfiguration::}{setMaximumHeaderFieldCount()}.
-            If exceeded, the server responds with HTTP status code 431
-            (Request Header Fields Too Large).
-            The default value is 128.
-
-        \li The accepted HTTP request body size, specified in bytes, can be limited
-            using \l{QHttpServerConfiguration::}{setMaximumBodySize()}.
-            If exceeded, the server responds with HTTP status code 413
-            (Content Too Large).
-            The default value is 32 MiB.
-    \endlist
+    See \l{Qt HTTP Server Security Considerations}.
 
     \section1 Using the Module
 
@@ -181,6 +103,7 @@
 
     \section1 Reference
     \list
+    \li \l{Qt HTTP Server Security Considerations}
     \li \l{Qt HTTP Server Logging}
     \li \l{Qt HTTP Server C++ Classes}{C++ Classes}
     \endlist
