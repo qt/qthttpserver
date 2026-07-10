@@ -34,7 +34,7 @@ public:
     Q_HTTPSERVER_EXPORT void setRateLimitPerSecond(quint32 maxRequests);
     Q_HTTPSERVER_EXPORT quint32 rateLimitPerSecond() const;
 
-    Q_HTTPSERVER_EXPORT void setMaximumConnectionsPerHost(quint32 maxConnections);
+    Q_HTTPSERVER_EXPORT void setMaximumConnectionsPerHost(quint32 maxPerHost);
     Q_HTTPSERVER_EXPORT quint32 maximumConnectionsPerHost() const;
 
     Q_HTTPSERVER_EXPORT void setMaximumConnections(quint32 maxConnections);

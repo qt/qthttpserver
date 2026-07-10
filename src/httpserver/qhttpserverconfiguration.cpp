@@ -132,12 +132,12 @@ quint32 QHttpServerConfiguration::rateLimitPerSecond() const
 /*!
     \since 6.12
 
-    Sets limit on \a maxConnections simultaneous connections
+    Sets limit on \a maxPerHost simultaneous connections
     per host that will be accepted by QHttpServer.
     If the limit is exceeded, QHttpServer will respond with
     QHttpServerResponder::StatusCode::TooManyRequests.
 
-    If \a maxConnections is set to 0, the per-host
+    If \a maxPerHost is set to 0, the per-host
     connection limit is disabled. This should be done when
     running behind a reverse proxy, as all incoming
     sockets will appear to originate from the reverse proxy.
@@ -150,10 +150,10 @@ quint32 QHttpServerConfiguration::rateLimitPerSecond() const
 
     \sa maximumConnectionsPerHost(), QHttpServerResponder::StatusCode
 */
-void QHttpServerConfiguration::setMaximumConnectionsPerHost(quint32 maxConnections)
+void QHttpServerConfiguration::setMaximumConnectionsPerHost(quint32 maxPerHost)
 {
     d.detach();
-    d->maxConnectionsPerHost = maxConnections;
+    d->maxConnectionsPerHost = maxPerHost;
 }
 
 /*!
