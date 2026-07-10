@@ -133,7 +133,7 @@ quint32 QHttpServerConfiguration::rateLimitPerSecond() const
     \since 6.12
 
     Sets limit on \a maxConnections simultaneous connections
-    per host that will will be accepted by QHttpServer.
+    per host that will be accepted by QHttpServer.
     If the limit is exceeded, QHttpServer will respond with
     QHttpServerResponder::StatusCode::TooManyRequests.
 
@@ -185,7 +185,7 @@ quint32 QHttpServerConfiguration::maximumConnectionsPerHost() const
     If \a maxConnections is set to 0, the total connection
     limit is disabled.
 
-    By default this limit disabled.
+    By default this limit is disabled.
 
     \sa maximumConnections(), QHttpServerResponder::StatusCode
 */
