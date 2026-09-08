@@ -563,7 +563,10 @@ qsizetype QHttpServerParser::readRequestBodyChunked(QIODevice *socket)
             }
             // Note that chunk size gets stored in currentChunkSize, what is returned is the bytes
             // read
-            bytes += getChunkSize(socket, &currentChunkSize);
+            const qsizetype chunkSizeBytes = getChunkSize(socket, &currentChunkSize);
+            if (chunkSizeBytes < 0)
+                return -1;
+            bytes += chunkSizeBytes;
             if (currentChunkSize == -1)
                 break;
             if (!filter->isBodySizeAllowed(bodyBuffer.byteAmount() + currentChunkSize)) {
@@ -643,6 +646,14 @@ qsizetype QHttpServerParser::getChunkSize(QIODevice *socket, qsizetype *chunkSiz
 
             bytes += haveRead;
             fragment.append(c);
+            if (!filter->isHeaderFieldSizeAllowed(fragment.size())) {
+                sendError(socket, QHttpServerResponder::StatusCode::BadRequest);
+                socket->skip(socket->bytesAvailable());
+                qCDebug(lcHttpServerParser) << "Chunk size line too long at" << fragment.size()
+                                            << "bytes from client" << getClientIpAddressAndPort();
+                fragment.clear();
+                return -1;
+            }
         }
     }
 
