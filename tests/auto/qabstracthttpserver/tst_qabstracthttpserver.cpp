@@ -159,6 +159,8 @@ private slots:
     void chunkedInvalidSize_data();
     void chunkedInvalidSize();
     void chunkedBodySizeOverflow();
+    void contentLengthOverflow_data();
+    void contentLengthOverflow();
 
 private:
 #if QT_CONFIG(ssl)
@@ -1177,6 +1179,57 @@ void tst_QAbstractHttpServer::chunkedBodySizeOverflow()
     QVERIFY2(response.startsWith("HTTP/1.1 413"), response.constData());
     QVERIFY(!server.handleRequestCalled);
 }
+
+void tst_QAbstractHttpServer::contentLengthOverflow_data()
+{
+    QTest::addColumn<QByteArray>("contentLength");
+    QTest::addRow("uint64-max")       << QByteArray("18446744073709551615");
+    QTest::addRow("int64-max-plus-1") << QByteArray("9223372036854775808");
+    QTest::addRow("int64-max-plus-2") << QByteArray("9223372036854775809");
+#if QT_POINTER_SIZE == 4
+    QTest::addRow("int32-max-plus-1") << QByteArray("2147483648");
+#endif
+}
+
+void tst_QAbstractHttpServer::contentLengthOverflow()
+{
+    QFETCH(QByteArray, contentLength);
+
+    struct HttpServer : QAbstractHttpServer
+    {
+        bool handleRequestCalled = false;
+        bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &responder) override
+        {
+            handleRequestCalled = true;
+            auto _responder = std::move(responder);
+            return true;
+        }
+
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override { }
+    } server;
+
+    QTcpServer tcpServer;
+    QVERIFY(tcpServer.listen());
+    server.bind(&tcpServer);
+
+    QTcpSocket client;
+    client.connectToHost(QHostAddress::LocalHost, tcpServer.serverPort());
+    QVERIFY(client.waitForConnected());
+
+    QByteArray request = "POST / HTTP/1.1\r\n"
+                         "Host: localhost\r\n"
+                         "Content-Length:" + contentLength + "\r\n"
+                         "\r\n";
+    client.write(request);
+    QVERIFY(client.waitForBytesWritten());
+
+    // waitForDisconnected() would only wait on the client socket and time out
+    QTRY_COMPARE(client.state(), QAbstractSocket::UnconnectedState);
+    const QByteArray response = client.readAll();
+    QVERIFY2(response.startsWith("HTTP/1.1 400"), response.constData());
+    QVERIFY(!server.handleRequestCalled);
+}
+
 
 QT_END_NAMESPACE
 

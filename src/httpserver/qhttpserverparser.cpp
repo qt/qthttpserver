@@ -199,12 +199,15 @@ void QHttpServerParser::sendError(QIODevice *socket, QHttpServerResponder::Statu
 */
 qint64 QHttpServerParser::contentLength() const
 {
+    const QByteArray value = headerParser.firstHeaderField("content-length");
+    if (value.isEmpty())
+        return 0; // absent -> same as Content-Length: 0 (no body)
+
     bool ok = false;
-    QByteArray value = headerParser.firstHeaderField("content-length");
-    qint64 length = value.toULongLong(&ok);
-    if (ok)
-        return length;
-    return -1; // the header field is not set
+    const qulonglong length = value.toULongLong(&ok);
+    if (!ok || length > qulonglong(QByteArray::maxSize()))
+        return -1;   // invalid
+    return qint64(length);
 }
 
 /*!
@@ -308,7 +311,15 @@ qsizetype QHttpServerParser::readHeader(QIODevice *socket)
         if (url.port() == -1)
             url.setPort(port);
 
-        bodyLength = contentLength(); // cache the length
+        bodyLength = contentLength();
+
+        if (bodyLength < 0) {
+            sendError(socket, QHttpServerResponder::StatusCode::BadRequest);
+            qCDebug(lcHttpServerParser) << "Invalid Content-Length from client"
+                                        << getClientIpAddressAndPort();
+            return -1;
+        }
+
         if (bodyLength > 0 && !filter->isBodySizeAllowed(bodyLength)) {
             sendError(socket, QHttpServerResponder::StatusCode::PayloadTooLarge);
             qCDebug(lcHttpServerParser) << "Body size too large at" << bodyLength
@@ -454,7 +465,7 @@ bool QHttpServerParser::parse(QHttp2Stream *socket)
 void QHttpServerParser::clear()
 {
     headerParser.clear();
-    bodyLength = -1;
+    bodyLength = 0;
     contentRead = 0;
     chunkedTransferEncoding = false;
     lastChunkRead = false;
