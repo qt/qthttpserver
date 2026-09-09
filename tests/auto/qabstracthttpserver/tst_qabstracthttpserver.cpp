@@ -158,6 +158,7 @@ private slots:
     void chunkedSizeLineTooLong();
     void chunkedInvalidSize_data();
     void chunkedInvalidSize();
+    void chunkedBodySizeOverflow();
 
 private:
 #if QT_CONFIG(ssl)
@@ -1132,6 +1133,50 @@ void tst_QAbstractHttpServer::chunkedInvalidSize()
     QVERIFY(!server.handleRequestCalled);
 }
 
+void tst_QAbstractHttpServer::chunkedBodySizeOverflow()
+{
+    struct HttpServer : QAbstractHttpServer
+    {
+        bool handleRequestCalled = false;
+        bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &responder) override
+        {
+            handleRequestCalled = true;
+            auto _responder = std::move(responder);
+            return true;
+        }
+
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override { }
+    } server;
+
+    QTcpServer tcpServer;
+    QVERIFY(tcpServer.listen());
+    server.bind(&tcpServer);
+
+    QTcpSocket client;
+    client.connectToHost(QHostAddress::LocalHost, tcpServer.serverPort());
+    QVERIFY(client.waitForConnected());
+
+    // First chunk carries 64 bytes so the running total exceeds the small gap
+    // between QByteArray::maxSize() and the qsizetype maximum. The second chunk
+    // then announces QByteArray::maxSize() (the largest size that passes per-chunk
+    // validation) so the cumulative total (64 + maxSize) overflows the sum. The
+    // parser must catch that and reply 413 rather than let it wrap past the limit.
+    const QByteArray maxSizeChunk = QByteArray::number(QByteArray::maxSize(), 16);
+    QByteArray request = "POST / HTTP/1.1\r\n"
+                         "Host: localhost\r\n"
+                         "Transfer-Encoding: chunked\r\n"
+                         "\r\n";
+    request += "40\r\n" + QByteArray(64, 'X') + "\r\n"; // 0x40 = 64-byte first chunk
+    request += maxSizeChunk + "\r\n";                   // == QByteArray::maxSize()
+    client.write(request);
+    QVERIFY(client.waitForBytesWritten());
+
+    // waitForDisconnected() would only wait on the client socket and time out
+    QTRY_COMPARE(client.state(), QAbstractSocket::UnconnectedState);
+    const QByteArray response = client.readAll();
+    QVERIFY2(response.startsWith("HTTP/1.1 413"), response.constData());
+    QVERIFY(!server.handleRequestCalled);
+}
 
 QT_END_NAMESPACE
 
