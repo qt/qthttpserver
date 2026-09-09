@@ -569,12 +569,17 @@ qsizetype QHttpServerParser::readRequestBodyChunked(QIODevice *socket)
             bytes += chunkSizeBytes;
             if (currentChunkSize == -1)
                 break;
-            if (!filter->isBodySizeAllowed(bodyBuffer.byteAmount() + currentChunkSize)) {
+            qsizetype projectedBodySize = 0;
+            if (qAddOverflow(qsizetype(bodyBuffer.byteAmount()), currentChunkSize,
+                             &projectedBodySize)
+                || !filter->isBodySizeAllowed(projectedBodySize)) {
+
                 sendError(socket, QHttpServerResponder::StatusCode::PayloadTooLarge);
                 socket->skip(socket->bytesAvailable());
-                qCDebug(lcHttpServerParser) << "Body size too large currently at"
-                                            << (bodyBuffer.byteAmount() + currentChunkSize)
-                                            << "from client" << getClientIpAddressAndPort();
+                qCDebug(lcHttpServerParser) << "Body size too large; running total"
+                                            << bodyBuffer.byteAmount() << "+ chunk"
+                                            << currentChunkSize << "from client"
+                                            << getClientIpAddressAndPort();
                 return -1;
             }
         }
