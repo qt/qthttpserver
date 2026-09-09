@@ -631,11 +631,22 @@ qsizetype QHttpServerParser::getChunkSize(QIODevice *socket, qsizetype *chunkSiz
             bytes += socket->read(crlf, 1); // read the \r or \n
             if (crlf[0] == '\r')
                 bytes += socket->read(crlf, 1); // read the \n
-            bool ok = false;
+
             // ignore the chunk-extension
-            fragment = fragment.mid(0, fragment.indexOf(';')).trimmed();
-            *chunkSize = fragment.toLong(&ok, 16);
+            QByteArrayView sizeField = fragment;
+            if (const qsizetype pos = sizeField.indexOf(';'); pos != -1)
+                sizeField = sizeField.first(pos);
+            bool ok = false;
+            const qulonglong parsed = sizeField.trimmed().toULongLong(&ok, 16);
             fragment.clear();
+            if (!ok || parsed > qulonglong(QByteArray::maxSize())) {
+                sendError(socket, QHttpServerResponder::StatusCode::BadRequest);
+                socket->skip(socket->bytesAvailable());
+                qCDebug(lcHttpServerParser) << "Invalid chunk size from client"
+                                            << getClientIpAddressAndPort();
+                return -1; // hard failure -> caller closes the connection
+            }
+            *chunkSize = qsizetype(parsed);
             break; // size done
         } else {
             // read the fragment to the buffer
