@@ -156,6 +156,8 @@ private slots:
     void keepAliveTimeout();
     void chunkedRequest();
     void chunkedSizeLineTooLong();
+    void chunkedInvalidSize_data();
+    void chunkedInvalidSize();
 
 private:
 #if QT_CONFIG(ssl)
@@ -1075,6 +1077,61 @@ void tst_QAbstractHttpServer::chunkedSizeLineTooLong()
     QVERIFY2(response.startsWith("HTTP/1.1 400"), response.constData());
     QVERIFY(!server.handleRequestCalled);
 }
+
+void tst_QAbstractHttpServer::chunkedInvalidSize_data()
+{
+    QTest::addColumn<QByteArray>("chunkSizeLine");
+
+    // Fits quint64 but exceeds qsizetype: parses, then fails the range check.
+    QTest::addRow("uint64-max") << QByteArray("ffffffffffffffff");
+    QTest::addRow("above-int64-max") << QByteArray("8000000000000000");
+    // Fails to parse: toULongLong() rejects a leading '-', and non-hex digits.
+    QTest::addRow("negative") << QByteArray("-2");
+    QTest::addRow("non-hex") << QByteArray("zz");
+}
+
+void tst_QAbstractHttpServer::chunkedInvalidSize()
+{
+    QFETCH(QByteArray, chunkSizeLine);
+
+    struct HttpServer : QAbstractHttpServer
+    {
+        bool handleRequestCalled = false;
+        bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &responder) override
+        {
+            handleRequestCalled = true;
+            auto _responder = std::move(responder);
+            return true;
+        }
+
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override { }
+    } server;
+
+    QTcpServer tcpServer;
+    QVERIFY(tcpServer.listen());
+    server.bind(&tcpServer);
+
+    QTcpSocket client;
+    client.connectToHost(QHostAddress::LocalHost, tcpServer.serverPort());
+    QVERIFY(client.waitForConnected());
+
+    // A malformed or out-of-range chunk size must be rejected with 400 and the
+    // connection closed.
+    QByteArray request = "POST / HTTP/1.1\r\n"
+                         "Host: localhost\r\n"
+                         "Transfer-Encoding: chunked\r\n"
+                         "\r\n";
+    request += chunkSizeLine + "\r\n";
+    client.write(request);
+    QVERIFY(client.waitForBytesWritten());
+
+    // waitForDisconnected() would only wait on the client socket and time out
+    QTRY_COMPARE(client.state(), QAbstractSocket::UnconnectedState);
+    const QByteArray response = client.readAll();
+    QVERIFY2(response.startsWith("HTTP/1.1 400"), response.constData());
+    QVERIFY(!server.handleRequestCalled);
+}
+
 
 QT_END_NAMESPACE
 
