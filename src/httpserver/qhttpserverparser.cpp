@@ -375,6 +375,19 @@ qsizetype QHttpServerParser::readHeader(QIODevice *socket)
         QByteArray connectionHeaderField = headerField("connection");
         upgrade = connectionHeaderField.toLower().contains("upgrade");
 
+        // RFC 9112 6.1: a message with both Transfer-Encoding and Content-Length has
+        // ambiguous framing that a front-end may resolve differently (request
+        // smuggling). An origin server may reject it rather than strip the
+        // Content-Length, so reject.
+        if (!headerField("transfer-encoding").isEmpty()
+            && !headers.values("content-length").isEmpty()) {
+            sendError(socket, QHttpServerResponder::StatusCode::BadRequest);
+            qCDebug(lcHttpServerParser)
+                    << "Both Transfer-Encoding and Content-Length from client"
+                    << getClientIpAddressAndPort();
+            return -1;
+        }
+
         if (chunkedTransferEncoding || bodyLength > 0) {
             if (headerField("expect").compare("100-continue", Qt::CaseInsensitive) == 0)
                 state = State::ExpectContinue;
