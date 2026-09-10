@@ -326,10 +326,39 @@ qsizetype QHttpServerParser::readHeader(QIODevice *socket)
                                         << "bytes from client" << getClientIpAddressAndPort();
             return -1;
         }
-        // cache isChunked() since it is called often
-        // FIXME: the RFC says that anything but "identity" should be interpreted as chunked (4.4
-        // [2])
-        chunkedTransferEncoding = headerField("transfer-encoding").toLower().contains("chunked");
+
+        // Parse Transfer-Encoding as a list of transfer-codings (RFC 9112 6.1)
+        // rather than a substring match. Qt only implements the "chunked" coding,
+        // and it must be present exactly once as the sole coding. Every other case
+        // is rejected so the parser cannot disagree with an intermediary on how the
+        // message body is framed.
+        chunkedTransferEncoding = false;
+        const QByteArray transferEncoding = headerField("transfer-encoding");
+        if (!transferEncoding.isEmpty()) {
+            QList<QByteArray> codings;
+            for (QByteArray coding : transferEncoding.split(',')) {
+                if (const qsizetype paramStart = coding.indexOf(';'); paramStart != -1)
+                    coding.truncate(paramStart);
+                coding = coding.trimmed().toLower();
+                if (!coding.isEmpty())
+                    codings.append(coding);
+            }
+            if (codings.size() == 1 && codings.constFirst() == "chunked") {
+                chunkedTransferEncoding = true;
+            } else if (!codings.isEmpty()) {
+                // Either an unsupported coding, or "chunked" combined with another
+                // coding / not applied exactly once (it must be the sole coding for
+                // Qt to decode it). Reject rather than guess the framing.
+                const bool hasChunked = codings.contains("chunked");
+                sendError(socket, hasChunked
+                                  ? QHttpServerResponder::StatusCode::BadRequest
+                                  : QHttpServerResponder::StatusCode::NotImplemented);
+                qCDebug(lcHttpServerParser)
+                        << "Unsupported or malformed Transfer-Encoding from client"
+                        << getClientIpAddressAndPort();
+                return -1;
+            }
+        }
 
         QByteArray connectionHeaderField = headerField("connection");
         upgrade = connectionHeaderField.toLower().contains("upgrade");
