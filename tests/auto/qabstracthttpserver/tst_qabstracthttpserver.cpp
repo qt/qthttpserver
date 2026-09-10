@@ -165,6 +165,8 @@ private slots:
     void invalidTransferEncoding();
     void multipleContentLength_data();
     void multipleContentLength();
+    void contentLengthAndTransferEncoding_data();
+    void contentLengthAndTransferEncoding();
 
 private:
 #if QT_CONFIG(ssl)
@@ -1330,6 +1332,53 @@ void tst_QAbstractHttpServer::multipleContentLength()
     const QByteArray request = "POST / HTTP/1.1\r\n"
                                "Host: localhost\r\n"
                                + contentLengthHeaders +
+                               "\r\n";
+    client.write(request);
+    QVERIFY(client.waitForBytesWritten());
+
+    // waitForDisconnected() would only wait on the client socket and time out
+    QTRY_COMPARE(client.state(), QAbstractSocket::UnconnectedState);
+    const QByteArray response = client.readAll();
+    QVERIFY2(response.startsWith("HTTP/1.1 400"), response.constData());
+    QVERIFY(!server.handleRequestCalled);
+}
+
+void tst_QAbstractHttpServer::contentLengthAndTransferEncoding_data()
+{
+    QTest::addColumn<QByteArray>("headers");
+    QTest::addRow("cl-then-te")
+        << QByteArray("Content-Length: 5\r\nTransfer-Encoding: chunked\r\n");
+    QTest::addRow("te-then-cl")
+        << QByteArray("Transfer-Encoding: chunked\r\nContent-Length: 5\r\n");
+}
+
+void tst_QAbstractHttpServer::contentLengthAndTransferEncoding()
+{
+    QFETCH(QByteArray, headers);
+
+    struct HttpServer : QAbstractHttpServer
+    {
+        bool handleRequestCalled = false;
+        bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &responder) override
+        {
+            handleRequestCalled = true;
+            auto _responder = std::move(responder);
+            return true;
+        }
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override { }
+    } server;
+
+    QTcpServer tcpServer;
+    QVERIFY(tcpServer.listen());
+    server.bind(&tcpServer);
+
+    QTcpSocket client;
+    client.connectToHost(QHostAddress::LocalHost, tcpServer.serverPort());
+    QVERIFY(client.waitForConnected());
+
+    const QByteArray request = "POST / HTTP/1.1\r\n"
+                               "Host: localhost\r\n"
+                               + headers +
                                "\r\n";
     client.write(request);
     QVERIFY(client.waitForBytesWritten());
