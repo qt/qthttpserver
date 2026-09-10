@@ -273,6 +273,18 @@ qsizetype QHttpServerParser::readHeader(QIODevice *socket)
         headers = headerParser.headers();
         fragment.clear(); // next fragment
 
+        // A Content-Length with more than one value (whether from repeated header
+        // fields or a single field carrying a comma-separated list) has ambiguous
+        // framing. RFC 9110 8.6 / RFC 9112 6.3.5 require rejecting differing values
+        // and permit rejecting identical duplicates. combinedValue() joins repeated
+        // fields with commas, so a comma in the result means more than one value.
+        if (headers.combinedValue("content-length").contains(',')) {
+            sendError(socket, QHttpServerResponder::StatusCode::BadRequest);
+            qCDebug(lcHttpServerParser) << "Multiple Content-Length values from client"
+                                        << getClientIpAddressAndPort();
+            return -1;
+        }
+
         if (!filter->isNumberOfHeaderFieldsAllowed(headers.size())) {
             sendError(socket, QHttpServerResponder::StatusCode::RequestHeaderFieldsTooLarge);
             qCDebug(lcHttpServerParser) << "Number of header fields" << headers.size()
