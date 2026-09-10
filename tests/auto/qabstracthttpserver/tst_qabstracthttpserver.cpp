@@ -163,6 +163,8 @@ private slots:
     void contentLengthOverflow();
     void invalidTransferEncoding_data();
     void invalidTransferEncoding();
+    void multipleContentLength_data();
+    void multipleContentLength();
 
 private:
 #if QT_CONFIG(ssl)
@@ -1285,6 +1287,57 @@ void tst_QAbstractHttpServer::invalidTransferEncoding()
     const QByteArray response = client.readAll();
     const QByteArray expected = "HTTP/1.1 " + QByteArray::number(statusCode);
     QVERIFY2(response.startsWith(expected), response.constData());
+    QVERIFY(!server.handleRequestCalled);
+}
+
+void tst_QAbstractHttpServer::multipleContentLength_data()
+{
+    QTest::addColumn<QByteArray>("contentLengthHeaders");
+    QTest::addRow("two-differing-fields")
+        << QByteArray("Content-Length: 5\r\nContent-Length: 6\r\n");
+    QTest::addRow("two-identical-fields")
+        << QByteArray("Content-Length: 5\r\nContent-Length: 5\r\n");
+    QTest::addRow("list-identical")   // Thiago's case
+        << QByteArray("Content-Length: 123, 123, 123, 123\r\n");
+    QTest::addRow("list-differing")
+        << QByteArray("Content-Length: 5, 6\r\n");
+}
+
+void tst_QAbstractHttpServer::multipleContentLength()
+{
+    QFETCH(QByteArray, contentLengthHeaders);
+
+    struct HttpServer : QAbstractHttpServer
+    {
+        bool handleRequestCalled = false;
+        bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &responder) override
+        {
+            handleRequestCalled = true;
+            auto _responder = std::move(responder);
+            return true;
+        }
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override { }
+    } server;
+
+    QTcpServer tcpServer;
+    QVERIFY(tcpServer.listen());
+    server.bind(&tcpServer);
+
+    QTcpSocket client;
+    client.connectToHost(QHostAddress::LocalHost, tcpServer.serverPort());
+    QVERIFY(client.waitForConnected());
+
+    const QByteArray request = "POST / HTTP/1.1\r\n"
+                               "Host: localhost\r\n"
+                               + contentLengthHeaders +
+                               "\r\n";
+    client.write(request);
+    QVERIFY(client.waitForBytesWritten());
+
+    // waitForDisconnected() would only wait on the client socket and time out
+    QTRY_COMPARE(client.state(), QAbstractSocket::UnconnectedState);
+    const QByteArray response = client.readAll();
+    QVERIFY2(response.startsWith("HTTP/1.1 400"), response.constData());
     QVERIFY(!server.handleRequestCalled);
 }
 
