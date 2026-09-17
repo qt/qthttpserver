@@ -167,6 +167,7 @@ private slots:
     void multipleContentLength();
     void contentLengthAndTransferEncoding_data();
     void contentLengthAndTransferEncoding();
+    void totalHeaderSizeLimit();
 
 private:
 #if QT_CONFIG(ssl)
@@ -1387,6 +1388,47 @@ void tst_QAbstractHttpServer::contentLengthAndTransferEncoding()
     QTRY_COMPARE(client.state(), QAbstractSocket::UnconnectedState);
     const QByteArray response = client.readAll();
     QVERIFY2(response.startsWith("HTTP/1.1 400"), response.constData());
+    QVERIFY(!server.handleRequestCalled);
+}
+
+void tst_QAbstractHttpServer::totalHeaderSizeLimit()
+{
+    struct HttpServer : QAbstractHttpServer
+    {
+        bool handleRequestCalled = false;
+        bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &responder) override
+        {
+            handleRequestCalled = true;
+            auto _responder = std::move(responder);
+            return true;
+        }
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override { }
+    } server;
+
+    QTcpServer tcpServer;
+    QVERIFY(tcpServer.listen());
+    server.bind(&tcpServer);
+
+    // Lower the total-header limit; each field stays well under the per-field
+    // limit, so only the *total* triggers rejection.
+    QHttpServerConfiguration config;
+    config.setMaximumTotalHeaderSize(1024);
+    server.setConfiguration(config);
+
+    QTcpSocket client;
+    client.connectToHost(QHostAddress::LocalHost, tcpServer.serverPort());
+    QVERIFY(client.waitForConnected());
+
+    QByteArray request = "GET / HTTP/1.1\r\nHost: localhost\r\n";
+    for (int i = 0; i < 100; ++i) // ~100 small fields -> a few KB total, > 1 KB
+        request += "X-Custom-Header-" + QByteArray::number(i) + ": value\r\n";
+    request += "\r\n";
+    client.write(request);
+    QVERIFY(client.waitForBytesWritten());
+
+    QTRY_COMPARE(client.state(), QAbstractSocket::UnconnectedState);
+    const QByteArray response = client.readAll();
+    QVERIFY2(response.startsWith("HTTP/1.1 431"), response.constData());
     QVERIFY(!server.handleRequestCalled);
 }
 
