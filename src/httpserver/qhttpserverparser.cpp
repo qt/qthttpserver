@@ -348,7 +348,8 @@ qsizetype QHttpServerParser::readHeader(QIODevice *socket)
         const QByteArray transferEncoding = headerField("transfer-encoding");
         if (!transferEncoding.isEmpty()) {
             QList<QByteArray> codings;
-            for (QByteArray coding : transferEncoding.split(',')) {
+            const QList<QByteArray> rawCodings = transferEncoding.split(',');
+            for (QByteArray coding : rawCodings) {
                 if (const qsizetype paramStart = coding.indexOf(';'); paramStart != -1)
                     coding.truncate(paramStart);
                 coding = coding.trimmed().toLower();
