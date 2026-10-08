@@ -38,6 +38,8 @@ QHttpServerRequest::Method parseRequestMethod(QByteArrayView str)
         return QHttpServerRequest::Method::Patch;
     else if (str == "CONNECT")
         return QHttpServerRequest::Method::Connect;
+    else if (str == "TRACE")
+        return QHttpServerRequest::Method::Trace;
     else
         return QHttpServerRequest::Method::Unknown;
 }
