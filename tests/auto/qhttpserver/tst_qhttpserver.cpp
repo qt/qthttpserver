@@ -8,7 +8,9 @@
 #include <QtTest/qtest.h>
 #include <QtTest/qsignalspy.h>
 
+#if QT_CONFIG(concurrent)
 #include <QtConcurrent/qtconcurrentrun.h>
+#endif
 
 #include <QtCore/qurl.h>
 #include <QtCore/qstring.h>
@@ -239,6 +241,7 @@ private slots:
     void writeSequentialDevice();
     void writeMuchToSequentialDevice();
     void writeFromEmptySequentialDevice();
+    void concurrentRequestsToSequentialDevice();
 
 #if QT_CONFIG(localserver)
     void localSocket();
@@ -1438,10 +1441,10 @@ void tst_QHttpServer::missingHandler()
     QCOMPARE(sslUsed.toBool(), useSsl);
 }
 
-#if QT_CONFIG(concurrent)
 // Test that responses to pipelined requests come in correct order, see also: QTBUG-105202
 void tst_QHttpServer::pipelinedFutureRequests()
 {
+#if QT_CONFIG(concurrent)
     QFETCH_GLOBAL(bool, useSsl);
     QFETCH_GLOBAL(bool, useHttp2);
     QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
@@ -1461,10 +1464,14 @@ void tst_QHttpServer::pipelinedFutureRequests()
 
     for (std::size_t i = 0; i < replies.size(); i++)
         checkReply(replies[i], QString::number(i));
+#else
+    QSKIP("QtConcurrent is not available, skipping test");
+#endif // QT_CONFIG(concurrent)
 }
 
 void tst_QHttpServer::requestNotOverwritten()
 {
+#if QT_CONFIG(concurrent)
     using namespace std::chrono_literals;
     readySem.emplace();
     routeSem.emplace();
@@ -1531,9 +1538,10 @@ void tst_QHttpServer::requestNotOverwritten()
     QCOMPARE(bodySizes.size(), NumberProcessed);
     QCOMPARE(readySem->available(), 0);
     QCOMPARE(routeSem->available(), 0);
-}
-
+#else
+    QSKIP("QtConcurrent is not available, skipping test");
 #endif // QT_CONFIG(concurrent)
+}
 
 void tst_QHttpServer::multipleResponses()
 {
@@ -1612,12 +1620,6 @@ void tst_QHttpServer::writeSequentialDevice()
     QSignalSpy spy(reply.get(), &QNetworkReply::finished);
     spy.wait(2s);
 
-    if (!useHttp2) {
-        QEXPECT_FAIL(
-                "",
-                "QTBUG-137330: Writing from a Sequential QIODevice to HTTP/1.1 Hangs the Client",
-                Abort);
-    }
     QCOMPARE(spy.count(), 1);
     checkReply(reply.release(), "GoGoGo");
 }
@@ -1638,12 +1640,6 @@ void tst_QHttpServer::writeMuchToSequentialDevice()
     QSignalSpy spy(reply.get(), &QNetworkReply::finished);
     spy.wait(2s);
 
-    if (!useHttp2) {
-        QEXPECT_FAIL(
-                "",
-                "QTBUG-137330: Writing from a Sequential QIODevice to HTTP/1.1 Hangs the Client",
-                Abort);
-    }
     QCOMPARE(spy.count(), 1);
     checkReply(reply.release(), u"a"_s.repeated(bufferSize * 2));
 }
@@ -1663,14 +1659,39 @@ void tst_QHttpServer::writeFromEmptySequentialDevice()
     QSignalSpy spy(reply.get(), &QNetworkReply::finished);
     spy.wait(2s);
 
-    if (!useHttp2) {
-        QEXPECT_FAIL(
-                "",
-                "QTBUG-137330: Writing from a Sequential QIODevice to HTTP/1.1 Hangs the Client",
-                Abort);
-    }
     QCOMPARE(spy.count(), 1);
     checkReply(reply.release(), "");
+}
+
+void tst_QHttpServer::concurrentRequestsToSequentialDevice()
+{
+#if QT_CONFIG(concurrent)
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    constexpr qsizetype NumberOfTasks = 10;
+    constexpr qsizetype NumberOfRepeats = 3;
+    std::array<std::unique_ptr<QNetworkReply>, NumberOfTasks> replies;
+    QThreadPool::globalInstance()->setMaxThreadCount(NumberOfTasks);
+    for (qsizetype i = 0; i < NumberOfTasks; ++i) {
+        QString path =
+                u"/sequential-iodevice/%1/%2/1"_s.arg(QChar('a' + (char)i)).arg(NumberOfRepeats);
+        QNetworkRequest req(QUrl(urlBase.arg(path)));
+        req.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
+        req.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+        replies[i].reset(networkAccessManager.get(req));
+    }
+
+    QSignalSpy spy(replies[NumberOfTasks - 1].get(), &QNetworkReply::finished);
+    spy.wait(5s); // Wait for reply to last outgoing request
+
+    for (qsizetype i = 0; i < NumberOfTasks; i++) {
+        QTRY_VERIFY(replies[i]->isFinished());
+        QCOMPARE(replies[i]->readAll(), QString(QChar('a' + (char)i)).repeated(NumberOfRepeats));
+    }
+#else
+    QSKIP("QtConcurrent is not available, skipping test");
+#endif // QT_CONFIG(concurrent)
 }
 
 QT_END_NAMESPACE

@@ -26,6 +26,8 @@ class QAbstractHttpServer;
 #if QT_CONFIG(localserver)
 class QLocalSocket;
 #endif
+template <qint64 BUFFERSIZE>
+struct QHttpServerHttp1IOChunkedTransfer;
 
 class QHttpServerHttp1ProtocolHandler : public QHttpServerStream
 {
@@ -62,6 +64,8 @@ private:
     void write(const QByteArray &data);
     void write(const char *body, qint64 size);
 
+    void resumeListening();
+
     QAbstractHttpServer *server;
     QIODevice *socket;
     QTcpSocket *tcpSocket;
@@ -72,7 +76,8 @@ private:
     enum class TransferState {
         Ready,
         HeadersSent,
-        ChunkedTransferBegun
+        ChunkedTransferBegun,
+        IODeviceTransferBegun,
     } state = TransferState::Ready;
 
     QHttpServerRequest request;
@@ -81,6 +86,11 @@ private:
    // a request is still being handled.
     bool handlingRequest = false;
     bool protocolChanged = false;
+    bool useHttp1_1 = false;
+    void completeWriting();
+
+    template <qint64 BUFFERSIZE>
+    friend struct QHttpServerHttp1IOChunkedTransfer;
 };
 
 QT_END_NAMESPACE

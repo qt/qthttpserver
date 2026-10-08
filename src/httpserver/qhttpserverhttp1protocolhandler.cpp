@@ -89,10 +89,8 @@ static const std::map<QHttpServerResponder::StatusCode, QByteArray> statusString
 #undef XX
 };
 
-namespace {
-
 template <qint64 BUFFERSIZE = 128 * 1024>
-struct IOChunkedTransfer
+struct QHttpServerHttp1IOChunkedTransfer
 {
     // TODO This is not the fastest implementation, as it does read & write
     // in a sequential fashion, but these operation could potentially overlap.
@@ -108,16 +106,26 @@ struct IOChunkedTransfer
     const QPointer<QIODevice> sink;
     const QMetaObject::Connection bytesWrittenConnection;
     const QMetaObject::Connection readyReadConnection;
+    const QMetaObject::Connection readChannelFinished;
+    QPointer<QHttpServerHttp1ProtocolHandler> handler;
     bool inRead = false;
+    bool gotReadChannelFinished = false;
+    bool writingIsComplete = false;
+    bool useHttp1_1 = false;
 
-    IOChunkedTransfer(QIODevice *input, QIODevice *output) :
+    QHttpServerHttp1IOChunkedTransfer(QIODevice *input, QIODevice *output, bool http1_1,
+                                      QHttpServerHttp1ProtocolHandler *callback) :
           source(input),
           sink(output),
           bytesWrittenConnection(connectToBytesWritten(this, output)),
           readyReadConnection(QObject::connect(source.data(), &QIODevice::readyRead, source.data(),
-                                               [this]() { readFromInput(); }))
+                                               [this]() { readFromInput(); })),
+          readChannelFinished(QObject::connect(source.data(), &QIODevice::readChannelFinished,
+                                               source.data(),
+                                               [this]() { readChannelFinishedHandler(); })),
+          handler(callback),
+          useHttp1_1(http1_1)
     {
-        Q_ASSERT(!source->atEnd());  // TODO error out
         QObject::connect(sink.data(), &QObject::destroyed, source.data(), &QObject::deleteLater);
         QObject::connect(source.data(), &QObject::destroyed, source.data(), [this]() {
             delete this;
@@ -125,13 +133,15 @@ struct IOChunkedTransfer
         readFromInput();
     }
 
-    ~IOChunkedTransfer()
+    ~QHttpServerHttp1IOChunkedTransfer()
     {
         QObject::disconnect(bytesWrittenConnection);
         QObject::disconnect(readyReadConnection);
+        QObject::disconnect(readChannelFinished);
     }
 
-    static QMetaObject::Connection connectToBytesWritten(IOChunkedTransfer *that, QIODevice *device)
+    static QMetaObject::Connection connectToBytesWritten(QHttpServerHttp1IOChunkedTransfer *that,
+                                                         QIODevice *device)
     {
         auto send = [that]() { that->writeToOutput(); };
 #if QT_CONFIG(ssl)
@@ -149,6 +159,12 @@ struct IOChunkedTransfer
         return beginIndex == endIndex;
     }
 
+    void readChannelFinishedHandler()
+    {
+        gotReadChannelFinished = true;
+        readFromInput();
+    }
+
     void readFromInput()
     {
         if (inRead)
@@ -164,13 +180,19 @@ struct IOChunkedTransfer
             beginIndex = 0;
             endIndex = source->read(buffer, bufferSize);
             if (endIndex < 0) {
-                endIndex = beginIndex; // Mark the buffer as empty
-                qCWarning(lcHttpServerHttp1Handler, "Error reading chunk: %ls",
-                        qUtf16Printable(source->errorString()));
-                break;
+                endIndex = 0; // Mark the buffer as empty
+                if (!source->isSequential()) {
+                    qCWarning(lcHttpServerHttp1Handler, "Error reading chunk: %ls",
+                              qUtf16Printable(source->errorString()));
+                    return;
+                }
             }
-            if (endIndex == 0)
-                break;
+            if (endIndex == 0) { // Nothing was read
+                if (!writingIsComplete
+                    && ((!source->isSequential() && source->atEnd()) || gotReadChannelFinished))
+                    completeWriting();
+                return;
+            }
             memset(buffer + endIndex, 0, sizeof(buffer) - std::size_t(endIndex));
             writeToOutput();
         }
@@ -180,7 +202,6 @@ struct IOChunkedTransfer
     {
         if (sink.isNull() || source.isNull())
             return;
-
         if (isBufferEmpty())
             return;
 
@@ -197,24 +218,42 @@ struct IOChunkedTransfer
         }
 #endif
 
-        const auto writtenBytes = sink->write(buffer + beginIndex, endIndex);
+        if (useHttp1_1 && source->isSequential()) {
+            sink->write(QByteArray::number(endIndex - beginIndex, 16));
+            sink->write("\r\n");
+        }
+        const auto writtenBytes = sink->write(buffer + beginIndex, endIndex - beginIndex);
         if (writtenBytes < 0) {
             qCWarning(lcHttpServerHttp1Handler, "Error writing chunk: %ls",
                       qUtf16Printable(sink->errorString()));
             return;
         }
+        if (useHttp1_1 && source->isSequential())
+            sink->write("\r\n");
         beginIndex += writtenBytes;
-        if (isBufferEmpty()) {
-            if (source->bytesAvailable() && !inRead)
-                readFromInput();
-            else if (source->atEnd())  // Finishing
-                source->deleteLater();
+        if (isBufferEmpty() && !inRead)
+            readFromInput();
+    }
+
+    void completeWriting()
+    {
+        if (sink.isNull())
+            return;
+        Q_ASSERT(!source.isNull());
+        Q_ASSERT(isBufferEmpty());
+
+        if (source->isSequential()) {
+            if (useHttp1_1)
+                sink->write("0\r\n\r\n");
+            else
+                sink->close();
         }
+        source->deleteLater();
+        writingIsComplete = true;
+        if (!handler.isNull())
+            handler->completeWriting();
     }
 };
-
-} // anonymous namespace
-
 
 QHttpServerHttp1ProtocolHandler::QHttpServerHttp1ProtocolHandler(QAbstractHttpServer *server,
                                                                  QIODevice *socket)
@@ -255,7 +294,12 @@ void QHttpServerHttp1ProtocolHandler::responderDestroyed()
     }
     Q_ASSERT(handlingRequest);
     handlingRequest = false;
+    if (state == TransferState::Ready)
+        resumeListening();
+}
 
+void QHttpServerHttp1ProtocolHandler::resumeListening()
+{
     if (tcpSocket) {
         if (tcpSocket->state() != QAbstractSocket::ConnectedState) {
             deleteLater();
@@ -290,7 +334,7 @@ void QHttpServerHttp1ProtocolHandler::socketDisconnected()
 
 void QHttpServerHttp1ProtocolHandler::handleReadyRead()
 {
-    if (handlingRequest)
+    if (handlingRequest || state != TransferState::Ready)
         return;
 
     if (!socket->isTransactionStarted())
@@ -310,6 +354,7 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
         return; // Partial read
 
     qCDebug(lcHttpServerHttp1Handler) << "Request:" << request;
+    useHttp1_1 = request.d->minorVersion == 1;
 
     QHttpServerResponder responder(this);
 
@@ -364,7 +409,7 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
     if (!server->handleRequest(request, responder))
         server->missingHandler(request, responder);
 
-    if (handlingRequest)
+    if (handlingRequest || state != TransferState::Ready)
         disconnect(socket, &QIODevice::readyRead, this, &QHttpServerHttp1ProtocolHandler::handleReadyRead);
     else if (socket->bytesAvailable() > 0)
         QMetaObject::invokeMethod(socket, &QIODevice::readyRead, Qt::QueuedConnection);
@@ -417,21 +462,20 @@ void QHttpServerHttp1ProtocolHandler::write(QIODevice *data, const QHttpHeaders 
     }
 
     QHttpHeaders allHeaders(headers);
-    if (!input->isSequential()) { // Non-sequential QIODevice should know its data size
+    if (input->isSequential()) {
+        if (useHttp1_1)
+            allHeaders.append(QHttpHeaders::WellKnownHeader::TransferEncoding, "chunked");
+        else
+            allHeaders.append(QHttpHeaders::WellKnownHeader::Connection, "close");
+    } else { // Non-sequential QIODevice should know its data size
         allHeaders.append(QHttpHeaders::WellKnownHeader::ContentLength,
                           QByteArray::number(input->size()));
     }
-
     writeStatusAndHeaders(status, allHeaders);
 
-    if (input->atEnd()) {
-        qCDebug(lcHttpServerHttp1Handler, "No more data available.");
-        return;
-    }
-
-    // input takes ownership of the IOChunkedTransfer pointer inside his constructor
-    new IOChunkedTransfer<>(input.release(), socket);
-    state = TransferState::Ready;
+    state = TransferState::IODeviceTransferBegun;
+    // input takes ownership of the QHttpServerHttp1IOChunkedTransfer pointer inside his constructor
+    new QHttpServerHttp1IOChunkedTransfer<>(input.release(), socket, useHttp1_1, this);
 }
 
 void QHttpServerHttp1ProtocolHandler::writeBeginChunked(const QHttpHeaders &headers,
@@ -518,6 +562,14 @@ void QHttpServerHttp1ProtocolHandler::write(const char *body, qint64 size)
 {
     Q_ASSERT(QThread::currentThread() == thread());
     socket->write(body, size);
+}
+
+void QHttpServerHttp1ProtocolHandler::completeWriting()
+{
+    Q_ASSERT(state == TransferState::IODeviceTransferBegun);
+    state = TransferState::Ready;
+    if (!handlingRequest)
+        resumeListening();
 }
 
 QT_END_NAMESPACE
