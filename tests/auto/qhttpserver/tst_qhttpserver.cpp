@@ -30,6 +30,7 @@
 #include <QtNetwork/qnetworkreply.h>
 #include <QtNetwork/qnetworkrequest.h>
 #include <QtNetwork/qtcpserver.h>
+#include <QtNetwork/qtcpsocket.h>
 
 #if QT_CONFIG(ssl)
 #include <QtNetwork/qsslconfiguration.h>
@@ -259,6 +260,9 @@ private slots:
     void maximumConnectionsPerHost();
     void maximumConnections_data();
     void maximumConnections();
+    void requestFilter_data();
+    void requestFilter();
+    void requestFilterSendsSingleResponse();
 
 #if QT_CONFIG(localserver)
     void localSocket();
@@ -279,6 +283,7 @@ private:
     std::vector<std::unique_ptr<QHttpServerResponder>> responders;
     std::optional<QSemaphore> readySem, routeSem;
     std::optional<bool> canceledByClient;
+    int filteredRouteCalls = 0;
 };
 
 struct CustomArg {
@@ -431,6 +436,11 @@ void tst_QHttpServer::initTestCase()
 
     auto respRvalueHandlerPtr = respRvalueHandler;
     httpserver.route("/resp2", this, respRvalueHandlerPtr);
+
+    httpserver.route("/filtered", this, [this]() -> QString {
+        ++filteredRouteCalls;
+        return u"filtered"_s;
+    });
 
     auto l = []() -> QString { return "Hello world get"; };
 
@@ -2475,6 +2485,108 @@ void tst_QHttpServer::maximumConnections()
 #endif // QT_CONFIG(concurrent)
 }
 
+void tst_QHttpServer::requestFilter_data()
+{
+    QTest::addColumn<QStringList>("whitelist");
+    QTest::addColumn<QStringList>("blacklist");
+    QTest::addColumn<bool>("expectAllowed");
+
+    // 192.0.2.0/24 is TEST-NET-1 (RFC 5737), the test client never connects from it.
+    const QStringList unrelated = { u"192.0.2.0/24"_s };
+    const QStringList everything = { u"0.0.0.0/0"_s, u"::/0"_s };
+
+    QTest::newRow("no-lists") << QStringList() << QStringList() << true;
+    QTest::newRow("whitelist-excludes-client") << unrelated << QStringList() << false;
+    QTest::newRow("whitelist-includes-client") << everything << QStringList() << true;
+    QTest::newRow("blacklist-excludes-client") << QStringList() << unrelated << true;
+    QTest::newRow("blacklist-includes-client") << QStringList() << everything << false;
+    QTest::newRow("whitelist-takes-priority") << everything << everything << true;
+}
+
+static QList<std::pair<QHostAddress, int>> toSubnets(const QStringList &subnets)
+{
+    QList<std::pair<QHostAddress, int>> result;
+    for (const QString &subnet : subnets)
+        result.append(QHostAddress::parseSubnet(subnet));
+    return result;
+}
+
+void tst_QHttpServer::requestFilter()
+{
+    QFETCH_GLOBAL(bool, useSsl);
+    QFETCH_GLOBAL(bool, useHttp2);
+    QFETCH(QStringList, whitelist);
+    QFETCH(QStringList, blacklist);
+    QFETCH(bool, expectAllowed);
+
+    if (useHttp2)
+        QSKIP("Whitelist and blacklist are not yet enforced for HTTP/2");
+
+    auto cleanup = qScopeGuard([this] { httpserver.setConfiguration({}); });
+
+    QHttpServerConfiguration config;
+    config.setWhitelist(toSubnets(whitelist));
+    config.setBlacklist(toSubnets(blacklist));
+    httpserver.setConfiguration(config);
+    filteredRouteCalls = 0;
+
+    const QString urlBase = useSsl ? sslUrlBase : clearUrlBase;
+    QNetworkRequest request(QUrl(urlBase.arg(u"/filtered"_s)));
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
+    std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(request));
+    QTRY_VERIFY(reply->isFinished());
+
+    const int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    if (expectAllowed) {
+        QCOMPARE(statusCode, 200);
+        QCOMPARE(reply->readAll(), "filtered"_ba);
+        QCOMPARE(filteredRouteCalls, 1);
+    } else {
+        QCOMPARE(statusCode, 403);
+        QCOMPARE(reply->readAll(), QByteArray());
+        // A denied request must never reach the application's handler
+        QCOMPARE(filteredRouteCalls, 0);
+    }
+}
+
+void tst_QHttpServer::requestFilterSendsSingleResponse()
+{
+    QFETCH_GLOBAL(bool, useSsl);
+    if (useSsl)
+        QSKIP("Checks the raw HTTP/1.1 byte stream, run only over plain TCP");
+
+    auto cleanup = qScopeGuard([this] { httpserver.setConfiguration({}); });
+
+    QHttpServerConfiguration config;
+    const auto unrelated = toSubnets({ u"192.0.2.0/24"_s });
+    config.setWhitelist(unrelated);
+    httpserver.setConfiguration(config);
+    filteredRouteCalls = 0;
+
+    QTcpSocket socket;
+    socket.connectToHost(u"localhost"_s, QUrl(clearUrlBase.arg(u"/"_s)).port());
+    QTRY_COMPARE(socket.state(), QAbstractSocket::ConnectedState);
+    socket.write("GET /filtered HTTP/1.1\r\n"
+                 "Host: localhost\r\n\r\n");
+
+    auto headerName = [](QHttpHeaders::WellKnownHeader header) {
+        return QString::fromLatin1(QHttpHeaders::wellKnownHeaderName(header));
+    };
+    const QByteArray expected =
+            u"HTTP/1.1 403 Forbidden\r\n%1: application/x-empty\r\n%2: 0\r\n"
+            u"%3: keep-alive\r\n%4: timeout=%5\r\n\r\n"_s
+                    .arg(headerName(QHttpHeaders::WellKnownHeader::ContentType),
+                         headerName(QHttpHeaders::WellKnownHeader::ContentLength),
+                         headerName(QHttpHeaders::WellKnownHeader::Connection),
+                         headerName(QHttpHeaders::WellKnownHeader::KeepAlive))
+                    .arg(config.keepAliveTimeout().count())
+                    .toUtf8();
+
+    QTRY_COMPARE_GE(socket.bytesAvailable(), expected.size());
+    // Exactly one 403 response and nothing produced by the route handler after it
+    QCOMPARE(socket.readAll(), expected);
+    QCOMPARE(filteredRouteCalls, 0);
+}
 
 QT_END_NAMESPACE
 
