@@ -434,8 +434,7 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
     if (!m_filter->isRequestAllowed(peerAddress)) {
         responder.sendResponse(
                 QHttpServerResponse(QHttpServerResponder::StatusCode::Forbidden));
-    }
-    if (!m_filter->isRequestWithinRate(peerAddress)) {
+    } else if (!m_filter->isRequestWithinRate(peerAddress)) {
         responder.sendResponse(
                 QHttpServerResponse(QHttpServerResponder::StatusCode::TooManyRequests));
     } else if (!server->handleRequest(request, responder)) {
