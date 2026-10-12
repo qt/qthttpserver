@@ -235,6 +235,7 @@ private slots:
     void disconnectedInEventLoop();
     void multipleRequests();
     void pipelinedRequests();
+    void pipelinedRequestsAfterConnectionClose();
     void missingHandler();
     void pipelinedFutureRequests();
     void requestNotOverwritten();
@@ -2586,6 +2587,36 @@ void tst_QHttpServer::requestFilterSendsSingleResponse()
     // Exactly one 403 response and nothing produced by the route handler after it
     QCOMPARE(socket.readAll(), expected);
     QCOMPARE(filteredRouteCalls, 0);
+}
+
+void tst_QHttpServer::pipelinedRequestsAfterConnectionClose()
+{
+    QFETCH_GLOBAL(bool, useSsl);
+    if (useSsl)
+        QSKIP("Checks the raw HTTP/1.1 byte stream, run only over plain TCP");
+
+    QTcpSocket socket;
+    socket.connectToHost(u"localhost"_s, QUrl(clearUrlBase.arg(u"/"_s)).port());
+    QTRY_COMPARE(socket.state(), QAbstractSocket::ConnectedState);
+    // RFC 9112, section 9.6: after the response to a request with the "close"
+    // connection option, the server must not process any further requests
+    // received on that connection.
+    socket.write("GET /resp HTTP/1.1\r\n"
+                 "Host: localhost\r\n"
+                 "Connection: close\r\n\r\n"
+                 "GET / HTTP/1.1\r\n"
+                 "Host: localhost\r\n\r\n"
+                 "GET / HTTP/1.1\r\n"
+                 "Host: localhost\r\n\r\n");
+
+    QTRY_COMPARE(socket.state(), QAbstractSocket::UnconnectedState);
+
+    const QByteArray received = socket.readAll();
+    QVERIFY2(received.startsWith("HTTP/1.1 200 OK\r\n"), received.constData());
+    QCOMPARE(received.count("HTTP/1.1 "), 1);
+    QVERIFY2(received.toLower().contains("\r\nconnection: close\r\n"), received.constData());
+    QVERIFY(received.endsWith("\r\n\r\ntest msg"));
+    QVERIFY2(!received.contains("Hello world get"), received.constData());
 }
 
 QT_END_NAMESPACE

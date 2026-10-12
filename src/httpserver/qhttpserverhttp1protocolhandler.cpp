@@ -309,10 +309,12 @@ void QHttpServerHttp1ProtocolHandler::responderDestroyed(quint32 streamId)
 
 void QHttpServerHttp1ProtocolHandler::resumeListening()
 {
+    // If the last response closed the connection, the disconnect is already
+    // queued: don't read and handle any further (pipelined) requests.
     if (tcpSocket) {
         if (tcpSocket->state() != QAbstractSocket::ConnectedState) {
             deleteLater();
-        } else {
+        } else if (keepAlive) {
             connect(tcpSocket, &QTcpSocket::readyRead,
                     this, &QHttpServerHttp1ProtocolHandler::handleReadyRead);
             QMetaObject::invokeMethod(tcpSocket, &QTcpSocket::readyRead, Qt::QueuedConnection);
@@ -321,7 +323,7 @@ void QHttpServerHttp1ProtocolHandler::resumeListening()
     } else if (localSocket) {
         if (localSocket->state() != QLocalSocket::ConnectedState) {
             deleteLater();
-        } else {
+        } else if (keepAlive) {
             connect(localSocket, &QLocalSocket::readyRead,
                     this, &QHttpServerHttp1ProtocolHandler::handleReadyRead);
             QMetaObject::invokeMethod(localSocket, &QLocalSocket::readyRead, Qt::QueuedConnection);
