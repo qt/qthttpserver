@@ -383,9 +383,20 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
     QHttpServerResponder responder(this);
     connectResponder(responder.d_ptr);
 
+    const QHostAddress peerAddress = tcpSocket ? tcpSocket->peerAddress()
+                                               : QHostAddress::LocalHost;
+    // Evaluate the filter before the WebSocket upgrade, so that a peer that is
+    // not allowed, or is over its rate limit, neither reaches the upgrade
+    // verifiers nor gets a WebSocket connection.
+    const bool isRequestAllowed = m_filter->isRequestAllowed(peerAddress);
+    // don't call isRequestWithinRate for denied peers
+    const bool isRequestWithinRate = !isRequestAllowed
+                                 || m_filter->isRequestWithinRate(peerAddress);
+    const bool passesRequestFilter = isRequestAllowed && isRequestWithinRate;
+
 #if defined(QT_WEBSOCKETS_LIB)
     if (auto *tcpSocket = qobject_cast<QTcpSocket*>(socket)) {
-        if (parser.upgrade) { // Upgrade
+        if (parser.upgrade && passesRequestFilter) { // Upgrade
             const auto &upgradeValue = request.value(QByteArrayLiteral("upgrade"));
             if (upgradeValue.compare(QByteArrayLiteral("websocket"), Qt::CaseInsensitive) == 0) {
                 const auto upgradeResponse = server->verifyWebSocketUpgrade(request);
@@ -431,15 +442,13 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
 
     socket->commitTransaction();
 
-    QHostAddress peerAddress = tcpSocket ? tcpSocket->peerAddress()
-                                         : QHostAddress::LocalHost;
-    if (!m_filter->isRequestAllowed(peerAddress)) {
+    if (!isRequestAllowed) {
         // Don't keep serving a peer that is not allowed. Closing the
         // connection also discards any requests it has pipelined.
         forceClose = true;
         responder.sendResponse(
                 QHttpServerResponse(QHttpServerResponder::StatusCode::Forbidden));
-    } else if (!m_filter->isRequestWithinRate(peerAddress)) {
+    } else if (!isRequestWithinRate) {
         responder.sendResponse(
                 QHttpServerResponse(QHttpServerResponder::StatusCode::TooManyRequests));
     } else if (!server->handleRequest(request, responder)) {
