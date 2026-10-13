@@ -309,7 +309,11 @@ void QHttpServerHttp2ProtocolHandler::onStreamHalfClosed(quint32 streamId)
     connectResponder(responder.d_ptr);
     m_responders.insert(streamId, responder.d_ptr);
 
-    if (!m_filter->isRequestWithinRate(m_tcpSocket->peerAddress())) {
+    const QHostAddress peerAddress = m_tcpSocket->peerAddress();
+    if (!m_filter->isRequestAllowed(peerAddress)) {
+        responder.sendResponse(
+                QHttpServerResponse(QHttpServerResponder::StatusCode::Forbidden));
+    } else if (!m_filter->isRequestWithinRate(peerAddress)) {
         responder.sendResponse(
                 QHttpServerResponse(QHttpServerResponder::StatusCode::TooManyRequests));
     } else if (!m_server->handleRequest(request, responder)) {
