@@ -2521,9 +2521,6 @@ void tst_QHttpServer::requestFilter()
     QFETCH(QStringList, blacklist);
     QFETCH(bool, expectAllowed);
 
-    if (useHttp2)
-        QSKIP("Whitelist and blacklist are not yet enforced for HTTP/2");
-
     auto cleanup = qScopeGuard([this] { httpserver.setConfiguration({}); });
 
     QHttpServerConfiguration config;
@@ -2537,6 +2534,8 @@ void tst_QHttpServer::requestFilter()
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, useHttp2);
     std::unique_ptr<QNetworkReply> reply(networkAccessManager.get(request));
     QTRY_VERIFY(reply->isFinished());
+    // Make sure the request really went over the protocol under test
+    QCOMPARE(reply->attribute(QNetworkRequest::Http2WasUsedAttribute).toBool(), useHttp2);
 
     const int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     if (expectAllowed) {
