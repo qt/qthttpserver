@@ -264,6 +264,7 @@ private slots:
     void requestFilter_data();
     void requestFilter();
     void requestFilterSendsSingleResponse();
+    void requestFilterClosesConnection();
 
 #if QT_CONFIG(localserver)
     void localSocket();
@@ -2575,13 +2576,11 @@ void tst_QHttpServer::requestFilterSendsSingleResponse()
     };
     const QByteArray expected =
             u"HTTP/1.1 403 Forbidden\r\n%1: application/x-empty\r\n%2: 0\r\n"
-            u"%3: keep-alive\r\n%4: timeout=%5\r\n\r\n"_s
-                    .arg(headerName(QHttpHeaders::WellKnownHeader::ContentType),
-                         headerName(QHttpHeaders::WellKnownHeader::ContentLength),
-                         headerName(QHttpHeaders::WellKnownHeader::Connection),
-                         headerName(QHttpHeaders::WellKnownHeader::KeepAlive))
-                    .arg(config.keepAliveTimeout().count())
-                    .toUtf8();
+            u"%3: close\r\n\r\n"_s
+                     .arg(headerName(QHttpHeaders::WellKnownHeader::ContentType),
+                          headerName(QHttpHeaders::WellKnownHeader::ContentLength),
+                          headerName(QHttpHeaders::WellKnownHeader::Connection))
+                     .toUtf8();
 
     QTRY_COMPARE_GE(socket.bytesAvailable(), expected.size());
     // Exactly one 403 response and nothing produced by the route handler after it
@@ -2617,6 +2616,44 @@ void tst_QHttpServer::pipelinedRequestsAfterConnectionClose()
     QVERIFY2(received.toLower().contains("\r\nconnection: close\r\n"), received.constData());
     QVERIFY(received.endsWith("\r\n\r\ntest msg"));
     QVERIFY2(!received.contains("Hello world get"), received.constData());
+}
+
+void tst_QHttpServer::requestFilterClosesConnection()
+{
+    QFETCH_GLOBAL(bool, useSsl);
+    if (useSsl)
+        QSKIP("Checks the raw HTTP/1.1 byte stream, run only over plain TCP");
+
+    auto cleanup = qScopeGuard([this] { httpserver.setConfiguration({}); });
+
+    QHttpServerConfiguration config;
+    const auto unrelated = toSubnets({ u"192.0.2.0/24"_s });
+    config.setWhitelist(unrelated);
+    httpserver.setConfiguration(config);
+    filteredRouteCalls = 0;
+
+    QTcpSocket socket;
+    socket.connectToHost(u"localhost"_s, QUrl(clearUrlBase.arg(u"/"_s)).port());
+    QTRY_COMPARE(socket.state(), QAbstractSocket::ConnectedState);
+    // Pipeline several requests on one keep-alive connection. The server must
+    // answer the first one with 403, close the connection and ignore the rest.
+    socket.write("GET /filtered HTTP/1.1\r\n"
+                 "Host: localhost\r\n"
+                 "Connection: keep-alive\r\n\r\n"
+                 "GET /filtered HTTP/1.1\r\n"
+                 "Host: localhost\r\n"
+                 "Connection: keep-alive\r\n\r\n"
+                 "GET /filtered HTTP/1.1\r\n"
+                 "Host: localhost\r\n"
+                 "Connection: keep-alive\r\n\r\n");
+
+    QTRY_COMPARE(socket.state(), QAbstractSocket::UnconnectedState);
+
+    const QByteArray received = socket.readAll();
+    QVERIFY2(received.startsWith("HTTP/1.1 403 Forbidden\r\n"), received.constData());
+    QCOMPARE(received.count("HTTP/1.1 "), 1);
+    QVERIFY2(received.toLower().contains("\r\nconnection: close\r\n"), received.constData());
+    QCOMPARE(filteredRouteCalls, 0);
 }
 
 QT_END_NAMESPACE

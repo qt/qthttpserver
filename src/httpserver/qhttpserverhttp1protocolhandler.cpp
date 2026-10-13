@@ -434,6 +434,9 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
     QHostAddress peerAddress = tcpSocket ? tcpSocket->peerAddress()
                                          : QHostAddress::LocalHost;
     if (!m_filter->isRequestAllowed(peerAddress)) {
+        // Don't keep serving a peer that is not allowed. Closing the
+        // connection also discards any requests it has pipelined.
+        keepAlive = false;
         responder.sendResponse(
                 QHttpServerResponse(QHttpServerResponder::StatusCode::Forbidden));
     } else if (!m_filter->isRequestWithinRate(peerAddress)) {
