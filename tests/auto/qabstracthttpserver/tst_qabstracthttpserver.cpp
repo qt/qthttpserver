@@ -13,8 +13,10 @@
 
 #include <QtCore/qregularexpression.h>
 #include <QtCore/qurl.h>
+#include <QtHttpServer/qhttpserverconfiguration.h>
 #include <QtHttpServer/qhttpserverrequest.h>
 #include <QtHttpServer/qhttpserverresponder.h>
+#include <QtHttpServer/qhttpserverresponse.h>
 #include <QtHttpServer/qhttpserverwebsocketupgraderesponse.h>
 #include <QtNetwork/qnetworkaccessmanager.h>
 #include <QtNetwork/qnetworkreply.h>
@@ -148,6 +150,9 @@ private slots:
     void verifyWebSocketUpgrades_data();
     void verifyWebSocketUpgrades();
     void verifyWebSocketUpgradesGoesOutOfScope();
+    void webSocketUpgradeRequestFilter_data();
+    void webSocketUpgradeRequestFilter();
+    void webSocketUpgradeRateLimit();
     void servers();
     void qtbug82053();
     void http2handshake();
@@ -558,6 +563,167 @@ void tst_QAbstractHttpServer::verifyWebSocketUpgradesGoesOutOfScope()
         QTest::qWait(2s);
         QCOMPARE(newConnectionSpy.size(), 0); // Failure
     }
+#endif // defined(QT_WEBSOCKETS_LIB)
+}
+
+void tst_QAbstractHttpServer::webSocketUpgradeRequestFilter_data()
+{
+    QTest::addColumn<QString>("whitelistedSubnet");
+    QTest::addColumn<bool>("expectAllowed");
+
+    // 192.0.2.0/24 is TEST-NET-1 (RFC 5737), the test client never connects from it.
+    QTest::newRow("whitelist-excludes-client") << u"192.0.2.0/24"_s << false;
+    QTest::newRow("whitelist-includes-client") << u"0.0.0.0/0"_s << true;
+}
+
+void tst_QAbstractHttpServer::webSocketUpgradeRequestFilter()
+{
+#if !defined(QT_WEBSOCKETS_LIB)
+    QSKIP("This test requires WebSocket support");
+#else
+    QFETCH(QString, whitelistedSubnet);
+    QFETCH(bool, expectAllowed);
+
+    struct HttpServer : QAbstractHttpServer
+    {
+        int handledRequests = 0;
+
+        bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &) override
+        {
+            ++handledRequests;
+            return false;
+        }
+
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &responder) override
+        {
+            ++handledRequests;
+            responder.sendResponse(QHttpServerResponse(QHttpServerResponder::StatusCode::NotFound));
+        }
+    } server;
+
+    int verifierCalls = 0;
+    server.addWebSocketUpgradeVerifier(&server, [&verifierCalls](const QHttpServerRequest &) {
+        ++verifierCalls;
+        return QHttpServerWebSocketUpgradeResponse::accept();
+    });
+    QSignalSpy newConnectionSpy(&server, &HttpServer::newWebSocketConnection);
+
+    QTcpServer tcpServer;
+    QVERIFY(tcpServer.listen(QHostAddress::LocalHost));
+    server.bind(&tcpServer);
+
+    QHttpServerConfiguration config;
+    const QList<std::pair<QHostAddress, int>> whitelist = {
+        QHostAddress::parseSubnet(whitelistedSubnet)
+    };
+    config.setWhitelist(whitelist);
+    server.setConfiguration(config);
+
+    QTcpSocket client;
+    client.connectToHost(QHostAddress::LocalHost, tcpServer.serverPort());
+    QVERIFY(client.waitForConnected());
+    client.write("GET / HTTP/1.1\r\n"
+                 "Host: localhost\r\n"
+                 "Upgrade: websocket\r\n"
+                 "Connection: Upgrade\r\n"
+                 "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+                 "Sec-WebSocket-Version: 13\r\n\r\n");
+
+    QByteArray received;
+    QTRY_VERIFY((received += client.readAll()).contains("\r\n\r\n"));
+
+    if (expectAllowed) {
+        QVERIFY2(received.startsWith("HTTP/1.1 101 "), received.constData());
+        QCOMPARE(verifierCalls, 1);
+        QTRY_COMPARE(newConnectionSpy.size(), 1);
+        std::unique_ptr<QWebSocket> serverSocket(server.nextPendingWebSocketConnection());
+        QVERIFY(serverSocket);
+    } else {
+        QVERIFY2(received.startsWith("HTTP/1.1 403 Forbidden\r\n"), received.constData());
+        // A denied peer must not reach the upgrade verifiers or get a WebSocket
+        QCOMPARE(verifierCalls, 0);
+        QTRY_COMPARE(client.state(), QAbstractSocket::UnconnectedState);
+        QCOMPARE(newConnectionSpy.size(), 0);
+        QVERIFY(!server.hasPendingWebSocketConnections());
+    }
+    QCOMPARE(server.handledRequests, 0);
+#endif // defined(QT_WEBSOCKETS_LIB)
+}
+
+void tst_QAbstractHttpServer::webSocketUpgradeRateLimit()
+{
+#if !defined(QT_WEBSOCKETS_LIB)
+    QSKIP("This test requires WebSocket support");
+#else
+    struct HttpServer : QAbstractHttpServer
+    {
+        int handledRequests = 0;
+
+        bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &) override
+        {
+            ++handledRequests;
+            return false;
+        }
+
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &responder) override
+        {
+            ++handledRequests;
+            responder.sendResponse(QHttpServerResponse(QHttpServerResponder::StatusCode::NotFound));
+        }
+    } server;
+
+    int verifierCalls = 0;
+    server.addWebSocketUpgradeVerifier(&server, [&verifierCalls](const QHttpServerRequest &) {
+        ++verifierCalls;
+        return QHttpServerWebSocketUpgradeResponse::accept();
+    });
+    QSignalSpy newConnectionSpy(&server, &HttpServer::newWebSocketConnection);
+
+    QTcpServer tcpServer;
+    QVERIFY(tcpServer.listen(QHostAddress::LocalHost));
+    server.bind(&tcpServer);
+
+    QHttpServerConfiguration config;
+    config.setRateLimitPerSecond(1);
+    server.setConfiguration(config);
+
+    constexpr char upgradeRequest[] = "GET / HTTP/1.1\r\n"
+                                      "Host: localhost\r\n"
+                                      "Upgrade: websocket\r\n"
+                                      "Connection: Upgrade\r\n"
+                                      "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+                                      "Sec-WebSocket-Version: 13\r\n\r\n";
+
+    // Both clients connect from the same address, so they share one rate budget.
+    QTcpSocket first;
+    first.connectToHost(QHostAddress::LocalHost, tcpServer.serverPort());
+    QVERIFY(first.waitForConnected());
+    QTcpSocket second;
+    second.connectToHost(QHostAddress::LocalHost, tcpServer.serverPort());
+    QVERIFY(second.waitForConnected());
+
+    // The first upgrade request is within the rate and is upgraded.
+    first.write(upgradeRequest);
+    QByteArray received;
+    QTRY_VERIFY((received += first.readAll()).contains("\r\n\r\n"));
+    QVERIFY2(received.startsWith("HTTP/1.1 101 "), received.constData());
+    QCOMPARE(verifierCalls, 1);
+    QTRY_COMPARE(newConnectionSpy.size(), 1);
+    std::unique_ptr<QWebSocket> serverSocket(server.nextPendingWebSocketConnection());
+    QVERIFY(serverSocket);
+
+    // The second one, within the same period, exceeds the rate. It must not
+    // reach the upgrade verifiers or get a WebSocket connection.
+    second.write(upgradeRequest);
+    received.clear();
+    QTRY_VERIFY((received += second.readAll()).contains("\r\n\r\n"));
+    QVERIFY2(received.startsWith("HTTP/1.1 429 "), received.constData());
+    QCOMPARE(verifierCalls, 1);
+    QTRY_COMPARE(second.state(), QAbstractSocket::UnconnectedState);
+    QCOMPARE(newConnectionSpy.size(), 1);
+    QVERIFY(!server.hasPendingWebSocketConnections());
+
+    QCOMPARE(server.handledRequests, 0);
 #endif // defined(QT_WEBSOCKETS_LIB)
 }
 
