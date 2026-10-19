@@ -313,6 +313,18 @@ void QHttpServerHttp2ProtocolHandler::onStreamHalfClosed(quint32 streamId)
     if (!m_filter->isRequestAllowed(peerAddress)) {
         responder.sendResponse(
                 QHttpServerResponse(QHttpServerResponder::StatusCode::Forbidden));
+        // Don't keep serving a peer that is not allowed. QHttp2Connection::close()
+        // sends GOAWAY to the peer, but doesn't close the socket, so also queue a
+        // disconnect. It is queued, so that the 403 and the GOAWAY frame are
+        // written first, and so that the socket isn't closed while
+        // QHttp2Connection is emitting the signal that got us here. The final
+        // GOAWAY of the graceful shutdown is not awaited: further streams from
+        // this peer would be answered with 403 anyway.
+        if (!m_connection->isGoingAway()) {
+            m_connection->close();
+            QMetaObject::invokeMethod(m_tcpSocket, &QTcpSocket::disconnectFromHost,
+                                      Qt::QueuedConnection);
+        }
     } else if (!m_filter->isRequestWithinRate(peerAddress)) {
         responder.sendResponse(
                 QHttpServerResponse(QHttpServerResponder::StatusCode::TooManyRequests));
