@@ -179,6 +179,7 @@ private slots:
     void chunkedTrailers_data();
     void chunkedTrailers();
     void chunkedTrailersTooLarge();
+    void http2RequestFilterClosesConnection();
 
 private:
 #if QT_CONFIG(ssl)
@@ -1854,6 +1855,92 @@ void tst_QAbstractHttpServer::chunkedTrailersTooLarge()
     const QByteArray response = client.readAll();
     QVERIFY2(response.startsWith("HTTP/1.1 431"), response.constData());
     QVERIFY(!server.handleRequestCalled);
+}
+
+void tst_QAbstractHttpServer::http2RequestFilterClosesConnection()
+{
+#if QT_CONFIG(ssl)
+    if (!hasServerAlpn)
+        QSKIP("Server-side ALPN is unsupported, skipping test");
+
+    struct HttpServer : QAbstractHttpServer
+    {
+        int handledRequests = 0;
+
+        bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &) override
+        {
+            ++handledRequests;
+            return false;
+        }
+
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &responder) override
+        {
+            ++handledRequests;
+            responder.sendResponse(QHttpServerResponse(QHttpServerResponder::StatusCode::NotFound));
+        }
+    } server;
+
+    auto sslserver = std::make_unique<QSslServer>();
+    QSslConfiguration serverConfig = QSslConfiguration::defaultConfiguration();
+    serverConfig.setLocalCertificate(QSslCertificate(g_certificate));
+    serverConfig.setPrivateKey(QSslKey(g_privateKey, QSsl::Rsa));
+    serverConfig.setAllowedNextProtocols({ QSslConfiguration::ALPNProtocolHTTP2 });
+    sslserver->setSslConfiguration(serverConfig);
+    QVERIFY2(sslserver->listen(QHostAddress::LocalHost), "HTTPS server listen failed");
+    QVERIFY2(server.bind(sslserver.get()), "HTTPS server bind failed");
+    sslserver.release();
+
+    QHttpServerConfiguration config;
+    // 192.0.2.0/24 is TEST-NET-1 (RFC 5737), the test client never connects from it.
+    const QList<std::pair<QHostAddress, int>> whitelist = {
+        QHostAddress::parseSubnet(u"192.0.2.0/24"_s)
+    };
+    config.setWhitelist(whitelist);
+    server.setConfiguration(config);
+
+    QSslSocketPtr socket = createNewConnection(server.servers().constFirst());
+    QVERIFY(socket->isEncrypted());
+    QCOMPARE(socket->sslConfiguration().nextNegotiatedProtocol(),
+             QSslConfiguration::ALPNProtocolHTTP2);
+
+    QHttp2Connection *connection = QHttp2Connection::createDirectConnection(socket.get(), {});
+    QSignalSpy settingsFrameReceivedSpy{ connection, &QHttp2Connection::settingsFrameReceived };
+    QSignalSpy goawaySpy{ connection, &QHttp2Connection::receivedGOAWAY };
+    connect(socket.get(), &QIODevice::readyRead, connection, &QHttp2Connection::handleReadyRead);
+    connection->handleReadyRead();
+
+    auto stream = connection->createStream().unwrap();
+    QVERIFY(stream);
+    QSignalSpy headersSpy{ stream, &QHttp2Stream::headersReceived };
+    QVERIFY(settingsFrameReceivedSpy.wait());
+
+    const HPack::HttpHeader headers = {
+        { ":authority", "example.com" },
+        { ":method", "GET" },
+        { ":path", "/" },
+        { ":scheme", "https" },
+    };
+    QVERIFY(stream->sendHEADERS(headers, true));
+
+    // The denied request is answered with 403...
+    QTRY_COMPARE(headersSpy.size(), 1);
+    const auto responseHeaders = headersSpy.at(0).at(0).value<HPack::HttpHeader>();
+    const auto status = std::find_if(responseHeaders.cbegin(), responseHeaders.cend(),
+                                     [](const HPack::HeaderField &field) {
+                                         return field.name == ":status";
+                                     });
+    QVERIFY(status != responseHeaders.cend());
+    QCOMPARE(status->value, "403"_ba);
+
+    // ...and then the server announces GOAWAY and closes the connection
+    QTRY_VERIFY(goawaySpy.size() >= 1);
+    QCOMPARE(goawaySpy.at(0).at(0).value<Http2::Http2Error>(), Http2::HTTP2_NO_ERROR);
+    QTRY_COMPARE(socket->state(), QAbstractSocket::UnconnectedState);
+
+    QCOMPARE(server.handledRequests, 0);
+#else
+    QSKIP("TLS/SSL is not available, skipping test");
+#endif // QT_CONFIG(ssl)
 }
 
 QT_END_NAMESPACE
