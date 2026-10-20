@@ -30,7 +30,7 @@ qhp.QtHttpServer.virtualFolder  = QtHttpServer
 qhp.QtHttpServer.indexTitle     = Qt HTTP Server
 qhp.QtHttpServer.indexRoot      =
 
-qhp.QtHttpServer.subprojects = logging examples classes
+qhp.QtHttpServer.subprojects = logging security examples classes
 
 qhp.QtHttpServer.subprojects.classes.title = C++ Classes
 qhp.QtHttpServer.subprojects.classes.indexTitle = Qt HTTP Server C++ Classes
@@ -42,9 +42,13 @@ qhp.QtHttpServer.subprojects.examples.indexTitle = Qt HTTP Server Examples
 qhp.QtHttpServer.subprojects.examples.selectors = example
 qhp.QtHttpServer.subprojects.examples.sortPages = true
 
+qhp.QtHttpServer.subprojects.security.title = Security Considerations
+qhp.QtHttpServer.subprojects.security.indexTitle = Qt HTTP Server Security Considerations
+qhp.QtHttpServer.subprojects.security.selectors = none
+
 qhp.QtHttpServer.subprojects.logging.title = Logging
 qhp.QtHttpServer.subprojects.logging.indexTitle = Qt HTTP Server Logging
-qhp.QtHttpServer.subprojects.logging.selectors = group:none
+qhp.QtHttpServer.subprojects.logging.selectors = none
 
 navigation.cppclassespage = "Qt HTTP Server C++ Classes"
 navigation.landingpage = "Qt HTTP Server"
