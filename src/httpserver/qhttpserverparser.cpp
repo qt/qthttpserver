@@ -509,6 +509,8 @@ bool QHttpServerParser::parse(QHttp2Stream *socket)
         url.setPort(port);
 
     bodyLength = contentLength(); // cache the length
+    if (bodyLength < 0)
+        return false;
 
     body = socket->downloadBuffer().readAll();
 
