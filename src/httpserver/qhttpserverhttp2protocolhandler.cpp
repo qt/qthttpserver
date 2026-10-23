@@ -288,8 +288,13 @@ void QHttpServerHttp2ProtocolHandler::onStreamHalfClosed(quint32 streamId)
         return;
 
     auto requestReceived = parser.parse(stream);
-    if (!requestReceived)
+    if (!requestReceived) {
+        // The request is malformed (e.g. an invalid Content-Length). Reset the
+        // stream with PROTOCOL_ERROR (RFC 9113 8.1.1) instead of silently dropping
+        // it, so the peer learns the request was rejected.
+        stream->sendRST_STREAM(Http2::PROTOCOL_ERROR);
         return;
+    }
 
 #if QT_CONFIG(ssl)
     auto request = QHttpServerRequest::create(parser, sslConfiguration);

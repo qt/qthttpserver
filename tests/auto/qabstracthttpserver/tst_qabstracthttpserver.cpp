@@ -168,6 +168,7 @@ private slots:
     void contentLengthAndTransferEncoding_data();
     void contentLengthAndTransferEncoding();
     void totalHeaderSizeLimit();
+    void http2InvalidContentLength();
 
 private:
 #if QT_CONFIG(ssl)
@@ -1430,6 +1431,68 @@ void tst_QAbstractHttpServer::totalHeaderSizeLimit()
     const QByteArray response = client.readAll();
     QVERIFY2(response.startsWith("HTTP/1.1 431"), response.constData());
     QVERIFY(!server.handleRequestCalled);
+}
+
+void tst_QAbstractHttpServer::http2InvalidContentLength()
+{
+#if QT_CONFIG(ssl)
+    if (!hasServerAlpn)
+        QSKIP("Server-side ALPN is unsupported, skipping test");
+
+    struct HttpServer : QAbstractHttpServer
+    {
+        bool handleRequestCalled = false;
+        bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &responder) override
+        {
+            handleRequestCalled = true;
+            auto _responder = std::move(responder);
+            return true;
+        }
+
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override { }
+    } server;
+
+    auto sslserver = std::make_unique<QSslServer>();
+    QSslConfiguration serverConfig = QSslConfiguration::defaultConfiguration();
+    serverConfig.setLocalCertificate(QSslCertificate(g_certificate));
+    serverConfig.setPrivateKey(QSslKey(g_privateKey, QSsl::Rsa));
+    serverConfig.setAllowedNextProtocols({ QSslConfiguration::ALPNProtocolHTTP2 });
+    sslserver->setSslConfiguration(serverConfig);
+    QVERIFY2(sslserver->listen(QHostAddress::LocalHost), "HTTPS server listen failed");
+    QVERIFY2(server.bind(sslserver.get()), "HTTPS server bind failed");
+    sslserver.release();
+
+    const auto serverPtr = server.servers().constFirst();
+    QSslSocketPtr socket = createNewConnection(serverPtr);
+    QVERIFY(socket->isEncrypted());
+
+    QHttp2Connection *connection = QHttp2Connection::createDirectConnection(socket.get(), {});
+    QSignalSpy settingsFrameReceivedSpy{ connection, &QHttp2Connection::settingsFrameReceived };
+    connect(socket.get(), &QIODevice::readyRead, connection, &QHttp2Connection::handleReadyRead);
+    connection->handleReadyRead();
+
+    auto stream = connection->createStream().unwrap();
+    QVERIFY(stream);
+    QVERIFY(settingsFrameReceivedSpy.wait());
+
+    // A Content-Length that cannot be represented is an invalid (malformed)
+    // request. The server must reset the stream with PROTOCOL_ERROR rather than
+    // dispatch it.
+    HPack::HttpHeader headers = HPack::HttpHeader{
+        { ":authority", "example.com" },
+        { ":method", "POST" },
+        { ":path", "/" },
+        { ":scheme", "https" },
+        { "content-length", "18446744073709551615" },
+    };
+    stream->sendHEADERS(headers, true);
+
+    QTRY_VERIFY(stream->wasResetbyPeer());
+    QCOMPARE(stream->RST_STREAMCodeReceived(), quint32(Http2::PROTOCOL_ERROR));
+    QVERIFY(!server.handleRequestCalled);
+#else
+    QSKIP("TLS/SSL is not available, skipping test");
+#endif // QT_CONFIG(ssl)
 }
 
 QT_END_NAMESPACE
