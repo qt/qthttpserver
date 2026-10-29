@@ -176,6 +176,9 @@ private slots:
     void http2InvalidContentLength();
     void chunkTerminator_data();
     void chunkTerminator();
+    void chunkedTrailers_data();
+    void chunkedTrailers();
+    void chunkedTrailersTooLarge();
 
 private:
 #if QT_CONFIG(ssl)
@@ -1738,6 +1741,118 @@ void tst_QAbstractHttpServer::chunkTerminator()
     QTRY_COMPARE(client.state(), QAbstractSocket::UnconnectedState);
     const QByteArray response = client.readAll();
     QVERIFY2(response.startsWith("HTTP/1.1 400"), response.constData());
+    QVERIFY(!server.handleRequestCalled);
+}
+
+void tst_QAbstractHttpServer::chunkedTrailers_data()
+{
+    QTest::addColumn<QByteArrayList>("parts");
+
+    const QByteArray head = "POST / HTTP/1.1\r\nHost: localhost\r\n"
+                            "Transfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n";
+
+    QTest::addRow("none") << QByteArrayList{ head + "\r\n" };
+    QTest::addRow("one") << QByteArrayList{ head + "X-Trailer: a\r\n\r\n" };
+    QTest::addRow("two") << QByteArrayList{ head + "X-One: a\r\nX-Two: b\r\n\r\n" };
+    QTest::addRow("bare-lf") << QByteArrayList{ head + "X-Trailer: a\n\n" };
+    QTest::addRow("split-in-field") << QByteArrayList{ head + "X-Tra", "iler: a\r\n\r\n" };
+    QTest::addRow("split-before-end") << QByteArrayList{ head + "X-Trailer: a\r\n", "\r\n" };
+    QTest::addRow("split-in-end") << QByteArrayList{ head + "X-Trailer: a\r\n\r", "\n" };
+}
+
+void tst_QAbstractHttpServer::chunkedTrailers()
+{
+    QFETCH(QByteArrayList, parts);
+
+    struct HttpServer : QAbstractHttpServer
+    {
+        QList<QByteArray> bodies;
+        bool handleRequest(const QHttpServerRequest &request,
+                           QHttpServerResponder &responder) override
+        {
+            bodies.append(request.body());
+            auto _responder = std::move(responder);
+            return true;
+        }
+
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override { }
+    } server;
+
+    QTcpServer tcpServer;
+    QVERIFY(tcpServer.listen());
+    server.bind(&tcpServer);
+
+    QTcpSocket client;
+    client.connectToHost(QHostAddress::LocalHost, tcpServer.serverPort());
+    QVERIFY(client.waitForConnected());
+
+    // The server-side socket is owned by the connection handler, a child of the server.
+    QTcpSocket *serverSocket = nullptr;
+    QTRY_VERIFY((serverSocket = server.findChild<QTcpSocket *>()));
+
+    // Queued, so it runs after the handler has parsed what arrived.
+    int serverReads = 0;
+    QObject::connect(serverSocket, &QIODevice::readyRead, serverSocket,
+                     [&serverReads] { ++serverReads; }, Qt::QueuedConnection);
+
+    // Send each part separately and wait until the server has read it before
+    // sending the next, so that the parser sees the data split across reads.
+    for (qsizetype i = 0; i < parts.size(); ++i) {
+        const int readsBefore = serverReads;
+        client.write(parts.at(i));
+        QVERIFY(client.waitForBytesWritten());
+        if (i + 1 < parts.size())
+            QTRY_VERIFY(serverReads > readsBefore);
+    }
+
+    QTRY_COMPARE(server.bodies.size(), 1);
+    QCOMPARE(server.bodies.constFirst(), "hello");
+
+    // The trailer section must be consumed completely: a following request on
+    // the same connection has to be parsed as such.
+    client.write("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n");
+    QVERIFY(client.waitForBytesWritten());
+    QTRY_COMPARE(server.bodies.size(), 2);
+    QCOMPARE(client.state(), QAbstractSocket::ConnectedState);
+}
+
+void tst_QAbstractHttpServer::chunkedTrailersTooLarge()
+{
+    struct HttpServer : QAbstractHttpServer
+    {
+        bool handleRequestCalled = false;
+        bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &responder) override
+        {
+            handleRequestCalled = true;
+            auto _responder = std::move(responder);
+            return true;
+        }
+
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override { }
+    } server;
+
+    QTcpServer tcpServer;
+    QVERIFY(tcpServer.listen());
+    server.bind(&tcpServer);
+
+    // The trailer section is bounded by the total header size limit.
+    QHttpServerConfiguration config;
+    config.setMaximumTotalHeaderSize(256);
+    server.setConfiguration(config);
+
+    QTcpSocket client;
+    client.connectToHost(QHostAddress::LocalHost, tcpServer.serverPort());
+    QVERIFY(client.waitForConnected());
+
+    QByteArray request = "POST / HTTP/1.1\r\nHost: localhost\r\n"
+                         "Transfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n";
+    request += "X-Trailer: " + QByteArray(512, 'a') + "\r\n\r\n";
+    client.write(request);
+    QVERIFY(client.waitForBytesWritten());
+
+    QTRY_COMPARE(client.state(), QAbstractSocket::UnconnectedState);
+    const QByteArray response = client.readAll();
+    QVERIFY2(response.startsWith("HTTP/1.1 431"), response.constData());
     QVERIFY(!server.handleRequestCalled);
 }
 

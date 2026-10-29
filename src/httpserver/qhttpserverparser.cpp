@@ -665,21 +665,30 @@ qsizetype QHttpServerParser::readRequestBodyChunked(QIODevice *socket)
         // if the chunk size is 0, end of the stream
         if (currentChunkSize == 0 || lastChunkRead) {
             lastChunkRead = true;
-            // try to read the "\r\n" after the chunk
-            char crlf[2];
-            qsizetype haveRead = socket->read(crlf, 2);
-            if (haveRead > 0)
-                bytes += haveRead;
-
-            if ((haveRead == 2 && crlf[0] == '\r' && crlf[1] == '\n')
-                || (haveRead == 1 && crlf[0] == '\n')) {
-                state = State::AllDone;
-            } else if (haveRead == 1 && crlf[0] == '\r') {
-                break; // Still waiting for the last \n
-            } else if (haveRead > 0) {
-                // If we read something else then CRLF, we need to close the channel.
-                // FIXME forceConnectionCloseEnabled = true;
-                state = State::AllDone;
+            // The last chunk is followed by the trailer section: zero or more
+            // field lines, then an empty line (RFC 9112 7.1.2). Read it up to the
+            // empty line and discard it, so that it is not mistaken for the next
+            // request. Like header lines, a bare LF is accepted as line ending.
+            while (socket->bytesAvailable()) {
+                char c = 0;
+                if (socket->read(&c, 1) != 1)
+                    return -1;
+                ++bytes;
+                fragment.append(c);
+                if (!filter->isTotalHeaderSizeAllowed(fragment.size())) {
+                    sendError(socket, QHttpServerResponder::StatusCode::RequestHeaderFieldsTooLarge);
+                    socket->skip(socket->bytesAvailable());
+                    qCDebug(lcHttpServerParser) << "Trailer section too large from client"
+                                                << getClientIpAddressAndPort();
+                    return -1;
+                }
+                if (c == '\n'
+                    && (fragment == "\n" || fragment == "\r\n" || fragment.endsWith("\n\n")
+                        || fragment.endsWith("\n\r\n"))) {
+                    fragment.clear();
+                    state = State::AllDone;
+                    break;
+                }
             }
             break;
         }
