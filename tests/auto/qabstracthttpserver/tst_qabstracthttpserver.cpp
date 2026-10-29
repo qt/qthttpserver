@@ -174,6 +174,8 @@ private slots:
     void contentLengthAndTransferEncoding();
     void totalHeaderSizeLimit();
     void http2InvalidContentLength();
+    void chunkTerminator_data();
+    void chunkTerminator();
 
 private:
 #if QT_CONFIG(ssl)
@@ -1659,6 +1661,84 @@ void tst_QAbstractHttpServer::http2InvalidContentLength()
 #else
     QSKIP("TLS/SSL is not available, skipping test");
 #endif // QT_CONFIG(ssl)
+}
+
+void tst_QAbstractHttpServer::chunkTerminator_data()
+{
+    QTest::addColumn<QByteArrayList>("parts");
+    QTest::addColumn<bool>("accepted");
+
+    const QByteArray head = "POST / HTTP/1.1\r\nHost: localhost\r\n"
+                            "Transfer-Encoding: chunked\r\n\r\n";
+
+    QTest::addRow("crlf") << QByteArrayList{ head + "5\r\nhello\r\n0\r\n\r\n" } << true;
+    QTest::addRow("bare-lf") << QByteArrayList{ head + "5\r\nhello\n0\r\n\r\n" } << false;
+    // The terminator arrives in a later read than the chunk data.
+    QTest::addRow("split-before-crlf")
+            << QByteArrayList{ head + "5\r\nhello", "\r\n0\r\n\r\n" } << true;
+    QTest::addRow("split-inside-crlf")
+            << QByteArrayList{ head + "5\r\nhello\r", "\n0\r\n\r\n" } << true;
+    QTest::addRow("garbage") << QByteArrayList{ head + "5\r\nhelloXY0\r\n\r\n" } << false;
+    QTest::addRow("split-garbage")
+            << QByteArrayList{ head + "5\r\nhello", "XY0\r\n\r\n" } << false;
+    QTest::addRow("cr-without-lf")
+            << QByteArrayList{ head + "5\r\nhello\rX0\r\n\r\n" } << false;
+}
+
+void tst_QAbstractHttpServer::chunkTerminator()
+{
+    QFETCH(QByteArrayList, parts);
+    QFETCH(bool, accepted);
+
+    struct HttpServer : QAbstractHttpServer
+    {
+        bool handleRequestCalled = false;
+        QByteArray body;
+        bool handleRequest(const QHttpServerRequest &request,
+                           QHttpServerResponder &responder) override
+        {
+            handleRequestCalled = true;
+            body = request.body();
+            auto _responder = std::move(responder);
+            return true;
+        }
+
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override { }
+    } server;
+
+    QTcpServer tcpServer;
+    QVERIFY(tcpServer.listen());
+    server.bind(&tcpServer);
+
+    QTcpSocket client;
+    client.connectToHost(QHostAddress::LocalHost, tcpServer.serverPort());
+    QVERIFY(client.waitForConnected());
+
+    QTcpSocket *serverSocket = nullptr;
+    QTRY_VERIFY((serverSocket = server.findChild<QTcpSocket *>()));
+
+    int serverReads = 0;
+    QObject::connect(serverSocket, &QIODevice::readyRead, serverSocket,
+                     [&serverReads] { ++serverReads; }, Qt::QueuedConnection);
+
+    for (qsizetype i = 0; i < parts.size(); ++i) {
+        const int readsBefore = serverReads;
+        client.write(parts.at(i));
+        QVERIFY(client.waitForBytesWritten());
+        if (i + 1 < parts.size())
+            QTRY_VERIFY(serverReads > readsBefore);
+    }
+
+    if (accepted) {
+        QTRY_VERIFY(server.handleRequestCalled);
+        QCOMPARE(server.body, "hello");
+        return;
+    }
+
+    QTRY_COMPARE(client.state(), QAbstractSocket::UnconnectedState);
+    const QByteArray response = client.readAll();
+    QVERIFY2(response.startsWith("HTTP/1.1 400"), response.constData());
+    QVERIFY(!server.handleRequestCalled);
 }
 
 QT_END_NAMESPACE

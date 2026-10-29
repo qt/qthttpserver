@@ -528,6 +528,7 @@ void QHttpServerParser::clear()
     contentRead = 0;
     chunkedTransferEncoding = false;
     lastChunkRead = false;
+    chunkTerminatorPending = false;
     currentChunkRead = 0;
     currentChunkSize = 0;
     upgrade = false;
@@ -614,23 +615,31 @@ qsizetype QHttpServerParser::readRequestBodyChunked(QIODevice *socket)
 {
     qsizetype bytes = 0;
     while (socket->bytesAvailable()) {
+        if (chunkTerminatorPending) {
+            // The chunk's data must be followed by CRLF. Only consume it once it
+            // has fully arrived.
+            char crlf[2];
+            const qint64 sniffedBytes = socket->peek(crlf, 2);
+            if (sniffedBytes <= 0)
+                break;
+            if (sniffedBytes == 1 && crlf[0] == '\r')
+                break; // wait for the LF
+            if (sniffedBytes != 2 || crlf[0] != '\r' || crlf[1] != '\n') {
+                sendError(socket, QHttpServerResponder::StatusCode::BadRequest);
+                socket->skip(socket->bytesAvailable());
+                qCDebug(lcHttpServerParser) << "Missing CRLF after chunk data from client"
+                                            << getClientIpAddressAndPort();
+                return -1;
+            }
+            bytes += socket->skip(2);
+            chunkTerminatorPending = false;
+            continue;
+        }
+
         if (!lastChunkRead && currentChunkRead >= currentChunkSize) {
             // For the first chunk and when we're done with a chunk
             currentChunkSize = 0;
             currentChunkRead = 0;
-            if (bytes) {
-                // After a chunk
-                char crlf[2];
-                // read the "\r\n" after the chunk
-                qsizetype haveRead = socket->read(crlf, 2);
-                // FIXME: This code is slightly broken and not optimal. What if the 2 bytes are not
-                // available yet?! For nice reasons (the toLong in getChunkSize accepting \n at the
-                // beginning it right now still works, but we should definitely fix this.
-
-                if (haveRead != 2)
-                    return bytes;
-                bytes += haveRead;
-            }
             // Note that chunk size gets stored in currentChunkSize, what is returned is the bytes
             // read
             const qsizetype chunkSizeBytes = getChunkSize(socket, &currentChunkSize);
@@ -679,6 +688,8 @@ qsizetype QHttpServerParser::readRequestBodyChunked(QIODevice *socket)
         qsizetype haveRead = readRequestBodyRaw(socket, currentChunkSize - currentChunkRead);
         currentChunkRead += haveRead;
         bytes += haveRead;
+        if (currentChunkRead >= currentChunkSize)
+            chunkTerminatorPending = true;
 
         // ### error checking here
     }
