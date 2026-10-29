@@ -88,6 +88,7 @@ public:
     qsizetype contentRead;
     bool chunkedTransferEncoding;
     bool lastChunkRead;
+    bool chunkTerminatorPending;
     qsizetype currentChunkRead;
     qsizetype currentChunkSize;
     bool upgrade;
