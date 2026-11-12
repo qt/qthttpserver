@@ -314,7 +314,7 @@ void QHttpServerHttp1ProtocolHandler::resumeListening()
     if (tcpSocket) {
         if (tcpSocket->state() != QAbstractSocket::ConnectedState) {
             deleteLater();
-        } else if (keepAlive) {
+        } else if (!closeAfterCurrentRequest()) {
             connect(tcpSocket, &QTcpSocket::readyRead,
                     this, &QHttpServerHttp1ProtocolHandler::handleReadyRead);
             QMetaObject::invokeMethod(tcpSocket, &QTcpSocket::readyRead, Qt::QueuedConnection);
@@ -323,7 +323,7 @@ void QHttpServerHttp1ProtocolHandler::resumeListening()
     } else if (localSocket) {
         if (localSocket->state() != QLocalSocket::ConnectedState) {
             deleteLater();
-        } else if (keepAlive) {
+        } else if (!closeAfterCurrentRequest()) {
             connect(localSocket, &QLocalSocket::readyRead,
                     this, &QHttpServerHttp1ProtocolHandler::handleReadyRead);
             QMetaObject::invokeMethod(localSocket, &QLocalSocket::readyRead, Qt::QueuedConnection);
@@ -436,7 +436,7 @@ void QHttpServerHttp1ProtocolHandler::handleReadyRead()
     if (!m_filter->isRequestAllowed(peerAddress)) {
         // Don't keep serving a peer that is not allowed. Closing the
         // connection also discards any requests it has pipelined.
-        keepAlive = false;
+        forceClose = true;
         responder.sendResponse(
                 QHttpServerResponse(QHttpServerResponder::StatusCode::Forbidden));
     } else if (!m_filter->isRequestWithinRate(peerAddress)) {
@@ -462,7 +462,7 @@ void QHttpServerHttp1ProtocolHandler::write(const QByteArray &body, const QHttpH
     writeStatusAndHeaders(status, allHeaders);
     write(body);
     state = TransferState::Ready;
-    if (!keepAlive)
+    if (closeAfterCurrentRequest())
         closeConnection();
 }
 
@@ -477,7 +477,7 @@ void QHttpServerHttp1ProtocolHandler::write(QHttpServerResponder::StatusCode sta
     addConnectionAndKeepAliveHeaders(headers);
     writeStatusAndHeaders(status, headers);
     state = TransferState::Ready;
-    if (!keepAlive)
+    if (closeAfterCurrentRequest())
         closeConnection();
 }
 
@@ -579,7 +579,7 @@ void QHttpServerHttp1ProtocolHandler::writeEndChunked(const QByteArray &data,
         if (!trailers.isEmpty())
             qCWarning(lcHttpServerHttp1Handler, "Cannot send trailers for HTTP/1.0 connections.");
     }
-    if (!keepAlive)
+    if (closeAfterCurrentRequest())
         closeConnection();
 
     state = TransferState::Ready;
@@ -630,7 +630,7 @@ void QHttpServerHttp1ProtocolHandler::completeWriting()
 {
     Q_ASSERT(state == TransferState::IODeviceTransferBegun);
     state = TransferState::Ready;
-    if (!keepAlive) {
+    if (closeAfterCurrentRequest()) {
         closeConnection();
     } else if (!handlingRequest) {
         resumeListening();
@@ -639,7 +639,7 @@ void QHttpServerHttp1ProtocolHandler::completeWriting()
 
 void QHttpServerHttp1ProtocolHandler::addConnectionAndKeepAliveHeaders(QHttpHeaders &headers)
 {
-    if (keepAlive) {
+    if (!closeAfterCurrentRequest()) {
         headers.append(QHttpHeaders::WellKnownHeader::Connection, "keep-alive");
         headers.append(QHttpHeaders::WellKnownHeader::KeepAlive,
                        u"timeout=%1"_s.arg(m_configuration->keepAliveTimeout().count()));
