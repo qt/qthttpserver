@@ -99,6 +99,8 @@ private:
     QElapsedTimer lastActiveTimer;
     bool useHttp1_1 = false;
     bool keepAlive = true;
+    bool forceClose = false;
+    bool closeAfterCurrentRequest() const { return !keepAlive || forceClose; }
     void completeWriting();
 
     template <qint64 BUFFERSIZE>
