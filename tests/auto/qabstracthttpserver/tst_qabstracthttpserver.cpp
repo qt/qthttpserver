@@ -180,6 +180,7 @@ private slots:
     void chunkedTrailers();
     void chunkedTrailersTooLarge();
     void http2RequestFilterClosesConnection();
+    void http2ConnectionErrorClosesConnection();
 
 private:
 #if QT_CONFIG(ssl)
@@ -1938,6 +1939,75 @@ void tst_QAbstractHttpServer::http2RequestFilterClosesConnection()
     QTRY_COMPARE(socket->state(), QAbstractSocket::UnconnectedState);
 
     QCOMPARE(server.handledRequests, 0);
+#else
+    QSKIP("TLS/SSL is not available, skipping test");
+#endif // QT_CONFIG(ssl)
+}
+
+void tst_QAbstractHttpServer::http2ConnectionErrorClosesConnection()
+{
+#if QT_CONFIG(ssl)
+    if (!hasServerAlpn)
+        QSKIP("Server-side ALPN is unsupported, skipping test");
+
+    struct HttpServer : QAbstractHttpServer
+    {
+        bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &) override
+        {
+            return false;
+        }
+
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &responder) override
+        {
+            responder.sendResponse(QHttpServerResponse(QHttpServerResponder::StatusCode::NotFound));
+        }
+    } server;
+
+    auto sslserver = std::make_unique<QSslServer>();
+    QSslConfiguration serverConfig = QSslConfiguration::defaultConfiguration();
+    serverConfig.setLocalCertificate(QSslCertificate(g_certificate));
+    serverConfig.setPrivateKey(QSslKey(g_privateKey, QSsl::Rsa));
+    serverConfig.setAllowedNextProtocols({ QSslConfiguration::ALPNProtocolHTTP2 });
+    sslserver->setSslConfiguration(serverConfig);
+    QVERIFY2(sslserver->listen(QHostAddress::LocalHost), "HTTPS server listen failed");
+    QVERIFY2(server.bind(sslserver.get()), "HTTPS server bind failed");
+    sslserver.release();
+
+    // Make sure it is the connection error that closes the connection,
+    // not the keep-alive timeout.
+    QHttpServerConfiguration config;
+    config.setKeepAliveTimeout(std::chrono::seconds(60));
+    server.setConfiguration(config);
+
+    QSslSocketPtr socket = createNewConnection(server.servers().constFirst());
+    QVERIFY(socket->isEncrypted());
+    QCOMPARE(socket->sslConfiguration().nextNegotiatedProtocol(),
+             QSslConfiguration::ALPNProtocolHTTP2);
+
+    QHttp2Connection *connection = QHttp2Connection::createDirectConnection(socket.get(), {});
+    QSignalSpy settingsFrameReceivedSpy{ connection, &QHttp2Connection::settingsFrameReceived };
+    QSignalSpy goawaySpy{ connection, &QHttp2Connection::receivedGOAWAY };
+    connect(socket.get(), &QIODevice::readyRead, connection, &QHttp2Connection::handleReadyRead);
+    connection->handleReadyRead();
+    auto stream = connection->createStream().unwrap();
+    QVERIFY(stream);
+    QVERIFY(settingsFrameReceivedSpy.wait());
+
+    // A PING frame on a stream other than 0 is a connection error of type
+    // PROTOCOL_ERROR (RFC 9113, 6.7). Written by hand, as QHttp2Connection
+    // never sends a malformed frame.
+    const QByteArray pingOnStream1 = QByteArray::fromHex("000008" // payload length
+                                                         "06" // type: PING
+                                                         "00" // flags
+                                                         "00000001" // stream ID
+                                                         "0000000000000000"); // opaque data
+    QCOMPARE(socket->write(pingOnStream1), pingOnStream1.size());
+
+    // The server announces the error with GOAWAY...
+    QTRY_VERIFY(goawaySpy.size() >= 1);
+    QCOMPARE(goawaySpy.at(0).at(0).value<Http2::Http2Error>(), Http2::PROTOCOL_ERROR);
+    // ...and then closes the connection (RFC 9113, 5.4.1)
+    QTRY_COMPARE(socket->state(), QAbstractSocket::UnconnectedState);
 #else
     QSKIP("TLS/SSL is not available, skipping test");
 #endif // QT_CONFIG(ssl)
