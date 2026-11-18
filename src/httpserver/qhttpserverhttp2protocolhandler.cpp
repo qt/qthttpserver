@@ -69,6 +69,12 @@ QHttpServerHttp2ProtocolHandler::QHttpServerHttp2ProtocolHandler(QAbstractHttpSe
             this,
             &QHttpServerHttp2ProtocolHandler::onStreamCreated);
 
+    connect(m_connection,
+            &QHttp2Connection::connectionClosed,
+            m_tcpSocket,
+            &QTcpSocket::disconnectFromHost,
+            Qt::QueuedConnection);
+
     lastActiveTimer.start();
 }
 
