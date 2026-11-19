@@ -267,7 +267,7 @@ qsizetype QHttpServerParser::readHeader(QIODevice *socket)
     if (allHeaders) {
         bool parseSuccess = headerParser.parseHeaders(fragment);
         if (!parseSuccess) {
-            sendError(socket, QHttpServerResponder::StatusCode::RequestHeaderFieldsTooLarge);
+            sendError(socket, QHttpServerResponder::StatusCode::BadRequest);
             qCDebug(lcHttpServerParser)
                     << "Error parsing headers from client" << getClientIpAddressAndPort();
             return -1;
