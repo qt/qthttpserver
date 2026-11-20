@@ -147,11 +147,11 @@ qsizetype QHttpServerParser::readRequestLine(QIODevice *socket)
             break;
         } else {
             fragment.append(c);
-            if (!isUrlSizeAllowed(fragment.first(bytes))) {
-                fragment.clear();
+            if (!isUrlSizeAllowed(fragment)) {
                 sendError(socket, QHttpServerResponder::StatusCode::UriTooLong);
-                qCDebug(lcHttpServerParser) << "URI too long at" << bytes << "bytes from client"
+                qCDebug(lcHttpServerParser) << "URI too long at" << fragment.size() << "bytes from client"
                                             << getClientIpAddressAndPort();
+                fragment.clear();
                 return -1;
             }
         }
@@ -240,9 +240,9 @@ qsizetype QHttpServerParser::readHeader(QIODevice *socket)
         } else {
             fragment.append(c);
             bytes++;
-            if (!filter->isTotalHeaderSizeAllowed(bytes)) {
+            if (!filter->isTotalHeaderSizeAllowed(fragment.size())) {
                 sendError(socket, QHttpServerResponder::StatusCode::RequestHeaderFieldsTooLarge);
-                qCDebug(lcHttpServerParser) << "Total header size too large, currently at" << bytes
+                qCDebug(lcHttpServerParser) << "Total header size too large, currently at" << fragment.size()
                                             << "bytes from client" << getClientIpAddressAndPort();
                 return -1;
             }

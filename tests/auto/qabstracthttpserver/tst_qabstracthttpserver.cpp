@@ -173,6 +173,8 @@ private slots:
     void contentLengthAndTransferEncoding_data();
     void contentLengthAndTransferEncoding();
     void totalHeaderSizeLimit();
+    void sizeLimitsAcrossReads_data();
+    void sizeLimitsAcrossReads();
     void http2InvalidContentLength();
     void chunkTerminator_data();
     void chunkTerminator();
@@ -1603,6 +1605,93 @@ void tst_QAbstractHttpServer::totalHeaderSizeLimit()
     QTRY_COMPARE(client.state(), QAbstractSocket::UnconnectedState);
     const QByteArray response = client.readAll();
     QVERIFY2(response.startsWith("HTTP/1.1 431"), response.constData());
+    QVERIFY(!server.handleRequestCalled);
+}
+
+void tst_QAbstractHttpServer::sizeLimitsAcrossReads_data()
+{
+    // The request, sent in parts that the server reads one at a time.
+    QTest::addColumn<QByteArrayList>("parts");
+    // 0 if the request must be accepted, otherwise the status it must be rejected with.
+    QTest::addColumn<int>("rejectedWith");
+
+    // Each part is below the limits set in the test, but the request line or
+    // the header block they add up to exceed them.
+    const QByteArray a600(600, 'a');
+    QTest::addRow("url-too-large")
+            << QByteArrayList{ "GET /" + a600, a600 + " HTTP/1.1\r\nHost: localhost\r\n\r\n" }
+            << 414;
+    QTest::addRow("headers-too-large")
+            << QByteArrayList{ "GET / HTTP/1.1\r\nHost: localhost\r\nX-A: " + a600 + "\r\n",
+                               "X-B: " + a600 + "\r\n\r\n" }
+            << 431;
+    // Split the same way, but within the limits.
+    const QByteArray a300(300, 'a');
+    QTest::addRow("within-limits")
+            << QByteArrayList{ "GET /" + a300, a300 + " HTTP/1.1\r\nHost: localhost\r\nX-A: " + a300
+                                       + "\r\n",
+                               "X-B: " + a300 + "\r\n\r\n" }
+            << 0;
+}
+
+void tst_QAbstractHttpServer::sizeLimitsAcrossReads()
+{
+    QFETCH(QByteArrayList, parts);
+    QFETCH(int, rejectedWith);
+
+    struct HttpServer : QAbstractHttpServer
+    {
+        bool handleRequestCalled = false;
+        bool handleRequest(const QHttpServerRequest &, QHttpServerResponder &responder) override
+        {
+            handleRequestCalled = true;
+            auto _responder = std::move(responder);
+            return true;
+        }
+        void missingHandler(const QHttpServerRequest &, QHttpServerResponder &) override { }
+    } server;
+
+    QTcpServer tcpServer;
+    QVERIFY(tcpServer.listen());
+    server.bind(&tcpServer);
+
+    QHttpServerConfiguration config;
+    config.setMaximumUrlSize(1024);
+    config.setMaximumTotalHeaderSize(1024);
+    server.setConfiguration(config);
+
+    QTcpSocket client;
+    client.connectToHost(QHostAddress::LocalHost, tcpServer.serverPort());
+    QVERIFY(client.waitForConnected());
+
+    // The server-side socket is owned by the connection handler, a child of the server.
+    QTcpSocket *serverSocket = nullptr;
+    QTRY_VERIFY((serverSocket = server.findChild<QTcpSocket *>()));
+
+    // Queued, so it runs after the handler has parsed what arrived.
+    int serverReads = 0;
+    QObject::connect(serverSocket, &QIODevice::readyRead, serverSocket,
+                     [&serverReads] { ++serverReads; }, Qt::QueuedConnection);
+
+    // Send each part separately and wait until the server has read it before
+    // sending the next, so that the limits are checked across reads.
+    for (qsizetype i = 0; i < parts.size(); ++i) {
+        const int readsBefore = serverReads;
+        client.write(parts.at(i));
+        QVERIFY(client.waitForBytesWritten());
+        if (i + 1 < parts.size())
+            QTRY_VERIFY(serverReads > readsBefore);
+    }
+
+    if (!rejectedWith) {
+        QTRY_VERIFY(server.handleRequestCalled);
+        return;
+    }
+
+    QTRY_COMPARE(client.state(), QAbstractSocket::UnconnectedState);
+    const QByteArray response = client.readAll();
+    const QByteArray expected = "HTTP/1.1 " + QByteArray::number(rejectedWith);
+    QVERIFY2(response.startsWith(expected), response.constData());
     QVERIFY(!server.handleRequestCalled);
 }
 
